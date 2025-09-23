@@ -1,0 +1,1577 @@
+{
+    "GameArt": {
+        "Characters": {
+            "Arborist": {
+                "path": "GameArt/Characters/Arborist",
+                "size": [
+                    1024,
+                    1024
+                ]
+            },
+            "Arcanist": {
+                "path": "GameArt/Characters/Arcanist",
+                "size": [
+                    1024,
+                    1024
+                ]
+            },
+            "Artificer": {
+                "path": "GameArt/Characters/Artificer",
+                "size": [
+                    1024,
+                    1024
+                ]
+            },
+            "Beast Master": {
+                "path": "GameArt/Characters/Beast Master",
+                "size": [
+                    1024,
+                    1024
+                ]
+            },
+            "Blade Dancer": {
+                "path": "GameArt/Characters/Blade Dancer",
+                "size": [
+                    1024,
+                    1024
+                ]
+            },
+            "Combat Medic": {
+                "path": "GameArt/Characters/Combat Medic",
+                "size": [
+                    1024,
+                    1024
+                ]
+            },
+            "Flux Engineer": {
+                "path": "GameArt/Characters/Flux Engineer",
+                "size": [
+                    1024,
+                    1024
+                ]
+            },
+            "Gadgeteer": {
+                "path": "GameArt/Characters/Gadgeteer",
+                "size": [
+                    1024,
+                    1024
+                ]
+            },
+            "Gatekeeper": {
+                "path": "GameArt/Characters/Gatekeeper",
+                "size": [
+                    1024,
+                    1024
+                ]
+            },
+            "Legionnaire": {
+                "path": "GameArt/Characters/Legionnaire",
+                "size": [
+                    1024,
+                    1024
+                ]
+            },
+            "Machinist": {
+                "path": "GameArt/Characters/Machinist",
+                "size": [
+                    1024,
+                    1024
+                ]
+            },
+            "Navigator": {
+                "path": "GameArt/Characters/Navigator",
+                "size": [
+                    1024,
+                    1024
+                ]
+            },
+            "npc001": {
+                "path": "GameArt/Characters/npc001",
+                "size": [
+                    1024,
+                    1024
+                ]
+            },
+            "npc002": {
+                "path": "GameArt/Characters/npc002",
+                "size": [
+                    1024,
+                    1024
+                ]
+            },
+            "npc003": {
+                "path": "GameArt/Characters/npc003",
+                "size": [
+                    1024,
+                    1024
+                ]
+            },
+            "Pathfinder": {
+                "path": "GameArt/Characters/Pathfinder",
+                "size": [
+                    1024,
+                    1024
+                ]
+            },
+            "Runemaker": {
+                "path": "GameArt/Characters/Runemaker",
+                "size": [
+                    1024,
+                    1024
+                ]
+            },
+            "Sentinel": {
+                "path": "GameArt/Characters/Sentinel",
+                "size": [
+                    1024,
+                    1024
+                ]
+            },
+            "Shaman": {
+                "path": "GameArt/Characters/Shaman",
+                "size": [
+                    1024,
+                    1024
+                ]
+            },
+            "Technomancer": {
+                "path": "GameArt/Characters/Technomancer",
+                "size": [
+                    1024,
+                    1024
+                ]
+            },
+            "War Engineer": {
+                "path": "GameArt/Characters/War Engineer",
+                "size": [
+                    1024,
+                    1024
+                ]
+            },
+            "Water Keeper": {
+                "path": "GameArt/Characters/Water Keeper",
+                "size": [
+                    1024,
+                    1024
+                ]
+            },
+            "Wayfinder": {
+                "path": "GameArt/Characters/Wayfinder",
+                "size": [
+                    1024,
+                    1024
+                ]
+            }
+        },
+        "Factions": {
+            "Ironforged": {
+                "path": "GameArt/Factions/Ironforged",
+                "size": [
+                    1024,
+                    1024
+                ]
+            },
+            "Leywatchers": {
+                "path": "GameArt/Factions/Leywatchers",
+                "size": [
+                    1024,
+                    1024
+                ]
+            },
+            "Steamwrights": {
+                "path": "GameArt/Factions/Steamwrights",
+                "size": [
+                    1024,
+                    1024
+                ]
+            },
+            "Wardens": {
+                "path": "GameArt/Factions/Wardens",
+                "size": [
+                    1024,
+                    1024
+                ]
+            }
+        },
+        "LoadingScreen": {
+            "path": "GameArt/LoadingScreen",
+            "size": [
+                1792,
+                1024
+            ]
+        }
+    },
+    "Sprites": {
+        "Characters": {
+            "Arborist_128": {
+                "path": "Sprites/Characters/Arborist_128",
+                "size": [
+                    128,
+                    128
+                ]
+            },
+            "Arborist_32": {
+                "path": "Sprites/Characters/Arborist_32",
+                "size": [
+                    32,
+                    32
+                ]
+            },
+            "Arborist_48": {
+                "path": "Sprites/Characters/Arborist_48",
+                "size": [
+                    48,
+                    48
+                ]
+            },
+            "Arborist_64": {
+                "path": "Sprites/Characters/Arborist_64",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "Arborist_96": {
+                "path": "Sprites/Characters/Arborist_96",
+                "size": [
+                    96,
+                    96
+                ]
+            },
+            "Arcanist_128": {
+                "path": "Sprites/Characters/Arcanist_128",
+                "size": [
+                    128,
+                    128
+                ]
+            },
+            "Arcanist_32": {
+                "path": "Sprites/Characters/Arcanist_32",
+                "size": [
+                    32,
+                    32
+                ]
+            },
+            "Arcanist_48": {
+                "path": "Sprites/Characters/Arcanist_48",
+                "size": [
+                    48,
+                    48
+                ]
+            },
+            "Arcanist_64": {
+                "path": "Sprites/Characters/Arcanist_64",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "Arcanist_96": {
+                "path": "Sprites/Characters/Arcanist_96",
+                "size": [
+                    96,
+                    96
+                ]
+            },
+            "Artificer_128": {
+                "path": "Sprites/Characters/Artificer_128",
+                "size": [
+                    128,
+                    128
+                ]
+            },
+            "Artificer_32": {
+                "path": "Sprites/Characters/Artificer_32",
+                "size": [
+                    32,
+                    32
+                ]
+            },
+            "Artificer_48": {
+                "path": "Sprites/Characters/Artificer_48",
+                "size": [
+                    48,
+                    48
+                ]
+            },
+            "Artificer_64": {
+                "path": "Sprites/Characters/Artificer_64",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "Artificer_96": {
+                "path": "Sprites/Characters/Artificer_96",
+                "size": [
+                    96,
+                    96
+                ]
+            },
+            "Beast Master_128": {
+                "path": "Sprites/Characters/Beast Master_128",
+                "size": [
+                    128,
+                    128
+                ]
+            },
+            "Beast Master_32": {
+                "path": "Sprites/Characters/Beast Master_32",
+                "size": [
+                    32,
+                    32
+                ]
+            },
+            "Beast Master_48": {
+                "path": "Sprites/Characters/Beast Master_48",
+                "size": [
+                    48,
+                    48
+                ]
+            },
+            "Beast Master_64": {
+                "path": "Sprites/Characters/Beast Master_64",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "Beast Master_96": {
+                "path": "Sprites/Characters/Beast Master_96",
+                "size": [
+                    96,
+                    96
+                ]
+            },
+            "Blade Dancer_128": {
+                "path": "Sprites/Characters/Blade Dancer_128",
+                "size": [
+                    128,
+                    128
+                ]
+            },
+            "Blade Dancer_32": {
+                "path": "Sprites/Characters/Blade Dancer_32",
+                "size": [
+                    32,
+                    32
+                ]
+            },
+            "Blade Dancer_48": {
+                "path": "Sprites/Characters/Blade Dancer_48",
+                "size": [
+                    48,
+                    48
+                ]
+            },
+            "Blade Dancer_64": {
+                "path": "Sprites/Characters/Blade Dancer_64",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "Blade Dancer_96": {
+                "path": "Sprites/Characters/Blade Dancer_96",
+                "size": [
+                    96,
+                    96
+                ]
+            },
+            "Combat Medic_128": {
+                "path": "Sprites/Characters/Combat Medic_128",
+                "size": [
+                    128,
+                    128
+                ]
+            },
+            "Combat Medic_32": {
+                "path": "Sprites/Characters/Combat Medic_32",
+                "size": [
+                    32,
+                    32
+                ]
+            },
+            "Combat Medic_48": {
+                "path": "Sprites/Characters/Combat Medic_48",
+                "size": [
+                    48,
+                    48
+                ]
+            },
+            "Combat Medic_64": {
+                "path": "Sprites/Characters/Combat Medic_64",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "Combat Medic_96": {
+                "path": "Sprites/Characters/Combat Medic_96",
+                "size": [
+                    96,
+                    96
+                ]
+            },
+            "Flux Engineer_128": {
+                "path": "Sprites/Characters/Flux Engineer_128",
+                "size": [
+                    128,
+                    128
+                ]
+            },
+            "Flux Engineer_32": {
+                "path": "Sprites/Characters/Flux Engineer_32",
+                "size": [
+                    32,
+                    32
+                ]
+            },
+            "Flux Engineer_48": {
+                "path": "Sprites/Characters/Flux Engineer_48",
+                "size": [
+                    48,
+                    48
+                ]
+            },
+            "Flux Engineer_64": {
+                "path": "Sprites/Characters/Flux Engineer_64",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "Flux Engineer_96": {
+                "path": "Sprites/Characters/Flux Engineer_96",
+                "size": [
+                    96,
+                    96
+                ]
+            },
+            "Gadgeteer_128": {
+                "path": "Sprites/Characters/Gadgeteer_128",
+                "size": [
+                    128,
+                    128
+                ]
+            },
+            "Gadgeteer_32": {
+                "path": "Sprites/Characters/Gadgeteer_32",
+                "size": [
+                    32,
+                    32
+                ]
+            },
+            "Gadgeteer_48": {
+                "path": "Sprites/Characters/Gadgeteer_48",
+                "size": [
+                    48,
+                    48
+                ]
+            },
+            "Gadgeteer_64": {
+                "path": "Sprites/Characters/Gadgeteer_64",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "Gadgeteer_96": {
+                "path": "Sprites/Characters/Gadgeteer_96",
+                "size": [
+                    96,
+                    96
+                ]
+            },
+            "Gatekeeper_128": {
+                "path": "Sprites/Characters/Gatekeeper_128",
+                "size": [
+                    128,
+                    128
+                ]
+            },
+            "Gatekeeper_32": {
+                "path": "Sprites/Characters/Gatekeeper_32",
+                "size": [
+                    32,
+                    32
+                ]
+            },
+            "Gatekeeper_48": {
+                "path": "Sprites/Characters/Gatekeeper_48",
+                "size": [
+                    48,
+                    48
+                ]
+            },
+            "Gatekeeper_64": {
+                "path": "Sprites/Characters/Gatekeeper_64",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "Gatekeeper_96": {
+                "path": "Sprites/Characters/Gatekeeper_96",
+                "size": [
+                    96,
+                    96
+                ]
+            },
+            "Legionnaire_128": {
+                "path": "Sprites/Characters/Legionnaire_128",
+                "size": [
+                    128,
+                    128
+                ]
+            },
+            "Legionnaire_32": {
+                "path": "Sprites/Characters/Legionnaire_32",
+                "size": [
+                    32,
+                    32
+                ]
+            },
+            "Legionnaire_48": {
+                "path": "Sprites/Characters/Legionnaire_48",
+                "size": [
+                    48,
+                    48
+                ]
+            },
+            "Legionnaire_64": {
+                "path": "Sprites/Characters/Legionnaire_64",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "Legionnaire_96": {
+                "path": "Sprites/Characters/Legionnaire_96",
+                "size": [
+                    96,
+                    96
+                ]
+            },
+            "Machinist_128": {
+                "path": "Sprites/Characters/Machinist_128",
+                "size": [
+                    128,
+                    128
+                ]
+            },
+            "Machinist_32": {
+                "path": "Sprites/Characters/Machinist_32",
+                "size": [
+                    32,
+                    32
+                ]
+            },
+            "Machinist_48": {
+                "path": "Sprites/Characters/Machinist_48",
+                "size": [
+                    48,
+                    48
+                ]
+            },
+            "Machinist_64": {
+                "path": "Sprites/Characters/Machinist_64",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "Machinist_96": {
+                "path": "Sprites/Characters/Machinist_96",
+                "size": [
+                    96,
+                    96
+                ]
+            },
+            "Navigator_128": {
+                "path": "Sprites/Characters/Navigator_128",
+                "size": [
+                    128,
+                    128
+                ]
+            },
+            "Navigator_32": {
+                "path": "Sprites/Characters/Navigator_32",
+                "size": [
+                    32,
+                    32
+                ]
+            },
+            "Navigator_48": {
+                "path": "Sprites/Characters/Navigator_48",
+                "size": [
+                    48,
+                    48
+                ]
+            },
+            "Navigator_64": {
+                "path": "Sprites/Characters/Navigator_64",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "Navigator_96": {
+                "path": "Sprites/Characters/Navigator_96",
+                "size": [
+                    96,
+                    96
+                ]
+            },
+            "npc001_128": {
+                "path": "Sprites/Characters/npc001_128",
+                "size": [
+                    128,
+                    128
+                ]
+            },
+            "npc001_32": {
+                "path": "Sprites/Characters/npc001_32",
+                "size": [
+                    32,
+                    32
+                ]
+            },
+            "npc001_48": {
+                "path": "Sprites/Characters/npc001_48",
+                "size": [
+                    48,
+                    48
+                ]
+            },
+            "npc001_64": {
+                "path": "Sprites/Characters/npc001_64",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "npc001_96": {
+                "path": "Sprites/Characters/npc001_96",
+                "size": [
+                    96,
+                    96
+                ]
+            },
+            "npc002_128": {
+                "path": "Sprites/Characters/npc002_128",
+                "size": [
+                    128,
+                    128
+                ]
+            },
+            "npc002_32": {
+                "path": "Sprites/Characters/npc002_32",
+                "size": [
+                    32,
+                    32
+                ]
+            },
+            "npc002_48": {
+                "path": "Sprites/Characters/npc002_48",
+                "size": [
+                    48,
+                    48
+                ]
+            },
+            "npc002_64": {
+                "path": "Sprites/Characters/npc002_64",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "npc002_96": {
+                "path": "Sprites/Characters/npc002_96",
+                "size": [
+                    96,
+                    96
+                ]
+            },
+            "npc003_128": {
+                "path": "Sprites/Characters/npc003_128",
+                "size": [
+                    128,
+                    128
+                ]
+            },
+            "npc003_32": {
+                "path": "Sprites/Characters/npc003_32",
+                "size": [
+                    32,
+                    32
+                ]
+            },
+            "npc003_48": {
+                "path": "Sprites/Characters/npc003_48",
+                "size": [
+                    48,
+                    48
+                ]
+            },
+            "npc003_64": {
+                "path": "Sprites/Characters/npc003_64",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "npc003_96": {
+                "path": "Sprites/Characters/npc003_96",
+                "size": [
+                    96,
+                    96
+                ]
+            },
+            "Pathfinder_128": {
+                "path": "Sprites/Characters/Pathfinder_128",
+                "size": [
+                    128,
+                    128
+                ]
+            },
+            "Pathfinder_32": {
+                "path": "Sprites/Characters/Pathfinder_32",
+                "size": [
+                    32,
+                    32
+                ]
+            },
+            "Pathfinder_48": {
+                "path": "Sprites/Characters/Pathfinder_48",
+                "size": [
+                    48,
+                    48
+                ]
+            },
+            "Pathfinder_64": {
+                "path": "Sprites/Characters/Pathfinder_64",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "Pathfinder_96": {
+                "path": "Sprites/Characters/Pathfinder_96",
+                "size": [
+                    96,
+                    96
+                ]
+            },
+            "Runemaker_128": {
+                "path": "Sprites/Characters/Runemaker_128",
+                "size": [
+                    128,
+                    128
+                ]
+            },
+            "Runemaker_32": {
+                "path": "Sprites/Characters/Runemaker_32",
+                "size": [
+                    32,
+                    32
+                ]
+            },
+            "Runemaker_48": {
+                "path": "Sprites/Characters/Runemaker_48",
+                "size": [
+                    48,
+                    48
+                ]
+            },
+            "Runemaker_64": {
+                "path": "Sprites/Characters/Runemaker_64",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "Runemaker_96": {
+                "path": "Sprites/Characters/Runemaker_96",
+                "size": [
+                    96,
+                    96
+                ]
+            },
+            "Sentinel_128": {
+                "path": "Sprites/Characters/Sentinel_128",
+                "size": [
+                    128,
+                    128
+                ]
+            },
+            "Sentinel_32": {
+                "path": "Sprites/Characters/Sentinel_32",
+                "size": [
+                    32,
+                    32
+                ]
+            },
+            "Sentinel_48": {
+                "path": "Sprites/Characters/Sentinel_48",
+                "size": [
+                    48,
+                    48
+                ]
+            },
+            "Sentinel_64": {
+                "path": "Sprites/Characters/Sentinel_64",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "Sentinel_96": {
+                "path": "Sprites/Characters/Sentinel_96",
+                "size": [
+                    96,
+                    96
+                ]
+            },
+            "Shaman_128": {
+                "path": "Sprites/Characters/Shaman_128",
+                "size": [
+                    128,
+                    128
+                ]
+            },
+            "Shaman_32": {
+                "path": "Sprites/Characters/Shaman_32",
+                "size": [
+                    32,
+                    32
+                ]
+            },
+            "Shaman_48": {
+                "path": "Sprites/Characters/Shaman_48",
+                "size": [
+                    48,
+                    48
+                ]
+            },
+            "Shaman_64": {
+                "path": "Sprites/Characters/Shaman_64",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "Shaman_96": {
+                "path": "Sprites/Characters/Shaman_96",
+                "size": [
+                    96,
+                    96
+                ]
+            },
+            "Technomancer_128": {
+                "path": "Sprites/Characters/Technomancer_128",
+                "size": [
+                    128,
+                    128
+                ]
+            },
+            "Technomancer_32": {
+                "path": "Sprites/Characters/Technomancer_32",
+                "size": [
+                    32,
+                    32
+                ]
+            },
+            "Technomancer_48": {
+                "path": "Sprites/Characters/Technomancer_48",
+                "size": [
+                    48,
+                    48
+                ]
+            },
+            "Technomancer_64": {
+                "path": "Sprites/Characters/Technomancer_64",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "Technomancer_96": {
+                "path": "Sprites/Characters/Technomancer_96",
+                "size": [
+                    96,
+                    96
+                ]
+            },
+            "War Engineer_128": {
+                "path": "Sprites/Characters/War Engineer_128",
+                "size": [
+                    128,
+                    128
+                ]
+            },
+            "War Engineer_32": {
+                "path": "Sprites/Characters/War Engineer_32",
+                "size": [
+                    32,
+                    32
+                ]
+            },
+            "War Engineer_48": {
+                "path": "Sprites/Characters/War Engineer_48",
+                "size": [
+                    48,
+                    48
+                ]
+            },
+            "War Engineer_64": {
+                "path": "Sprites/Characters/War Engineer_64",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "War Engineer_96": {
+                "path": "Sprites/Characters/War Engineer_96",
+                "size": [
+                    96,
+                    96
+                ]
+            },
+            "Water Keeper_128": {
+                "path": "Sprites/Characters/Water Keeper_128",
+                "size": [
+                    128,
+                    128
+                ]
+            },
+            "Water Keeper_32": {
+                "path": "Sprites/Characters/Water Keeper_32",
+                "size": [
+                    32,
+                    32
+                ]
+            },
+            "Water Keeper_48": {
+                "path": "Sprites/Characters/Water Keeper_48",
+                "size": [
+                    48,
+                    48
+                ]
+            },
+            "Water Keeper_64": {
+                "path": "Sprites/Characters/Water Keeper_64",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "Water Keeper_96": {
+                "path": "Sprites/Characters/Water Keeper_96",
+                "size": [
+                    96,
+                    96
+                ]
+            },
+            "Wayfinder_128": {
+                "path": "Sprites/Characters/Wayfinder_128",
+                "size": [
+                    128,
+                    128
+                ]
+            },
+            "Wayfinder_32": {
+                "path": "Sprites/Characters/Wayfinder_32",
+                "size": [
+                    32,
+                    32
+                ]
+            },
+            "Wayfinder_48": {
+                "path": "Sprites/Characters/Wayfinder_48",
+                "size": [
+                    48,
+                    48
+                ]
+            },
+            "Wayfinder_64": {
+                "path": "Sprites/Characters/Wayfinder_64",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "Wayfinder_96": {
+                "path": "Sprites/Characters/Wayfinder_96",
+                "size": [
+                    96,
+                    96
+                ]
+            }
+        },
+        "Cities": {
+            "Abandoned City vari_01_128": {
+                "path": "Sprites/Cities/Abandoned City vari_01_128",
+                "size": [
+                    140,
+                    128
+                ]
+            },
+            "Abandoned City Walled vari_01_128": {
+                "path": "Sprites/Cities/Abandoned City Walled vari_01_128",
+                "size": [
+                    169,
+                    128
+                ]
+            },
+            "Abandoned City Walled_128": {
+                "path": "Sprites/Cities/Abandoned City Walled_128",
+                "size": [
+                    169,
+                    128
+                ]
+            },
+            "Abandoned City_128": {
+                "path": "Sprites/Cities/Abandoned City_128",
+                "size": [
+                    140,
+                    128
+                ]
+            },
+            "Ancient City n_128": {
+                "path": "Sprites/Cities/Ancient City n_128",
+                "size": [
+                    173,
+                    128
+                ]
+            },
+            "Ancient City r vari_01_128": {
+                "path": "Sprites/Cities/Ancient City r vari_01_128",
+                "size": [
+                    173,
+                    128
+                ]
+            },
+            "Ancient City w vari_01_128": {
+                "path": "Sprites/Cities/Ancient City w vari_01_128",
+                "size": [
+                    173,
+                    128
+                ]
+            },
+            "Ancient City Walled n_128": {
+                "path": "Sprites/Cities/Ancient City Walled n_128",
+                "size": [
+                    243,
+                    128
+                ]
+            },
+            "Ancient City Walled r vari_01_128": {
+                "path": "Sprites/Cities/Ancient City Walled r vari_01_128",
+                "size": [
+                    243,
+                    128
+                ]
+            },
+            "Ancient City Walled w vari_01_128": {
+                "path": "Sprites/Cities/Ancient City Walled w vari_01_128",
+                "size": [
+                    243,
+                    128
+                ]
+            },
+            "Asian City n_128": {
+                "path": "Sprites/Cities/Asian City n_128",
+                "size": [
+                    98,
+                    128
+                ]
+            },
+            "Asian City w vari_01_128": {
+                "path": "Sprites/Cities/Asian City w vari_01_128",
+                "size": [
+                    98,
+                    128
+                ]
+            },
+            "Asian City Walled n_128": {
+                "path": "Sprites/Cities/Asian City Walled n_128",
+                "size": [
+                    184,
+                    128
+                ]
+            },
+            "Asian City Walled r vari_01_128": {
+                "path": "Sprites/Cities/Asian City Walled r vari_01_128",
+                "size": [
+                    184,
+                    128
+                ]
+            },
+            "Asian City Walled w vari_01_128": {
+                "path": "Sprites/Cities/Asian City Walled w vari_01_128",
+                "size": [
+                    184,
+                    128
+                ]
+            },
+            "City 1_128": {
+                "path": "Sprites/Cities/City 1_128",
+                "size": [
+                    182,
+                    128
+                ]
+            },
+            "City 2 vari_01_128": {
+                "path": "Sprites/Cities/City 2 vari_01_128",
+                "size": [
+                    182,
+                    128
+                ]
+            },
+            "City vari_01_128": {
+                "path": "Sprites/Cities/City vari_01_128",
+                "size": [
+                    165,
+                    128
+                ]
+            },
+            "City vc vari_01_128": {
+                "path": "Sprites/Cities/City vc vari_01_128",
+                "size": [
+                    146,
+                    128
+                ]
+            },
+            "City Walled vari_01_128": {
+                "path": "Sprites/Cities/City Walled vari_01_128",
+                "size": [
+                    182,
+                    128
+                ]
+            },
+            "Classic City n_128": {
+                "path": "Sprites/Cities/Classic City n_128",
+                "size": [
+                    130,
+                    128
+                ]
+            },
+            "Classic City r vari_01_128": {
+                "path": "Sprites/Cities/Classic City r vari_01_128",
+                "size": [
+                    130,
+                    128
+                ]
+            },
+            "Classic City w vari_01_128": {
+                "path": "Sprites/Cities/Classic City w vari_01_128",
+                "size": [
+                    130,
+                    128
+                ]
+            },
+            "Classic City Walled n_128": {
+                "path": "Sprites/Cities/Classic City Walled n_128",
+                "size": [
+                    219,
+                    128
+                ]
+            },
+            "Classic City Walled r vari_01_128": {
+                "path": "Sprites/Cities/Classic City Walled r vari_01_128",
+                "size": [
+                    219,
+                    128
+                ]
+            },
+            "Classic City Walled w vari_01_128": {
+                "path": "Sprites/Cities/Classic City Walled w vari_01_128",
+                "size": [
+                    219,
+                    128
+                ]
+            },
+            "Classical City vari_01_128": {
+                "path": "Sprites/Cities/Classical City vari_01_128",
+                "size": [
+                    132,
+                    128
+                ]
+            },
+            "Classical City Walled vari_01_128": {
+                "path": "Sprites/Cities/Classical City Walled vari_01_128",
+                "size": [
+                    145,
+                    128
+                ]
+            },
+            "Dwarven City Ruined vari_01_128": {
+                "path": "Sprites/Cities/Dwarven City Ruined vari_01_128",
+                "size": [
+                    177,
+                    127
+                ]
+            },
+            "Dwarven City Ruined_128": {
+                "path": "Sprites/Cities/Dwarven City Ruined_128",
+                "size": [
+                    177,
+                    127
+                ]
+            },
+            "Dwarven City vari_01_128": {
+                "path": "Sprites/Cities/Dwarven City vari_01_128",
+                "size": [
+                    167,
+                    127
+                ]
+            },
+            "Dwarven City vc vari_01_128": {
+                "path": "Sprites/Cities/Dwarven City vc vari_01_128",
+                "size": [
+                    137,
+                    128
+                ]
+            },
+            "Dwarven City_128": {
+                "path": "Sprites/Cities/Dwarven City_128",
+                "size": [
+                    167,
+                    127
+                ]
+            },
+            "Elven City vari_01_128": {
+                "path": "Sprites/Cities/Elven City vari_01_128",
+                "size": [
+                    148,
+                    128
+                ]
+            },
+            "Elven City vc vari_01_128": {
+                "path": "Sprites/Cities/Elven City vc vari_01_128",
+                "size": [
+                    137,
+                    128
+                ]
+            },
+            "Elven City walled vari_01_128": {
+                "path": "Sprites/Cities/Elven City walled vari_01_128",
+                "size": [
+                    138,
+                    128
+                ]
+            },
+            "Elven City walled_128": {
+                "path": "Sprites/Cities/Elven City walled_128",
+                "size": [
+                    138,
+                    128
+                ]
+            },
+            "Elven City_128": {
+                "path": "Sprites/Cities/Elven City_128",
+                "size": [
+                    148,
+                    128
+                ]
+            },
+            "Euro City n_128": {
+                "path": "Sprites/Cities/Euro City n_128",
+                "size": [
+                    154,
+                    127
+                ]
+            },
+            "Euro City r vari_01_128": {
+                "path": "Sprites/Cities/Euro City r vari_01_128",
+                "size": [
+                    154,
+                    127
+                ]
+            },
+            "Euro City w vari_01_128": {
+                "path": "Sprites/Cities/Euro City w vari_01_128",
+                "size": [
+                    154,
+                    127
+                ]
+            },
+            "Euro City Walled n_128": {
+                "path": "Sprites/Cities/Euro City Walled n_128",
+                "size": [
+                    245,
+                    128
+                ]
+            },
+            "Euro City Walled r vari_01_128": {
+                "path": "Sprites/Cities/Euro City Walled r vari_01_128",
+                "size": [
+                    245,
+                    128
+                ]
+            },
+            "Euro City Walled w vari_01_128": {
+                "path": "Sprites/Cities/Euro City Walled w vari_01_128",
+                "size": [
+                    245,
+                    128
+                ]
+            },
+            "Gothic City vari_01_128": {
+                "path": "Sprites/Cities/Gothic City vari_01_128",
+                "size": [
+                    137,
+                    128
+                ]
+            },
+            "Gothic City Walled vari_01_128": {
+                "path": "Sprites/Cities/Gothic City Walled vari_01_128",
+                "size": [
+                    128,
+                    128
+                ]
+            },
+            "Medieval City vari_01_128": {
+                "path": "Sprites/Cities/Medieval City vari_01_128",
+                "size": [
+                    164,
+                    128
+                ]
+            },
+            "Medieval City Walled vari_01_128": {
+                "path": "Sprites/Cities/Medieval City Walled vari_01_128",
+                "size": [
+                    158,
+                    128
+                ]
+            },
+            "Orc City vari_01_128": {
+                "path": "Sprites/Cities/Orc City vari_01_128",
+                "size": [
+                    130,
+                    128
+                ]
+            },
+            "Orc City vc vari_01_128": {
+                "path": "Sprites/Cities/Orc City vc vari_01_128",
+                "size": [
+                    166,
+                    128
+                ]
+            },
+            "Orc City Walled vari_01_128": {
+                "path": "Sprites/Cities/Orc City Walled vari_01_128",
+                "size": [
+                    144,
+                    128
+                ]
+            },
+            "Orc City Walled_128": {
+                "path": "Sprites/Cities/Orc City Walled_128",
+                "size": [
+                    144,
+                    128
+                ]
+            },
+            "Orc City_128": {
+                "path": "Sprites/Cities/Orc City_128",
+                "size": [
+                    130,
+                    128
+                ]
+            },
+            "Oriental City vari_01_128": {
+                "path": "Sprites/Cities/Oriental City vari_01_128",
+                "size": [
+                    168,
+                    128
+                ]
+            },
+            "Oriental City Walled vari_01_128": {
+                "path": "Sprites/Cities/Oriental City Walled vari_01_128",
+                "size": [
+                    206,
+                    128
+                ]
+            },
+            "Ruined City vari_01_128": {
+                "path": "Sprites/Cities/Ruined City vari_01_128",
+                "size": [
+                    184,
+                    128
+                ]
+            },
+            "Std City n_128": {
+                "path": "Sprites/Cities/Std City n_128",
+                "size": [
+                    92,
+                    128
+                ]
+            },
+            "Std City r vari_01_128": {
+                "path": "Sprites/Cities/Std City r vari_01_128",
+                "size": [
+                    92,
+                    128
+                ]
+            },
+            "Std City w vari_01_128": {
+                "path": "Sprites/Cities/Std City w vari_01_128",
+                "size": [
+                    92,
+                    128
+                ]
+            },
+            "Std City Walled n_128": {
+                "path": "Sprites/Cities/Std City Walled n_128",
+                "size": [
+                    157,
+                    128
+                ]
+            },
+            "Std City Walled r vari_01_128": {
+                "path": "Sprites/Cities/Std City Walled r vari_01_128",
+                "size": [
+                    157,
+                    128
+                ]
+            },
+            "Std City Walled w vari_01_128": {
+                "path": "Sprites/Cities/Std City Walled w vari_01_128",
+                "size": [
+                    157,
+                    128
+                ]
+            }
+        },
+        "_shapes": {
+            "001": {
+                "path": "Sprites/_shapes/001",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "002": {
+                "path": "Sprites/_shapes/002",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "003": {
+                "path": "Sprites/_shapes/003",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "004": {
+                "path": "Sprites/_shapes/004",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "005": {
+                "path": "Sprites/_shapes/005",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "006": {
+                "path": "Sprites/_shapes/006",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "007": {
+                "path": "Sprites/_shapes/007",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "008": {
+                "path": "Sprites/_shapes/008",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "009": {
+                "path": "Sprites/_shapes/009",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "010": {
+                "path": "Sprites/_shapes/010",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "011": {
+                "path": "Sprites/_shapes/011",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "012": {
+                "path": "Sprites/_shapes/012",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "013": {
+                "path": "Sprites/_shapes/013",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "014": {
+                "path": "Sprites/_shapes/014",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "015": {
+                "path": "Sprites/_shapes/015",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "016": {
+                "path": "Sprites/_shapes/016",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "017": {
+                "path": "Sprites/_shapes/017",
+                "size": [
+                    64,
+                    64
+                ]
+            },
+            "018": {
+                "path": "Sprites/_shapes/018",
+                "size": [
+                    64,
+                    64
+                ]
+            }
+        }
+    }
+}
