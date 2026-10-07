@@ -11,27 +11,30 @@ public sealed record Part1 : StoryGraph
     {
         Id = new($"{SubgraphId}_{nameof(AlleywayThug1)}"),
         Name = "Alleyway Thug #1",
-        Artwork = new("alley_thug_1"),
+        Artwork = new("characters.alley_thug_1.png"),
+        Portrait = new("portraits.enforcer_male.png"),
     };
 
     public static readonly Character AlleywayThug2 = new()
     {
         Id = new($"{SubgraphId}_{nameof(AlleywayThug2)}"),
         Name = "Alleyway Thug #2",
-        Artwork = new("alley_thug_2"),
+        Artwork = new("characters.alley_thug_2.png"),
+        Portrait = new("portraits.pugilist_male.png"),
     };
 
     public static readonly Character AlleywayThug3 = new()
     {
         Id = new($"{SubgraphId}_{nameof(AlleywayThug3)}"),
         Name = "Alleyway Thug #3",
-        Artwork = new("alley_thug_3"),
+        Artwork = new("characters.alley_thug_3.png"),
+        Portrait = new("portraits.vagabond_male.png"),
     };
 
     public static readonly StoryNode Intro = new CombatScenario
     {
         Id = $"{SubgraphId}_{nameof(Intro)}",
-        Background = new("alley_1"),
+        Background = new("background.harbor_district_dockside_dusk.png"),
         Characters =
         [
             new CharacterPlacement

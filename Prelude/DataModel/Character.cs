@@ -19,4 +19,6 @@ public sealed record Character
     /// Gets the identifier of the character's artwork.
     /// </summary>
     public required ContentId Artwork { get; init; }
+    /// <summary>Gets the character's turn-order portrait texture.</summary>
+    public required ContentId Portrait { get; init; }
 }

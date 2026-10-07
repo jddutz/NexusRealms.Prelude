@@ -13,7 +13,8 @@ try
         .AddCommandLine(args)
         .Build();
 
-    var services = new ServiceCollection().AddSingleton<Storyline>();
+    var services = new ServiceCollection().AddSingleton<Storyline>()
+        .AddSingleton(provider => new GameState(provider.GetRequiredService<Storyline>().StartNodeId));
 
     using var application = new Application(configuration, services);
     application.Run();

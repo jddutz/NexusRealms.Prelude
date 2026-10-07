@@ -1,121 +1,148 @@
 namespace NexusRealms.Prelude;
 
+/// <summary>Identifies one of the ten positions in a combat formation.</summary>
 public enum FormationSlot
 {
+    /// <summary>Back row, left position.</summary>
     BackLeft = 0,
+    /// <summary>Back row, center position.</summary>
     BackCenter = 1,
+    /// <summary>Back row, right position.</summary>
     BackRight = 2,
+    /// <summary>Middle row, left position.</summary>
     MiddleLeft = 3,
+    /// <summary>Middle row, center-left position.</summary>
     MiddleCenterLeft = 4,
+    /// <summary>Middle row, center-right position.</summary>
     MiddleCenterRight = 5,
+    /// <summary>Middle row, right position.</summary>
     MiddleRight = 6,
+    /// <summary>Front row, left position.</summary>
     FrontLeft = 7,
+    /// <summary>Front row, center position.</summary>
     FrontCenter = 8,
+    /// <summary>Front row, right position.</summary>
     FrontRight = 9,
 }
 
-/// <summary>Arranges ten character slots in three staggered rows: 3, 4, 3.</summary>
-public class CharacterFormation : Element
+/// <summary>Positions combat characters in world space using a staggered 3-4-3 formation.</summary>
+public sealed class CharacterFormation : GameObject2D
 {
-    private readonly CharacterSlot[] _slots = [];
+    private const float CharacterHeightFraction = 0.62f;
 
-    public CharacterFormation()
+    private readonly Slot[] _slots =
+    [
+        new(10, new(0.35f, 0.70f), 0.70f),
+        new(10, new(0.50f, 0.70f), 0.74f),
+        new(10, new(0.65f, 0.70f), 0.70f),
+        new(20, new(0.25f, 0.80f), 0.85f),
+        new(20, new(0.42f, 0.80f), 0.90f),
+        new(20, new(0.58f, 0.80f), 0.90f),
+        new(20, new(0.75f, 0.80f), 0.85f),
+        new(30, new(0.30f, 0.90f), 0.96f),
+        new(30, new(0.50f, 0.92f), 1.00f),
+        new(30, new(0.70f, 0.90f), 0.96f),
+    ];
+
+    /// <summary>
+    /// Initializes a formation sized to the world area in which its characters are placed.
+    /// </summary>
+    /// <param name="worldSize">The width and height of the world-space combat area.</param>
+    public CharacterFormation(Vector2D<float> worldSize)
     {
-        _slots =
-        [
-            // Sort order is relative to the formation; center slots draw last in each row.
-            new(this, 0, 0.30f, 0.58f, 0.70f),
-            new(this, 2, 0.50f, 0.61f, 0.74f),
-            new(this, 1, 0.70f, 0.58f, 0.70f),
-            new(this, 3, 0.20f, 0.73f, 0.85f),
-            new(this, 5, 0.40f, 0.76f, 0.90f),
-            new(this, 6, 0.60f, 0.76f, 0.90f),
-            new(this, 4, 0.80f, 0.73f, 0.85f),
-            new(this, 7, 0.25f, 0.90f, 0.96f),
-            new(this, 9, 0.50f, 0.93f, 1.00f),
-            new(this, 8, 0.75f, 0.90f, 0.96f),
-        ];
+        if (
+            !float.IsFinite(worldSize.X)
+            || !float.IsFinite(worldSize.Y)
+            || worldSize.X <= 0f
+            || worldSize.Y <= 0f
+        )
+            throw new ArgumentOutOfRangeException(nameof(worldSize));
 
-        foreach (var slot in _slots)
-            AddChild(slot);
+        WorldSize = worldSize;
     }
 
-    public IElement? this[FormationSlot slot]
+    /// <summary>Gets the world-space area used to calculate slot positions.</summary>
+    public Vector2D<float> WorldSize { get; private set; }
+
+    /// <summary>
+    /// Updates the world-space area and reapplies every occupied slot's position and scale.
+    /// </summary>
+    /// <param name="worldSize">The new width and height of the world-space combat area.</param>
+    public void SetWorldSize(Vector2D<float> worldSize)
     {
-        get => GetSlot(slot);
+        if (
+            !float.IsFinite(worldSize.X)
+            || !float.IsFinite(worldSize.Y)
+            || worldSize.X <= 0f
+            || worldSize.Y <= 0f
+        )
+            throw new ArgumentOutOfRangeException(nameof(worldSize));
+
+        if (WorldSize == worldSize)
+            return;
+
+        WorldSize = worldSize;
+        foreach (var slot in _slots)
+            if (slot.Occupant is { } character)
+                PositionCharacter(slot, character);
+    }
+
+    /// <summary>Gets or assigns the character occupying a formation slot.</summary>
+    /// <param name="slot">The slot to access.</param>
+    public CombatCharacter? this[FormationSlot slot]
+    {
+        get => GetSlot(slot).Occupant;
         set => SetSlot(slot, value);
     }
 
-    public IElement? GetSlot(FormationSlot slot) => GetCharacterSlot(slot).Occupant;
-
-    /// <summary>Assigns a detached element, or clears the slot when null.</summary>
-    /// <remarks>Assign through this method rather than adding children directly.</remarks>
-    public void SetSlot(FormationSlot slot, IElement? element)
+    /// <summary>Assigns a character to a slot, or clears the slot when the value is null.</summary>
+    /// <param name="slot">The slot to update.</param>
+    /// <param name="character">The character to place.</param>
+    public void SetSlot(FormationSlot slot, CombatCharacter? character)
     {
-        var characterSlot = GetCharacterSlot(slot);
-        if (ReferenceEquals(characterSlot.Occupant, element))
+        var target = GetSlot(slot);
+        if (ReferenceEquals(target.Occupant, character))
             return;
+        if (character is not null && character.Parent is not null)
+            throw new ArgumentException(
+                "Detach the character from its current parent first.",
+                nameof(character)
+            );
 
-        if (element is not null)
+        if (target.Occupant is { } previous)
+            RemoveChild(previous);
+        target.Occupant = character;
+        if (character is not null)
         {
-            if (ReferenceEquals(element, this))
-                throw new ArgumentException("A formation cannot contain itself.", nameof(element));
-
-            for (var ancestor = Parent; ancestor is not null; ancestor = ancestor.Parent)
-                if (ReferenceEquals(ancestor, element))
-                    throw new ArgumentException(
-                        "A formation cannot contain an ancestor.",
-                        nameof(element)
-                    );
-
-            foreach (var ownedSlot in _slots)
-                if (ReferenceEquals(ownedSlot, element))
-                    throw new ArgumentException(
-                        "A formation slot cannot be an occupant.",
-                        nameof(element)
-                    );
-
-            if (element.Parent is not null)
-                throw new ArgumentException(
-                    "Detach the element from its current parent first.",
-                    nameof(element)
-                );
+            AddChild(character);
+            PositionCharacter(target, character);
         }
-
-        characterSlot.SetOccupant(element);
-        InvalidateLayout();
     }
 
-    /// <summary>Changes one slot's normalized foot anchor, scale, and relative sort order.</summary>
-    public void ConfigureSlot(
-        FormationSlot slot,
-        Vector2D<float> anchor,
-        float scale,
-        int sortOrder
-    )
+    /// <summary>Gets the character assigned to a slot.</summary>
+    /// <param name="slot">The slot to inspect.</param>
+    /// <returns>The assigned character, or null.</returns>
+    public CombatCharacter? GetSlotCharacter(FormationSlot slot) => GetSlot(slot).Occupant;
+
+    /// <summary>Positions and scales one character from its normalized slot definition.</summary>
+    /// <param name="slot">The slot containing the character.</param>
+    /// <param name="character">The character to position.</param>
+    private void PositionCharacter(Slot slot, CombatCharacter character)
     {
-        if (
-            !float.IsFinite(anchor.X)
-            || !float.IsFinite(anchor.Y)
-            || anchor.X < 0f
-            || anchor.X > 1f
-            || anchor.Y < 0f
-            || anchor.Y > 1f
-        )
-            throw new ArgumentOutOfRangeException(nameof(anchor));
-        if (!float.IsFinite(scale) || scale <= 0f)
-            throw new ArgumentOutOfRangeException(nameof(scale));
-        if (sortOrder < -32768 || sortOrder > 32768)
-            throw new ArgumentOutOfRangeException(nameof(sortOrder));
-
-        var characterSlot = GetCharacterSlot(slot);
-        characterSlot.Anchor = anchor;
-        characterSlot.Scale = scale;
-        characterSlot.SortOrder = sortOrder;
-        InvalidateLayout();
+        character.Position = new(
+            WorldSize.X * slot.Anchor.X,
+            WorldSize.Y * slot.Anchor.Y
+        );
+        var targetHeight = WorldSize.Y * CharacterHeightFraction * slot.Scale;
+        var scale = targetHeight / character.Texture.Height;
+        character.Scale = new(scale, scale);
+        character.Renderer.DrawOrder = slot.SortOrder;
     }
 
-    private CharacterSlot GetCharacterSlot(FormationSlot slot)
+    /// <summary>Gets a validated slot by its public enum value.</summary>
+    /// <param name="slot">The slot to retrieve.</param>
+    /// <returns>The internal slot definition.</returns>
+    private Slot GetSlot(FormationSlot slot)
     {
         var index = (int)slot;
         if ((uint)index >= (uint)_slots.Length)
@@ -123,64 +150,18 @@ public class CharacterFormation : Element
         return _slots[index];
     }
 
-    private class CharacterSlot : Element
+    private sealed class Slot(int sortOrder, Vector2D<float> anchor, float scale)
     {
-        private readonly CharacterFormation _formation;
-        public Vector2D<float> Anchor { get; set; }
-        public float Scale { get; set; }
-        private IElement? _occupant;
+        /// <summary>Gets or sets the character assigned to this slot.</summary>
+        public CombatCharacter? Occupant { get; set; }
 
-        public CharacterSlot(
-            CharacterFormation formation,
-            int sortOrder,
-            float x,
-            float y,
-            float scale
-        )
-        {
-            _formation = formation;
-            SortOrder = sortOrder;
-            Anchor = new(x, y);
-            Scale = scale;
-        }
+        /// <summary>Gets the relative draw order of this slot.</summary>
+        public int SortOrder { get; } = sortOrder;
 
-        public IElement? Occupant
-        {
-            get
-            {
-                if (_occupant is not null && !ReferenceEquals(_occupant.Parent, this))
-                    _occupant = null;
-                return _occupant;
-            }
-        }
+        /// <summary>Gets the normalized world-space anchor of this slot.</summary>
+        public Vector2D<float> Anchor { get; } = anchor;
 
-        public void SetOccupant(IElement? element)
-        {
-            var previous = Occupant;
-            if (element is not null)
-                AddChild(element);
-            _occupant = element;
-            if (previous is not null)
-                RemoveChild(previous);
-        }
-
-        public override void Arrange(Rectangle<float> bounds)
-        {
-            // The incoming rectangle is the formation's full content area.
-            var width = bounds.Size.X * 0.24f * Scale;
-            var height = bounds.Size.Y * 0.70f * Scale;
-            var x = bounds.Origin.X + bounds.Size.X * Anchor.X;
-            var y = bounds.Origin.Y + bounds.Size.Y * Anchor.Y;
-
-            if (Occupant is { } element)
-            {
-                element.HorizontalAlignment = AlignHorizontal.Center;
-                element.VerticalAlignment = AlignVertical.Bottom;
-                element.SortOrder = (int)
-                    Math.Clamp((long)_formation.SortOrder + SortOrder, -32768L, 32768L);
-            }
-
-            base.Arrange(new Rectangle<float>(x - width / 2f, y - height, width, height));
-        }
+        /// <summary>Gets the visual scale multiplier of this slot.</summary>
+        public float Scale { get; } = scale;
     }
 }
