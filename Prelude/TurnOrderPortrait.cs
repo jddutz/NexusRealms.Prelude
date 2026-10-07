@@ -4,7 +4,8 @@ namespace NexusRealms.Prelude;
 public sealed class TurnOrderPortrait : Element
 {
     private readonly ImageElement _portrait;
-    private readonly ImageElement _frame;
+    private readonly ImageElement _topFrame;
+    private readonly ImageElement _bottomFrame;
     private readonly ImageElement _marker;
     private readonly ITexture _atlas;
     private bool _isActive;
@@ -16,7 +17,8 @@ public sealed class TurnOrderPortrait : Element
         {
             if (_isActive == value) return;
             _isActive = value;
-            _frame.SourceRegion = _atlas.GetRegion(value ? "region-0010" : "region-0012").Bounds;
+            _topFrame.SourceRegion = _atlas.GetRegion(value ? "region-0010" : "region-0012").Bounds;
+            _bottomFrame.SourceRegion = _atlas.GetRegion(value ? "region-0014" : "region-0016").Bounds;
             _marker.IsVisible = value;
             Arrange(Bounds);
             InvalidateLayout();
@@ -36,14 +38,17 @@ public sealed class TurnOrderPortrait : Element
             SourceRegion = new(checked((int)portrait.Width - crop) / 2,
                 checked((int)portrait.Height - crop) / 2, crop, crop),
             ClippingMask = ClippingMask.LowerHalfDiamond,
+            ClippingInset = 0.04f,
             SizingMode = ImageSizingMode.Stretch,
             RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
         };
-        _frame = AtlasImage("region-0012");
-        _marker = AtlasImage("region-0016");
+        _topFrame = AtlasImage("region-0012");
+        _bottomFrame = AtlasImage("region-0016");
+        _marker = AtlasImage("region-0020");
         _marker.IsVisible = false;
+        Children.Add(_topFrame);
         Children.Add(_portrait);
-        Children.Add(_frame);
+        Children.Add(_bottomFrame);
         Children.Add(_marker);
     }
 
@@ -61,11 +66,13 @@ public sealed class TurnOrderPortrait : Element
         var side = MathF.Min(IsActive ? 76f : 64f, MathF.Min(Bounds.Size.X, Bounds.Size.Y));
         var left = Bounds.Origin.X + (Bounds.Size.X - side) * 0.5f;
         var top = Bounds.Origin.Y + (76f - side) * 0.5f;
-        _portrait.SortOrder = SortOrder;
-        _frame.SortOrder = SortOrder + 1;
-        _marker.SortOrder = SortOrder + 2;
+        _topFrame.SortOrder = SortOrder;
+        _portrait.SortOrder = SortOrder + 1;
+        _bottomFrame.SortOrder = SortOrder + 2;
+        _marker.SortOrder = SortOrder + 3;
         _portrait.Arrange(new(left, top, side, side));
-        _frame.Arrange(new(left, top, side, side));
+        _topFrame.Arrange(new(left, top, side, side * 0.5f));
+        _bottomFrame.Arrange(new(left, top + side * 0.5f, side, side * 0.5f));
         var markerSize = MathF.Min(16f, side);
         _marker.Arrange(new(Bounds.Origin.X + (Bounds.Size.X - markerSize) * 0.5f,
             top + side + 2f, markerSize, markerSize));
