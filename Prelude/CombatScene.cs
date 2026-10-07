@@ -64,7 +64,7 @@ public class CombatScene : Scene
         );
         _worldSize = new(_background.Texture.Width, _background.Texture.Height);
         _formation = new CharacterFormation(_worldSize);
-        var uiAtlas = _textures.GetOrCreate(new ContentId("ui.Weathered bronze and copper UI atlas.png"));
+        var uiAtlas = _textures.GetOrCreate(new ContentId("ui.ui_panels.png"));
         var retreatRegion = uiAtlas.GetRegion("region-0008").TexCoords;
         _retreatButton = new TextButton
         {
@@ -156,11 +156,11 @@ public class CombatScene : Scene
             ],
         };
 
-        var atlas = _textures.GetOrCreate(new ContentId("ui.Weathered bronze and copper UI atlas.png"));
+        var atlas = _textures.GetOrCreate(new ContentId("ui.ui_panels.png"));
         layout.SetCell(0, 2, _retreatButton);
-        var turnOrder = new TurnOrderStrip
+        var turnOrder = new TurnOrderStrip(atlas, _hudTextStyle)
         {
-            Width = (1 + _startScenario.Characters.Length) * 80f + _startScenario.Characters.Length * 8f,
+            Width = (1 + _startScenario.Characters.Length) * 80f + _startScenario.Characters.Length * 10f,
             Height = 96f,
             HorizontalAlignment = AlignHorizontal.Center,
             VerticalAlignment = AlignVertical.Top,
@@ -176,10 +176,10 @@ public class CombatScene : Scene
             {
                 Texture = atlas,
                 SourceRegion = atlas.GetRegion("region-0003").Bounds,
-                Width = 8f,
-                Height = 8f,
+                Width = 10f,
+                Height = 10f,
                 VerticalAlignment = AlignVertical.Top,
-                Margins = new(0f, 0f, 34f, 0f),
+                Margins = new(0f, 0f, 33f, 0f),
                 SizingMode = ImageSizingMode.Fit,
                 RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
             });
@@ -192,7 +192,7 @@ public class CombatScene : Scene
         bottomLeft.Margins = new(10f, 10f);
         // The ice spell occupies the second cell in the sheet's first row.
         bottomLeft.Children.Add(CreateHudImage("abilities.basic_spells.png", new(410, 0, 397, 334)));
-        bottomLeft.Children.Add(CreateHudLabel("Right Hand", AlignVertical.Top));
+        bottomLeft.Children.Add(CreateHudLabel("Left Hand", AlignVertical.Top));
         bottomLeft.Children.Add(CreateHudLabel("Frost", AlignVertical.Bottom));
         layout.SetCell(2, 0, bottomLeft);
         var bottomCenter = CreateAtlasPanel(atlas, "region-0006");
@@ -200,12 +200,15 @@ public class CombatScene : Scene
         bottomCenter.Margins = new(3f, 3f, 3f, 10f);
         bottomCenter.VerticalAlignment = AlignVertical.Bottom;
         bottomCenter.Children.Add(new PlayerHudPortrait(_textures.GetOrCreate(_gameState.Portrait)));
+        bottomCenter.Children.Add(new PlayerStatusBars(_gameState,
+            _textures.GetOrCreate(new ContentId("icons.status_icons.png")), _hudTextStyle));
+        bottomCenter.Children.Add(CreateZodiacImage());
         layout.SetCell(2, 1, bottomCenter);
         var bottomRight = CreateAtlasPanel(atlas, "region-0000");
         bottomRight.Margins = new(10f, 10f);
         // The sword occupies the first cell in the sheet's first row.
         bottomRight.Children.Add(CreateHudImage("equipment.weapons_one_handed.png", new(0, 0, 405, 334)));
-        bottomRight.Children.Add(CreateHudLabel("Left Hand", AlignVertical.Top));
+        bottomRight.Children.Add(CreateHudLabel("Right Hand", AlignVertical.Top));
         bottomRight.Children.Add(CreateHudLabel("Sword", AlignVertical.Bottom));
         layout.SetCell(2, 2, bottomRight);
 
@@ -224,6 +227,40 @@ public class CombatScene : Scene
         Children.Add(_background);
         Children.Add(_formation);
         ApplyWorldSize();
+    }
+
+    private ImageElement CreateZodiacImage()
+    {
+        // Authored bounds for the twelve signs, in zodiac order. This sheet is
+        // irregularly spaced, so equal-sized grid cells would cut off the artwork.
+        Rectangle<int>[] signs =
+        [
+            new(0, 0, 375, 315),
+            new(420, 0, 380, 315),
+            new(803, 0, 393, 340),
+            new(1200, 0, 364, 315),
+            new(0, 323, 425, 334),
+            new(445, 323, 366, 369),
+            new(830, 323, 360, 344),
+            new(1200, 323, 364, 344),
+            new(0, 638, 435, 368),
+            new(435, 661, 381, 345),
+            new(825, 662, 377, 344),
+            new(1202, 666, 362, 340),
+        ];
+        return new ImageElement
+        {
+            Texture = _textures.GetOrCreate(new ContentId("zodiac_signs")),
+            SourceRegion = signs[Random.Shared.Next(signs.Length)],
+            Width = 112f,
+            Height = 112f,
+            HorizontalAlignment = AlignHorizontal.Right,
+            VerticalAlignment = AlignVertical.Center,
+            Margins = new(0f, 16f, 0f, 0f),
+            SizingMode = ImageSizingMode.Fit,
+            SortOrder = 1,
+            RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+        };
     }
 
     private ImageElement CreateHudImage(string contentId, Rectangle<int> sourceRegion) => new()

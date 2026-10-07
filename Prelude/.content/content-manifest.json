@@ -1,6 +1,12 @@
 {
   "Textures": {
     "Content": {
+      "zodiac_signs": {
+        "FilePath": "Textures/zodiac_signs.png"
+      },
+      "abilities.basic_abilities.png": {
+        "FilePath": "Textures/Abilities/basic_abilities.png"
+      },
       "abilities.basic_spells.png": {
         "FilePath": "Textures/Abilities/basic_spells.png"
       },
@@ -166,223 +172,335 @@
       "equipment.weapons_one_handed.png": {
         "FilePath": "Textures/Items/Equipment/weapons_one_handed.png"
       },
-      "ui.Transparent Fantasy UI Glow Effects Atlas.png": {
-        "FilePath": "Textures/UI/Transparent Fantasy UI Glow Effects Atlas.png",
+      "ui.ui_panels.png": {
+        "FilePath": "Textures/UI/ui_panels.png",
         "Regions": {
           "region-0000": {
             "Bounds": {
-              "X": 490,
-              "Y": 45,
-              "Width": 275,
-              "Height": 267
+              "X": 224,
+              "Y": 32,
+              "Width": 373,
+              "Height": 355
             },
             "TexCoords": {
-              "X": 0.3907496,
-              "Y": 0.035885166,
-              "Width": 0.21929824,
-              "Height": 0.21291865
+              "X": 0.17862839,
+              "Y": 0.025518341,
+              "Width": 0.29744816,
+              "Height": 0.2830941
             }
           },
           "region-0001": {
             "Bounds": {
-              "X": 888,
-              "Y": 46,
-              "Width": 272,
-              "Height": 264
+              "X": 657,
+              "Y": 32,
+              "Width": 374,
+              "Height": 355
             },
             "TexCoords": {
-              "X": 0.708134,
-              "Y": 0.036682617,
-              "Width": 0.2169059,
-              "Height": 0.21052632
+              "X": 0.52392346,
+              "Y": 0.025518341,
+              "Width": 0.2982456,
+              "Height": 0.2830941
             }
           },
           "region-0002": {
             "Bounds": {
-              "X": 96,
-              "Y": 47,
-              "Width": 274,
-              "Height": 264
+              "X": 1063,
+              "Y": 59,
+              "Width": 147,
+              "Height": 139
             },
             "TexCoords": {
-              "X": 0.07655502,
-              "Y": 0.037480064,
-              "Width": 0.2185008,
-              "Height": 0.21052632
+              "X": 0.8476874,
+              "Y": 0.04704944,
+              "Width": 0.11722488,
+              "Height": 0.1108453
             }
           },
           "region-0003": {
             "Bounds": {
-              "X": 435,
-              "Y": 336,
-              "Width": 388,
-              "Height": 185
+              "X": 82,
+              "Y": 60,
+              "Width": 79,
+              "Height": 76
             },
             "TexCoords": {
-              "X": 0.34688994,
-              "Y": 0.26794258,
-              "Width": 0.3094099,
-              "Height": 0.1475279
+              "X": 0.06539075,
+              "Y": 0.04784689,
+              "Width": 0.06299841,
+              "Height": 0.060606062
             }
           },
           "region-0004": {
             "Bounds": {
-              "X": 828,
-              "Y": 336,
-              "Width": 390,
-              "Height": 184
+              "X": 71,
+              "Y": 218,
+              "Width": 99,
+              "Height": 62
             },
             "TexCoords": {
-              "X": 0.6602871,
-              "Y": 0.26794258,
-              "Width": 0.3110048,
-              "Height": 0.14673047
+              "X": 0.05661882,
+              "Y": 0.1738437,
+              "Width": 0.078947365,
+              "Height": 0.049441785
             }
           },
           "region-0005": {
             "Bounds": {
-              "X": 38,
-              "Y": 337,
-              "Width": 389,
-              "Height": 182
+              "X": 1062,
+              "Y": 229,
+              "Width": 147,
+              "Height": 139
             },
             "TexCoords": {
-              "X": 0.030303031,
-              "Y": 0.26874003,
-              "Width": 0.31020734,
-              "Height": 0.14513557
+              "X": 0.84689,
+              "Y": 0.18261562,
+              "Width": 0.11722488,
+              "Height": 0.1108453
             }
           },
           "region-0006": {
             "Bounds": {
-              "X": 94,
-              "Y": 534,
-              "Width": 276,
-              "Height": 277
+              "X": 19,
+              "Y": 403,
+              "Width": 599,
+              "Height": 131
             },
             "TexCoords": {
-              "X": 0.07496013,
-              "Y": 0.4258373,
-              "Width": 0.2200957,
-              "Height": 0.22089314
+              "X": 0.015151516,
+              "Y": 0.32137161,
+              "Width": 0.47767144,
+              "Height": 0.10446571
             }
           },
           "region-0007": {
             "Bounds": {
-              "X": 489,
-              "Y": 534,
-              "Width": 277,
-              "Height": 277
+              "X": 636,
+              "Y": 403,
+              "Width": 601,
+              "Height": 131
             },
             "TexCoords": {
-              "X": 0.38995215,
-              "Y": 0.4258373,
-              "Width": 0.22089314,
-              "Height": 0.22089314
+              "X": 0.50717705,
+              "Y": 0.32137161,
+              "Width": 0.47926635,
+              "Height": 0.10446571
             }
           },
           "region-0008": {
             "Bounds": {
-              "X": 888,
-              "Y": 535,
-              "Width": 273,
-              "Height": 275
+              "X": 33,
+              "Y": 554,
+              "Width": 290,
+              "Height": 112
             },
             "TexCoords": {
-              "X": 0.708134,
-              "Y": 0.42663476,
-              "Width": 0.21770334,
-              "Height": 0.21929824
+              "X": 0.02631579,
+              "Y": 0.4417863,
+              "Width": 0.23125997,
+              "Height": 0.08931419
             }
           },
           "region-0009": {
             "Bounds": {
-              "X": 38,
-              "Y": 829,
-              "Width": 388,
-              "Height": 166
+              "X": 334,
+              "Y": 554,
+              "Width": 289,
+              "Height": 112
             },
             "TexCoords": {
-              "X": 0.030303031,
-              "Y": 0.66108453,
-              "Width": 0.3094099,
-              "Height": 0.1323764
+              "X": 0.26634768,
+              "Y": 0.4417863,
+              "Width": 0.23046252,
+              "Height": 0.08931419
             }
           },
           "region-0010": {
             "Bounds": {
-              "X": 435,
-              "Y": 829,
-              "Width": 385,
-              "Height": 166
+              "X": 631,
+              "Y": 554,
+              "Width": 289,
+              "Height": 112
             },
             "TexCoords": {
-              "X": 0.34688994,
-              "Y": 0.66108453,
-              "Width": 0.30701753,
-              "Height": 0.1323764
+              "X": 0.5031898,
+              "Y": 0.4417863,
+              "Width": 0.23046252,
+              "Height": 0.08931419
             }
           },
           "region-0011": {
             "Bounds": {
-              "X": 829,
-              "Y": 829,
-              "Width": 388,
-              "Height": 166
+              "X": 933,
+              "Y": 554,
+              "Width": 287,
+              "Height": 112
             },
             "TexCoords": {
-              "X": 0.66108453,
-              "Y": 0.66108453,
-              "Width": 0.3094099,
-              "Height": 0.1323764
+              "X": 0.74401915,
+              "Y": 0.4417863,
+              "Width": 0.22886762,
+              "Height": 0.08931419
             }
           },
           "region-0012": {
             "Bounds": {
-              "X": 528,
-              "Y": 1035,
-              "Width": 198,
-              "Height": 174
+              "X": 12,
+              "Y": 684,
+              "Width": 612,
+              "Height": 108
             },
             "TexCoords": {
-              "X": 0.42105263,
-              "Y": 0.82535887,
-              "Width": 0.15789473,
-              "Height": 0.13875598
+              "X": 0.009569378,
+              "Y": 0.54545456,
+              "Width": 0.48803827,
+              "Height": 0.086124405
             }
           },
           "region-0013": {
             "Bounds": {
-              "X": 134,
-              "Y": 1036,
-              "Width": 199,
-              "Height": 171
+              "X": 628,
+              "Y": 684,
+              "Width": 615,
+              "Height": 108
             },
             "TexCoords": {
-              "X": 0.10685805,
-              "Y": 0.8261563,
-              "Width": 0.15869218,
-              "Height": 0.13636364
+              "X": 0.50079745,
+              "Y": 0.54545456,
+              "Width": 0.49043062,
+              "Height": 0.086124405
             }
           },
           "region-0014": {
             "Bounds": {
-              "X": 924,
-              "Y": 1036,
-              "Width": 200,
-              "Height": 169
+              "X": 52,
+              "Y": 800,
+              "Width": 255,
+              "Height": 128
             },
             "TexCoords": {
-              "X": 0.7368421,
-              "Y": 0.8261563,
-              "Width": 0.15948963,
-              "Height": 0.13476874
+              "X": 0.041467305,
+              "Y": 0.6379585,
+              "Width": 0.20334928,
+              "Height": 0.102073364
+            }
+          },
+          "region-0015": {
+            "Bounds": {
+              "X": 351,
+              "Y": 800,
+              "Width": 253,
+              "Height": 128
+            },
+            "TexCoords": {
+              "X": 0.2799043,
+              "Y": 0.6379585,
+              "Width": 0.20175439,
+              "Height": 0.102073364
+            }
+          },
+          "region-0016": {
+            "Bounds": {
+              "X": 649,
+              "Y": 800,
+              "Width": 255,
+              "Height": 128
+            },
+            "TexCoords": {
+              "X": 0.51754385,
+              "Y": 0.6379585,
+              "Width": 0.20334928,
+              "Height": 0.102073364
+            }
+          },
+          "region-0017": {
+            "Bounds": {
+              "X": 948,
+              "Y": 800,
+              "Width": 255,
+              "Height": 128
+            },
+            "TexCoords": {
+              "X": 0.75598085,
+              "Y": 0.6379585,
+              "Width": 0.20334928,
+              "Height": 0.102073364
+            }
+          },
+          "region-0018": {
+            "Bounds": {
+              "X": 39,
+              "Y": 950,
+              "Width": 281,
+              "Height": 168
+            },
+            "TexCoords": {
+              "X": 0.031100478,
+              "Y": 0.75757575,
+              "Width": 0.22408293,
+              "Height": 0.13397129
+            }
+          },
+          "region-0019": {
+            "Bounds": {
+              "X": 338,
+              "Y": 950,
+              "Width": 279,
+              "Height": 168
+            },
+            "TexCoords": {
+              "X": 0.26953748,
+              "Y": 0.75757575,
+              "Width": 0.22248805,
+              "Height": 0.13397129
+            }
+          },
+          "region-0020": {
+            "Bounds": {
+              "X": 636,
+              "Y": 950,
+              "Width": 281,
+              "Height": 168
+            },
+            "TexCoords": {
+              "X": 0.50717705,
+              "Y": 0.75757575,
+              "Width": 0.22408293,
+              "Height": 0.13397129
+            }
+          },
+          "region-0021": {
+            "Bounds": {
+              "X": 935,
+              "Y": 950,
+              "Width": 280,
+              "Height": 168
+            },
+            "TexCoords": {
+              "X": 0.74561405,
+              "Y": 0.75757575,
+              "Width": 0.22328548,
+              "Height": 0.13397129
+            }
+          },
+          "region-0022": {
+            "Bounds": {
+              "X": 464,
+              "Y": 1203,
+              "Width": 301,
+              "Height": 35
+            },
+            "TexCoords": {
+              "X": 0.37001595,
+              "Y": 0.95933014,
+              "Width": 0.2400319,
+              "Height": 0.027910685
             }
           }
         }
       },
-      "ui.Weathered bronze and copper UI atlas.png": {
-        "FilePath": "Textures/UI/Weathered bronze and copper UI atlas.png",
+      "ui.ui_panels_2.png": {
+        "FilePath": "Textures/UI/ui_panels_2.png",
         "Regions": {
           "region-0000": {
             "Bounds": {
@@ -710,6 +828,9 @@
       },
       "icons.retreat.png": {
         "FilePath": "Textures/UI/Icons/retreat.png"
+      },
+      "icons.status_icons.png": {
+        "FilePath": "Textures/UI/Icons/status_icons.png"
       }
     }
   },

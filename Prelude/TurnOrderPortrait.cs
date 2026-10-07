@@ -125,7 +125,7 @@ public sealed class TurnOrderPortrait : Element
         var bottomHeight = bottomSource.Y * frameScale;
         _topFrame.Arrange(new(left + (side - topWidth) * 0.5f, top, topWidth, topHeight));
         _bottomFrame.Arrange(new(left, top + side - bottomHeight, side, bottomHeight));
-        var markerSize = MathF.Min(16f, side);
+        var markerSize = MathF.Min(18f, side);
         var markerSource = _marker.SourceRegion!.Value.Size;
         var markerHeight = markerSize * markerSource.Y / markerSource.X;
         _markerGlow.Arrange(new(Bounds.Origin.X + (Bounds.Size.X - markerSize) * 0.5f - 5f,
