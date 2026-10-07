@@ -63,7 +63,7 @@ public class CombatScene : Scene
         _worldSize = new(_background.Texture.Width, _background.Texture.Height);
         _formation = new CharacterFormation(_worldSize);
         var uiAtlas = _textures.GetOrCreate(new ContentId("ui.Weathered bronze and copper UI atlas.png"));
-        var retreatRegion = uiAtlas.GetRegion("region-0004").TexCoords;
+        var retreatRegion = uiAtlas.GetRegion("region-0008").TexCoords;
         _retreatButton = new TextButton
         {
             Label = "Retreat",
@@ -156,25 +156,37 @@ public class CombatScene : Scene
 
         var atlas = _textures.GetOrCreate(new ContentId("ui.Weathered bronze and copper UI atlas.png"));
         layout.SetCell(0, 2, _retreatButton);
-        var turnOrder = new FlowLayout
+        var turnOrder = new TurnOrderStrip
         {
-            Width = 4 * 80f + 3 * 8f,
+            Width = (1 + _startScenario.Characters.Length) * 80f + _startScenario.Characters.Length * 8f,
             Height = 96f,
             HorizontalAlignment = AlignHorizontal.Center,
             VerticalAlignment = AlignVertical.Top,
             Margins = new(0f, 0f, 10f, 0f),
-            ItemSpacing = new(horizontal: 8f),
         };
-        turnOrder.Children.Add(new TurnOrderPortrait(_textures.GetOrCreate(_gameState.Portrait), atlas)
+        turnOrder.Items.Children.Add(new TurnOrderPortrait(_textures.GetOrCreate(_gameState.Portrait), atlas)
         {
             IsActive = true,
         });
         foreach (var placement in _startScenario.Characters)
-            turnOrder.Children.Add(new TurnOrderPortrait(
+        {
+            turnOrder.Items.Children.Add(new ImageElement
+            {
+                Texture = atlas,
+                SourceRegion = atlas.GetRegion("region-0003").Bounds,
+                Width = 8f,
+                Height = 8f,
+                VerticalAlignment = AlignVertical.Top,
+                Margins = new(0f, 0f, 34f, 0f),
+                SizingMode = ImageSizingMode.Fit,
+                RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+            });
+            turnOrder.Items.Children.Add(new TurnOrderPortrait(
                 _textures.GetOrCreate(_storyline.Characters[placement.CharacterId].Portrait), atlas));
+        }
         layout.SetCell(0, 1, turnOrder);
         layout.SetCell(2, 0, CreateAtlasPanel(atlas, "region-0000"));
-        var bottomCenter = CreateAtlasPanel(atlas, "region-0002");
+        var bottomCenter = CreateAtlasPanel(atlas, "region-0006");
         bottomCenter.Height = 128f;
         bottomCenter.VerticalAlignment = AlignVertical.Bottom;
         layout.SetCell(2, 1, bottomCenter);
