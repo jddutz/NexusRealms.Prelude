@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 
 try
 {
@@ -12,7 +13,9 @@ try
         .AddCommandLine(args)
         .Build();
 
-    using var application = new Application(configuration);
+    var services = new ServiceCollection().AddSingleton<Storyline>();
+
+    using var application = new Application(configuration, services);
     application.Run();
 
     return 0;
