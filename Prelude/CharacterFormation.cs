@@ -15,11 +15,11 @@ public enum FormationSlot
 }
 
 /// <summary>Arranges ten character slots in three staggered rows: 3, 4, 3.</summary>
-public class CombatFormation : Element
+public class CharacterFormation : Element
 {
     private readonly CharacterSlot[] _slots = [];
 
-    public CombatFormation()
+    public CharacterFormation()
     {
         _slots =
         [
@@ -125,13 +125,13 @@ public class CombatFormation : Element
 
     private class CharacterSlot : Element
     {
-        private readonly CombatFormation _formation;
+        private readonly CharacterFormation _formation;
         public Vector2D<float> Anchor { get; set; }
         public float Scale { get; set; }
         private IElement? _occupant;
 
         public CharacterSlot(
-            CombatFormation formation,
+            CharacterFormation formation,
             int sortOrder,
             float x,
             float y,
