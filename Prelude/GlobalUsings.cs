@@ -1,4 +1,5 @@
 global using System;
+global using System.Collections.Immutable;
 global using Microsoft.Extensions.Configuration;
 global using Nexus.Core;
 global using Nexus.Core.Events;
@@ -12,4 +13,6 @@ global using Nexus.GUI.Elements;
 global using Nexus.Input;
 global using Nexus.Input.Devices;
 global using Nexus.Runtime;
+global using NexusRealms.Prelude.Database;
+global using NexusRealms.Prelude.DataModel;
 global using Silk.NET.Maths;
