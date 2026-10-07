@@ -8,6 +8,7 @@ try
         .SetBasePath(AppContext.BaseDirectory)
         .AddJsonFile("appsettings.json")
         .AddJsonFile($"appsettings.{env}.json", optional: true)
+        .AddJsonFile(".content/content-manifest.json")
         .AddCommandLine(args)
         .Build();
 

@@ -1,0 +1,1 @@
+namespace NexusRealms.Prelude.DataModel;

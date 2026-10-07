@@ -1,0 +1,30 @@
+{
+  "Textures": {
+    "Content": {
+      "alley_1": {
+        "FilePath": "Textures/Background/alley_1.png"
+      },
+      "alley_thug_1": {
+        "FilePath": "Textures/Characters/alley_thug_1.png"
+      },
+      "alley_thug_2": {
+        "FilePath": "Textures/Characters/alley_thug_2.png"
+      },
+      "alley_thug_3": {
+        "FilePath": "Textures/Characters/alley_thug_3.png"
+      },
+      "button_line_corners_square": {
+        "FilePath": "Textures/UI/button_line_corners_square.png"
+      }
+    }
+  },
+  "Geometry": {
+    "Content": {}
+  },
+  "Audio": {
+    "Content": {}
+  },
+  "Fonts": {
+    "Content": {}
+  }
+}
