@@ -20,6 +20,7 @@ public class CombatScene : Scene
     private readonly TextButton _retreatButton;
     private readonly Vector2D<float> _worldSize;
     private readonly GameState _gameState;
+    private readonly ITextStyle _hudTextStyle;
 
     /// <summary>Creates the opening combat scene and its input bindings.</summary>
     /// <param name="textures">Provides background and character artwork.</param>
@@ -40,6 +41,7 @@ public class CombatScene : Scene
         _storyline = storyline;
         _windowService = windowService;
         _gameState = gameState;
+        _hudTextStyle = textStyles.GetOrCreate(BuiltInFonts.Default, 16f);
 
         if (!storyline.Nodes.TryGetValue(storyline.StartNodeId, out var startNode))
         {
@@ -185,12 +187,27 @@ public class CombatScene : Scene
                 _textures.GetOrCreate(_storyline.Characters[placement.CharacterId].Portrait), atlas));
         }
         layout.SetCell(0, 1, turnOrder);
-        layout.SetCell(2, 0, CreateAtlasPanel(atlas, "region-0000"));
+        var bottomLeft = CreateAtlasPanel(atlas, "region-0000");
+        bottomLeft.IsSelected = true;
+        bottomLeft.Margins = new(10f, 10f);
+        // The ice spell occupies the second cell in the sheet's first row.
+        bottomLeft.Children.Add(CreateHudImage("abilities.basic_spells.png", new(410, 0, 397, 334)));
+        bottomLeft.Children.Add(CreateHudLabel("Right Hand", AlignVertical.Top));
+        bottomLeft.Children.Add(CreateHudLabel("Frost", AlignVertical.Bottom));
+        layout.SetCell(2, 0, bottomLeft);
         var bottomCenter = CreateAtlasPanel(atlas, "region-0006");
         bottomCenter.Height = 128f;
+        bottomCenter.Margins = new(3f, 3f, 3f, 10f);
         bottomCenter.VerticalAlignment = AlignVertical.Bottom;
+        bottomCenter.Children.Add(new PlayerHudPortrait(_textures.GetOrCreate(_gameState.Portrait)));
         layout.SetCell(2, 1, bottomCenter);
-        layout.SetCell(2, 2, CreateAtlasPanel(atlas, "region-0000"));
+        var bottomRight = CreateAtlasPanel(atlas, "region-0000");
+        bottomRight.Margins = new(10f, 10f);
+        // The sword occupies the first cell in the sheet's first row.
+        bottomRight.Children.Add(CreateHudImage("equipment.weapons_one_handed.png", new(0, 0, 405, 334)));
+        bottomRight.Children.Add(CreateHudLabel("Left Hand", AlignVertical.Top));
+        bottomRight.Children.Add(CreateHudLabel("Sword", AlignVertical.Bottom));
+        layout.SetCell(2, 2, bottomRight);
 
         Children.Add(viewLayout);
         Children.Add(layout);
@@ -208,6 +225,30 @@ public class CombatScene : Scene
         Children.Add(_formation);
         ApplyWorldSize();
     }
+
+    private ImageElement CreateHudImage(string contentId, Rectangle<int> sourceRegion) => new()
+    {
+        Texture = _textures.GetOrCreate(new ContentId(contentId)),
+        SourceRegion = sourceRegion,
+        Width = 210f,
+        Height = 180f,
+        Margins = new(0f, 0f, 24f, 24f),
+        HorizontalAlignment = AlignHorizontal.Center,
+        VerticalAlignment = AlignVertical.Center,
+        SizingMode = ImageSizingMode.Fit,
+        SortOrder = 1,
+        RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+    };
+
+    private TextElement CreateHudLabel(string text, AlignVertical alignment) => new(text, _hudTextStyle)
+    {
+        Height = 20f,
+        HorizontalAlignment = AlignHorizontal.Center,
+        VerticalAlignment = alignment,
+        Margins = new(10f, 10f, 8f, 8f),
+        SortOrder = 2,
+        RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+    };
 
     /// <summary>Uses a named region of the shared atlas as a cell's panel artwork.</summary>
     private static AtlasPanel CreateAtlasPanel(ITexture atlas, string regionName) =>
