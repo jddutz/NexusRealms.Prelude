@@ -21,6 +21,11 @@ public class CombatScene : Scene
     private readonly Vector2D<float> _worldSize;
     private readonly GameState _gameState;
     private readonly ITextStyle _hudTextStyle;
+    private AtlasPanel? _leftHandPanel;
+    private AtlasPanel? _rightHandPanel;
+
+    /// <summary>The hand whose action is currently selected for the player's turn.</summary>
+    public PlayerHand ActiveHand { get; private set; } = PlayerHand.Left;
 
     /// <summary>Creates the opening combat scene and its input bindings.</summary>
     /// <param name="textures">Provides background and character artwork.</param>
@@ -188,7 +193,11 @@ public class CombatScene : Scene
         }
         layout.SetCell(0, 1, turnOrder);
         var bottomLeft = CreateAtlasPanel(atlas, "region-0000");
-        bottomLeft.IsSelected = true;
+        _leftHandPanel = bottomLeft;
+        bottomLeft.IsSelected = ActiveHand == PlayerHand.Left;
+        // A primary-pointer press and release within the panel simulates a tap.
+        bottomLeft.InputMap.OnMouseButtonReleased(MouseButtonEnum.Left)
+            .Invoke(() => SelectHand(PlayerHand.Left));
         bottomLeft.Margins = new(10f, 10f);
         // The ice spell occupies the second cell in the sheet's first row.
         bottomLeft.Children.Add(CreateHudImage("abilities.basic_spells.png", new(410, 0, 397, 334)));
@@ -205,6 +214,10 @@ public class CombatScene : Scene
         bottomCenter.Children.Add(CreateZodiacImage());
         layout.SetCell(2, 1, bottomCenter);
         var bottomRight = CreateAtlasPanel(atlas, "region-0000");
+        _rightHandPanel = bottomRight;
+        bottomRight.IsSelected = ActiveHand == PlayerHand.Right;
+        bottomRight.InputMap.OnMouseButtonReleased(MouseButtonEnum.Left)
+            .Invoke(() => SelectHand(PlayerHand.Right));
         bottomRight.Margins = new(10f, 10f);
         // The sword occupies the first cell in the sheet's first row.
         bottomRight.Children.Add(CreateHudImage("equipment.weapons_one_handed.png", new(0, 0, 405, 334)));
@@ -227,6 +240,15 @@ public class CombatScene : Scene
         Children.Add(_background);
         Children.Add(_formation);
         ApplyWorldSize();
+    }
+
+    private void SelectHand(PlayerHand hand)
+    {
+        ActiveHand = hand;
+        if (_leftHandPanel is not null)
+            _leftHandPanel.IsSelected = hand == PlayerHand.Left;
+        if (_rightHandPanel is not null)
+            _rightHandPanel.IsSelected = hand == PlayerHand.Right;
     }
 
     private ImageElement CreateZodiacImage()
