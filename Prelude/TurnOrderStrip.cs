@@ -36,7 +36,7 @@ public sealed class TurnOrderStrip : Element
             var marker = new ImageElement
             {
                 Texture = _atlas,
-                SourceRegion = _atlas.GetRegion("region-0003").Bounds,
+                SourceRegion = _atlas.GetRegion("region-0002").Bounds,
                 Width = 20f, Height = 20f,
                 SizingMode = ImageSizingMode.Fit,
                 RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
@@ -70,10 +70,11 @@ public sealed class TurnOrderStrip : Element
         base.Arrange(bounds);
         var lastTurn = _entries.Count == 0 ? _currentTurn : _entries.Max(x => x.Turn);
         var span = Math.Max(1d, (double)lastTurn - _currentTurn);
-        // Reserve a separate slot for every occurrence, then use the remaining
-        // width for proportional time gaps. Equal timestamps retain scheduler order.
+        // Reserve a separate slot for every occurrence and cap proportional
+        // time spacing so a short queue stays grouped in the center.
+        // Equal timestamps retain scheduler order.
         var itemWidth = MathF.Min(80f, Bounds.Size.X / Math.Max(1, _entries.Count));
-        var timeWidth = Math.Max(0f, Bounds.Size.X - itemWidth * _entries.Count);
+        var timeWidth = Math.Min(24f, Math.Max(0f, Bounds.Size.X - itemWidth * _entries.Count));
         float TimeOffset(double turn) => (float)((turn - _currentTurn) / span) * timeWidth;
         var occupiedWidth = itemWidth * _entries.Count + TimeOffset(lastTurn);
         var timelineLeft = Bounds.Origin.X + (Bounds.Size.X - occupiedWidth) * 0.5f;
@@ -106,7 +107,8 @@ public sealed class TurnOrderStrip : Element
             var right = contentBounds.Max(rect => rect.Origin.X + rect.Size.X);
             var bottom = contentBounds.Max(rect => rect.Origin.Y + rect.Size.Y);
             _shadow.Arrange(new(left, top, right - left, bottom - top));
-        }        // The instruction overlay extends below the grid's top row, like the marker.
+        }
+        // The instruction overlay extends below the grid's top row, like the marker.
         var separatorWidth = Bounds.Size.X * 0.18f;
         var sourceSize = _separator.SourceRegion!.Value.Size;
         var separatorHeight = separatorWidth * sourceSize.Y / sourceSize.X;

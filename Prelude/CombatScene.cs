@@ -33,11 +33,65 @@ public class CombatScene : Scene
     public Character? FocusedCharacter { get; private set; }
     public event Action<Character?>? FocusChanged;
     private readonly Dictionary<string, ContentId> _turnPortraits = [];
-    private PanelElement? _leftHandPanel;
-    private PanelElement? _rightHandPanel;
+    private PanelElement? _portraitPanel;
+    private PanelElement? _confirmationPanel;
 
-    /// <summary>The hand whose action is currently selected for the player's turn.</summary>
-    public PlayerHand ActiveHand { get; private set; } = PlayerHand.Left;
+    /// <summary>The player's committed loadout and free quick-slot customization.</summary>
+    public Combat.CombatLoadout Loadout => _gameState.Loadout;
+    public string? SelectedActionId { get; private set; }
+    private ModalDialog? _dialog;
+    private bool _closeDialogRequested;
+    private string? _inspectedItem;
+    private string? _inspectedAbility;
+    private Element? _assignmentChoices;
+    private Dictionary<string, string>? _pending;
+    private ImageElement? _actionIcon;
+    private string? _renderedIconKey;
+    private TextElement? _actionLabel;
+    private readonly List<TextButton> _quickButtons = [];
+    private Combat.CommandTarget? CurrentTarget()
+    {
+        var index = Array.FindIndex(_startScenario.Characters.ToArray(), p => _formation[p.Slot] == FocusedCharacter);
+        if (index < 0) return null;
+        var placement = _startScenario.Characters[index];
+        var row = placement.Slot >= FormationSlot.FrontLeft ? NexusRealms.Prelude.Combat.CombatRow.Front
+            : placement.Slot >= FormationSlot.MiddleLeft ? NexusRealms.Prelude.Combat.CombatRow.Middle : NexusRealms.Prelude.Combat.CombatRow.Back;
+        return new(Combat.Contains($"encounter-{index}"), FocusedCharacter!.Health > 0, placement.Team, row);
+    }
+    private bool ValidTarget() => Loadout.ValidTarget(Loadout.Find(SelectedActionId), CurrentTarget());
+    public void SelectQuickAction(int slot)
+    {
+        if (_dialog is not null || (uint)slot >= Loadout.QuickSlots.Length) return;
+        if (Loadout.QuickSlots[slot] is { } id) SelectedActionId = id;
+        RefreshCommand();
+    }
+    public bool ConfirmCombatAction() => _dialog is null && Loadout.Confirm(Combat, "player", Loadout.Find(SelectedActionId), CurrentTarget, () => { });
+    private void RefreshCommand()
+    {
+        var a = Loadout.Find(SelectedActionId);
+        var valid = Loadout.CanConfirm(Combat, "player", a, ValidTarget());
+        if (_actionIcon is not null)
+        {
+            _actionIcon.IsVisible = a?.Icon is not null;
+            _actionIcon.Color = new Color(1f, 1f, 1f, valid ? 1f : 0.4f);
+            if (a?.Icon is { } icon && _renderedIconKey != $"{icon}:{a.IconRegion}")
+            {
+                _renderedIconKey = $"{icon}:{a.IconRegion}";
+                _actionIcon.SourceRegion = null;
+                _actionIcon.Texture = _textures.GetOrCreate(new ContentId(icon));
+                if (a.IconRegion is { } region) _actionIcon.SourceRegion = _actionIcon.Texture.GetRegion(region).Bounds;
+            }
+        }
+        if (_actionLabel is not null) _actionLabel.Text = a?.Name ?? "Select action";
+        for (var i = 0; i < _quickButtons.Count; i++)
+        {
+            var q = Loadout.Find(Loadout.QuickSlots[i]);
+            _quickButtons[i].Label = $"{(q?.Id.Value == SelectedActionId ? "> " : "")}{q?.Name ?? "Empty"}{(q is not null && !Loadout.Available(q) ? " (unavailable)" : "")}";
+        }
+        FocusedCharacter?.SetFocus(true, a is null || !a.RequiresTarget || ValidTarget());
+        foreach (var (character, display) in _characterDisplays)
+            display.Eligibility = a is null || !a.RequiresTarget ? "" : ValidTarget() ? "Valid target" : "Invalid target";
+    }
 
     /// <summary>Creates the opening combat scene and its input bindings.</summary>
     /// <param name="textures">Provides background and character artwork.</param>
@@ -148,9 +202,12 @@ public class CombatScene : Scene
                 _textures.GetOrCreate(new ContentId("ui.selection_indicator.png")),
                 _textures.GetOrCreate(new ContentId("ui.invalid_selection.png")), _worldLayerMask);
             _formation.SetSlot(placement.Slot, combatCharacter);
-            var display = new CharacterStatusDisplay(combatCharacter)
+            var display = new CharacterStatusDisplay(combatCharacter, _textures.GetOrCreate(new ContentId("stats.stats.png")), _hudTextStyle, _textures.GetOrCreate(new ContentId("icons.status_icons.png")))
             {
-                Width = 132f, Height = 44f, SortOrder = 10, IsVisible = false,
+                Width = 132f,
+                Height = 66f,
+                SortOrder = 10,
+                IsVisible = false,
             };
             _characterDisplays.Add((combatCharacter, display));
         }
@@ -259,51 +316,41 @@ public class CombatScene : Scene
         RefreshTurnOrder();
         Children.Add(turnOrder);
         var bottomLeft = CreatePanelElement(atlas, "region-0000");
-        _leftHandPanel = bottomLeft;
-        bottomLeft.IsSelected = ActiveHand == PlayerHand.Left;
-        // A primary-pointer press and release within the panel simulates a tap.
-        bottomLeft
-            .InputMap.OnMouseButtonReleased(MouseButtonEnum.Left)
-            .Invoke(() => SelectHand(PlayerHand.Left));
-        bottomLeft.InputMap.OnLongPress(() => OpenHandDialog(PlayerHand.Left));
-        bottomLeft.Margins = new(10f, 10f);
-        // The ice spell occupies the second cell in the sheet's first row.
-        bottomLeft.Children.Add(
-            CreateHudImage("abilities.basic_spells.png", new(410, 0, 397, 334))
-        );
-        bottomLeft.Children.Add(CreateHudLabel("Left Hand", AlignVertical.Top));
-        bottomLeft.Children.Add(CreateHudLabel("Frost", AlignVertical.Bottom));
+        _portraitPanel = bottomLeft;
+        bottomLeft.InputMap.OnMouseButtonReleased(MouseButtonEnum.Left).Invoke(OpenCharacterDialog);
+        bottomLeft.Children.Add(new PlayerHudPortrait(_textures.GetOrCreate(_gameState.Portrait)));
+        bottomLeft.Children.Add(CreateHudLabel("Character", AlignVertical.Bottom));
         layout.SetCell(2, 0, bottomLeft);
         var bottomCenter = CreatePanelElement(atlas, "region-0006");
         _centerHudPanel = bottomCenter;
         bottomCenter.Height = 84f;
         bottomCenter.Margins = new(3f, 3f, 3f, 10f);
         bottomCenter.VerticalAlignment = AlignVertical.Bottom;
-        bottomCenter.Children.Add(
-            new PlayerHudPortrait(_textures.GetOrCreate(_gameState.Portrait))
-        );
+        for (var i = 0; i < Loadout.QuickSlots.Length; i++)
+        {
+            var slot = i; var button = DialogButton("Empty", () => SelectQuickAction(slot));
+            button.Width = 128f; button.Height = 30f;
+            Place(bottomCenter, button, 8f + i * 132f, 2f);
+            _quickButtons.Add(button);
+        }
         bottomCenter.Children.Add(
             new PlayerStatusBars(
                 _gameState,
+                _textures.GetOrCreate(new ContentId("stats.stats.png")),
                 _textures.GetOrCreate(new ContentId("icons.status_icons.png"))
             )
         );
         bottomCenter.Children.Add(CreateZodiacImage());
         layout.SetCell(2, 1, bottomCenter);
         var bottomRight = CreatePanelElement(atlas, "region-0000");
-        _rightHandPanel = bottomRight;
-        bottomRight.IsSelected = ActiveHand == PlayerHand.Right;
-        bottomRight
-            .InputMap.OnMouseButtonReleased(MouseButtonEnum.Left)
-            .Invoke(() => SelectHand(PlayerHand.Right));
-        bottomRight.InputMap.OnLongPress(() => OpenHandDialog(PlayerHand.Right));
-        bottomRight.Margins = new(10f, 10f);
-        // The sword occupies the first cell in the sheet's first row.
-        bottomRight.Children.Add(
-            CreateHudImage("equipment.weapons_one_handed.png", new(0, 0, 405, 334))
-        );
-        bottomRight.Children.Add(CreateHudLabel("Right Hand", AlignVertical.Top));
-        bottomRight.Children.Add(CreateHudLabel("Sword", AlignVertical.Bottom));
+        _confirmationPanel = bottomRight;
+        bottomRight.InputMap.OnMouseButtonReleased(MouseButtonEnum.Left).Invoke(() => ConfirmCombatAction());
+        _actionIcon = CreateHudImage("equipment.weapons_one_handed.png", new(0, 0, 405, 334), 0.3f);
+        bottomRight.Children.Add(_actionIcon);
+        bottomRight.Children.Add(CreateHudLabel("Confirm", AlignVertical.Top));
+        _actionLabel = CreateHudLabel("Select action", AlignVertical.Bottom);
+        bottomRight.Children.Add(_actionLabel);
+        RefreshCommand();
         layout.SetCell(2, 2, bottomRight);
 
         Children.Add(worldView);
@@ -340,7 +387,8 @@ public class CombatScene : Scene
         var previous = FocusedCharacter;
         FocusedCharacter = character;
         previous?.SetFocus(false, previous.IsValidTarget);
-        character?.SetFocus(true, selectedSlot >= FormationSlot.FrontLeft);
+        character?.SetFocus(true, Loadout.Find(SelectedActionId) is not { RequiresTarget: true } || ValidTarget());
+        RefreshCommand();
         foreach (var (owner, display) in _characterDisplays)
             display.IsVisible = owner == character && !Combat.HasEnded;
         FocusChanged?.Invoke(character);
@@ -349,15 +397,15 @@ public class CombatScene : Scene
     private bool HitTestTargetSelection(Vector2D<float> screenPosition)
     {
         _pointerTarget = null;
-        if (Combat.HasEnded || _worldView is null) return false;
+        if (_dialog is not null || Combat.HasEnded || _worldView is null) return false;
         bool Contains(Rectangle<float> rect) => screenPosition.X >= rect.Origin.X
             && screenPosition.Y >= rect.Origin.Y
             && screenPosition.X < rect.Origin.X + rect.Size.X
             && screenPosition.Y < rect.Origin.Y + rect.Size.Y;
         if (!Contains(_worldView.Bounds)
             || (_centerHudPanel is { } center && Contains(center.Bounds))
-            || (_leftHandPanel is { } left && Contains(left.Bounds))
-            || (_rightHandPanel is { } right && Contains(right.Bounds))
+            || (_portraitPanel is { } left && Contains(left.Bounds))
+            || (_confirmationPanel is { } right && Contains(right.Bounds))
             || Contains(_retreatButton.Bounds)
             || (_turnOrder is { } order && screenPosition.Y < order.Bounds.Origin.Y + 130f)) return false;
         var viewport = _worldView.ViewComponent.ViewportRegion;
@@ -430,55 +478,113 @@ public class CombatScene : Scene
         };
     }
 
-    private void OpenHandDialog(PlayerHand hand)
+    private TextButton DialogButton(string label, Action action) => new()
     {
-        var dialog = _gui.StartModalDialog();
-        dialog.Content.Height = 340f;
-        var atlas = _textures.GetOrCreate(new ContentId("ui.ui_panels.png"));
-        var panel = CreatePanelElement(atlas, "region-0006");
-        dialog.Content.Children.Add(panel);
-        var left = hand == PlayerHand.Left;
-        panel.Children.Add(
-            new TextElement(left ? "Left Hand — Frost" : "Right Hand — Sword", _hudTextStyle)
-            {
-                Height = 32f,
-                VerticalAlignment = AlignVertical.Top,
-                Margins = new(24f, 24f),
-                RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
-            }
-        );
-        panel.Children.Add(
-            CreateHudImage(
-                left ? "abilities.basic_spells.png" : "equipment.weapons_one_handed.png",
-                left ? new(410, 0, 397, 334) : new(0, 0, 405, 334), scale: 1f
-            )
-        );
-        panel.Children.Add(
-            new TextButton
-            {
-                Label = "Close",
-                Style = _hudTextStyle,
-                Texture = atlas,
-                TexCoord = _retreatButton.TexCoord,
-                SourceBorders = new(48f, 32f, 48f, 32f),
-                BorderScale = 0.4f,
-                Width = 120f,
-                Height = 44f,
-                VerticalAlignment = AlignVertical.Bottom,
-                Margins = new(16f, 16f),
-                RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
-                Action = _ => dialog.Dispose(),
-            }
-        );
+        Label = label,
+        Style = _hudTextStyle,
+        Width = 190f,
+        Height = 36f,
+        Texture = _textures.GetOrCreate(new ContentId("ui.ui_panels.png")),
+        TexCoord = _retreatButton.TexCoord,
+        SourceBorders = new(48f, 32f, 48f, 32f),
+        BorderScale = 0.4f,
+        RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+        Action = _ => action(),
+    };
+    private void Place(Element panel, Element control, float x, float y)
+    {
+        control.HorizontalAlignment = AlignHorizontal.Left; control.VerticalAlignment = AlignVertical.Top;
+        control.Margins = new(x, y, 0f, 0f); panel.Children.Add(control);
     }
-
-    private void SelectHand(PlayerHand hand)
+    private void CloseDialog()
     {
-        ActiveHand = hand;
-        if (_leftHandPanel is not null)
-            _leftHandPanel.IsSelected = hand == PlayerHand.Left;
-        if (_rightHandPanel is not null)
-            _rightHandPanel.IsSelected = hand == PlayerHand.Right;
+        // Keep the scope alive through the current event dispatch, including Escape/Back.
+        _pending = null; _closeDialogRequested = true;
+    }
+    private PanelElement BeginDialog(string title)
+    {
+        _dialog = _gui.StartModalDialog(); _dialog.Content.Width = 900f; _dialog.Content.Height = 460f;
+        _dialog.InputMap.OnKeyPressed(KeyEnum.Escape).Invoke(CloseDialog);
+        _dialog.InputMap.OnAnyControllerButtonPressed(ControllerSemanticNames.Back).Invoke(CloseDialog);
+        var panel = CreatePanelElement(_textures.GetOrCreate(new ContentId("ui.ui_panels.png")), "region-0006");
+        _dialog.Content.Children.Add(panel); panel.Children.Add(CreateHudLabel(title, AlignVertical.Top)); return panel;
+    }
+    private void AssignControls(Element panel, Combat.CommandDefinition a, float y)
+    {
+        Place(panel, DialogButton($"Assign {a.Name}", () =>
+        {
+            if (_assignmentChoices is not null) panel.Children.Remove(_assignmentChoices);
+            _assignmentChoices = new Element { Height = 36f, VerticalAlignment = AlignVertical.Top, Margins = new(0f, 350f, 0f, 0f) };
+            panel.Children.Add(_assignmentChoices);
+            for (var i = 0; i < Loadout.QuickSlots.Length; i++)
+            {
+                var slot = i;
+                Place(_assignmentChoices, DialogButton($"Slot {i + 1}", () => { Loadout.Assign(slot, a.Id.Value); RefreshCommand(); }), 230f + i * 200f, 0f);
+            }
+        }), 24f, y);
+    }
+    public void OpenCharacterDialog()
+    {
+        if (_dialog is not null) return; _pending = Loadout.BeginEquipment(); RenderCharacterDialog();
+    }
+    private void RenderCharacterDialog()
+    {
+        var pending = _pending!; _dialog?.Dispose(); _dialog = null;
+        var panel = BeginDialog("Character / Inventory / Equipment / Stats preview");
+        var y = 60f;
+        foreach (var item in Loadout.Inventory)
+        {
+            Place(panel, DialogButton(item.Name, () => { _inspectedItem = item.Id.Value; RenderCharacterDialog(); }), 24f, y);
+            Place(panel, DialogButton("Move to top", () => { Loadout.Inventory.Remove(item); Loadout.Inventory.Insert(0, item); RenderCharacterDialog(); }), 225f, y); y += 40f;
+        }
+        y = 60f;
+        foreach (var slot in new[] { "Left hand", "Right hand" })
+        {
+            Place(panel, DialogButton($"{slot}: {pending.GetValueOrDefault(slot) ?? "Empty"}", () => { pending.Remove(slot); RenderCharacterDialog(); }), 430f, y); y += 40f;
+        }
+        Place(panel, CreateHudLabel($"Preview initiative: {_gameState.Initiative + Loadout.InitiativeBonus(pending)}", AlignVertical.Top), 640f, 60f);
+        Place(panel, CreateHudLabel($"Health {_gameState.Health} / Focus {Loadout.Focus}", AlignVertical.Top), 640f, 90f);
+        var selectedItem = Loadout.Inventory.Find(i => i.Id.Value == _inspectedItem);
+        if (selectedItem is not null)
+        {
+            Place(panel, CreateHudLabel($"{selectedItem.Name} / {selectedItem.Slot} / Initiative +{selectedItem.InitiativeBonus}", AlignVertical.Top), 24f, 165f);
+            Place(panel, DialogButton("Equip selected item", () => { pending[selectedItem.Slot] = selectedItem.Id.Value; RenderCharacterDialog(); }), 430f, 165f);
+            y = 205f;
+            foreach (var a in Loadout.Abilities.Where(a => a.RequiredItem == selectedItem.Id))
+            {
+                Place(panel, CreateHudLabel($"{a.Name} / Cost {a.TurnCost} / Focus {a.FocusCost}", AlignVertical.Top), 250f, y);
+                if (a.Learned && !a.Passive) AssignControls(panel, a, y); y += 40f;
+            }
+        }
+        Place(panel, DialogButton("X / Cancel", CloseDialog), 24f, 400f);
+        var message = CreateHudLabel("", AlignVertical.Top); Place(panel, message, 240f, 400f);
+        Place(panel, DialogButton($"Confirm / Cost {Loadout.Cost(pending):0.##}", () =>
+        {
+            if (Loadout.Commit(Combat, "player", pending)) CloseDialog(); else message.Text = "Cannot commit equipment now";
+        }), 640f, 400f);
+    }
+    public void OpenZodiacDialog()
+    {
+        if (_dialog is not null) return;
+        RenderZodiacDialog();
+    }
+    private void RenderZodiacDialog()
+    {
+        _dialog?.Dispose(); _dialog = null;
+        var panel = BeginDialog("Zodiac / Ability map"); var index = 0;
+        foreach (var a in Loadout.Abilities.Where(a => a.RequiredItem is null))
+        {
+            var node = DialogButton($"{a.Name} / {(a.Learned ? "Learned" : "Unlearned")}", () => { _inspectedAbility = a.Id.Value; RenderZodiacDialog(); });
+            Place(panel, node, 24f + (index % 3) * 200f, 60f + (index / 3) * 50f); index++;
+        }
+        var selected = Loadout.Find(_inspectedAbility);
+        if (selected is not null)
+        {
+            Place(panel, CreateHudLabel($"{selected.Name} / {(selected.Passive ? "Passive" : "Active")}", AlignVertical.Top), 640f, 60f);
+            Place(panel, CreateHudLabel($"Cost {selected.TurnCost} / Focus {selected.FocusCost}", AlignVertical.Top), 640f, 90f);
+            if (selected.Learned && !selected.Passive) AssignControls(panel, selected, 280f);
+        }
+        Place(panel, DialogButton("Close", CloseDialog), 640f, 400f);
     }
 
     private ImageElement CreateZodiacImage()
@@ -500,19 +606,21 @@ public class CombatScene : Scene
             new(825, 662, 377, 344),
             new(1202, 666, 362, 340),
         ];
-        return new ImageElement
+        var image = new ImageElement
         {
             Texture = _textures.GetOrCreate(new ContentId("zodiac_signs")),
-            SourceRegion = signs[Random.Shared.Next(signs.Length)],
-            Width = 60f,
-            Height = 60f,
+            SourceRegion = signs[0],
+            Width = 68f,
+            Height = 68f,
             HorizontalAlignment = AlignHorizontal.Right,
             VerticalAlignment = AlignVertical.Center,
-            Margins = new(0f, 8f, 0f, 0f),
+            Margins = new(0f, 16f, 0f, 0f),
             SizingMode = ImageSizingMode.Fit,
             SortOrder = 1,
             RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
         };
+        image.InputMap.OnMouseButtonReleased(MouseButtonEnum.Left).Invoke(OpenZodiacDialog);
+        return image;
     }
 
     private ImageElement CreateHudImage(string contentId, Rectangle<int> sourceRegion, float scale = 0.6f) =>
@@ -558,7 +666,14 @@ public class CombatScene : Scene
     /// <inheritdoc />
     public override void Update(double deltaTime)
     {
+        if (_closeDialogRequested)
+        {
+            _closeDialogRequested = false; var dialog = _dialog; _dialog = null; dialog?.Dispose();
+        }
         base.Update(deltaTime);
+        if (FocusedCharacter is not null && CurrentTarget() is not { Exists: true }) FocusCharacter(null);
+        if (Combat.ActiveCombatant is { PlayerControlled: true } actor && actor.Id != "player") SelectedActionId = null;
+        RefreshCommand();
 
         ApplyWorldSize();
     }
@@ -595,7 +710,7 @@ public class CombatScene : Scene
                     var symbolHeight = character.FocusRenderer.Instances.Values.First().Size.Y
                         * character.Scale.Y * pixelsPerWorldY;
                     display.Arrange(new(headX + symbolWidth * 0.5f + 8f,
-                        headY - 8f - symbolHeight * 0.5f - 22f, 132f, 44f));
+                        headY - 8f - symbolHeight * 0.5f - 22f, 132f, 66f));
                 }
             }
         }

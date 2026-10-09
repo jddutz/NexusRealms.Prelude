@@ -101,3 +101,68 @@ Console.WriteLine("Combat timeline checks passed.");
 
 
 
+
+// Commands and equipment transactions share the timeline and never execute on assignment.
+var commandsCombat = new CombatSystem();
+commandsCombat.Add(new Combatant("player", true));
+commandsCombat.Process();
+var loadout = new CombatLoadout { Focus = 2 };
+var commandExecutions = 0;
+var slash = new CommandDefinition("slash", "Slash", 0.6f, "sword", "Right hand", FocusCost: 1,
+    Resolve: (_, _) => commandExecutions++);
+loadout.Inventory.Add(new("sword", "Sword", "Right hand", 2));
+loadout.Abilities.Add(slash);
+loadout.Abilities.Add(new("locked", "Locked", 1f, Learned: false));
+loadout.Abilities.Add(new("passive", "Passive", 1f, Passive: true));
+Check(loadout.Assign(0, "slash") && commandExecutions == 0);
+Check(!loadout.Assign(0, "locked") && !loadout.Assign(0, "passive"));
+Check(!loadout.Available(slash));
+var pendingLoadout = loadout.BeginEquipment();
+pendingLoadout["Right hand"] = "sword";
+Check(loadout.Equipment.Count == 0 && loadout.Cost(pendingLoadout) == 0.6f);
+Check(loadout.InitiativeBonus(pendingLoadout) == 2);
+pendingLoadout.Clear();
+Check(loadout.Cost(pendingLoadout) == 0f);
+pendingLoadout["Right hand"] = "missing";
+var beforeCommit = commandsCombat.Timeline.CurrentTurn;
+Check(!loadout.Commit(commandsCombat, "player", pendingLoadout));
+Check(loadout.Equipment.Count == 0 && commandsCombat.Timeline.CurrentTurn == beforeCommit);
+pendingLoadout["Right hand"] = "sword";
+Check(loadout.Commit(commandsCombat, "player", pendingLoadout));
+Check(loadout.Equipment["Right hand"] == "sword" && loadout.Available(slash));
+Check(commandsCombat.ActiveCombatant!.Initiative == 2);
+Check(commandsCombat.Timeline.CurrentTurn == beforeCommit + 0.6f && commandExecutions == 0);
+Check(!loadout.Confirm(commandsCombat, "player", slash, () => null, () => { }));
+Check(loadout.Focus == 2 && commandExecutions == 0);
+Check(loadout.Confirm(commandsCombat, "player", slash, () => new(true, true, CombatTeam.Enemies, CombatRow.Front), () =>
+{
+    Check(!loadout.Confirm(commandsCombat, "player", slash, () => new(true, true, CombatTeam.Enemies, CombatRow.Front), () => { }));
+}));
+Check(commandExecutions == 1 && loadout.Focus == 1);
+Check(loadout.Confirm(commandsCombat, "player", slash, () => new(true, true, CombatTeam.Enemies, CombatRow.Front), () => { }));
+Check(commandExecutions == 2 && loadout.Focus == 0);
+Check(!loadout.Confirm(commandsCombat, "player", slash, () => new(true, true, CombatTeam.Enemies, CombatRow.Front), () => { }));
+Check(loadout.QuickSlots[0] == "slash");
+var canceledEquipment = loadout.BeginEquipment();
+canceledEquipment.Clear();
+Check(loadout.Equipment["Right hand"] == "sword");
+Check(loadout.Commit(commandsCombat, "player", canceledEquipment));
+Check(!loadout.Available(slash) && loadout.QuickSlots[0] == "slash");
+var wait = new CommandDefinition("wait", "Wait", 0.6f, RequiresTarget: false);
+loadout.Abilities.Add(wait);
+Check(loadout.Confirm(commandsCombat, "player", wait, () => null, () => { }));
+Console.WriteLine("Command selection and equipment transaction checks passed.");
+
+Check(commandsCombat.ActiveCombatant!.Initiative == 0);
+Check(!loadout.ValidTarget(slash, new(true, true, CombatTeam.Enemies, CombatRow.Back)));
+Check(!loadout.ValidTarget(slash, new(false, true, CombatTeam.Enemies, CombatRow.Front)));
+Check(!loadout.ValidTarget(slash, new(true, false, CombatTeam.Enemies, CombatRow.Front)));
+Check(!loadout.ValidTarget(slash, new(true, true, CombatTeam.PlayerAndAllies, CombatRow.Front)));
+var invalidCost = new CommandDefinition("bad-cost", "Bad cost", float.NaN, RequiresTarget: false);
+loadout.Abilities.Add(invalidCost);
+Check(!loadout.Confirm(commandsCombat, "player", invalidCost, () => null, () => { }));
+commandsCombat.End();
+pendingLoadout = loadout.BeginEquipment();
+pendingLoadout["Right hand"] = "sword";
+Check(!loadout.Commit(commandsCombat, "player", pendingLoadout));
+Check(loadout.Equipment.Count == 0);

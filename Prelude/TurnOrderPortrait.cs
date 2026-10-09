@@ -22,7 +22,7 @@ public sealed class TurnOrderPortrait : Element
             _topFrame.Texture = atlas;
             _bottomFrame.Texture = atlas;
             _marker.Texture = atlas;
-            _topFrame.SourceRegion = atlas.GetRegion(value ? "region-0014" : "region-0016").Bounds;
+            _topFrame.SourceRegion = atlas.GetRegion(value ? "region-0013" : "region-0016").Bounds;
             _bottomFrame.SourceRegion = atlas.GetRegion(value ? "region-0018" : "region-0020").Bounds;
             _marker.SourceRegion = atlas.GetRegion("region-0004").Bounds;
             _marker.IsVisible = value;

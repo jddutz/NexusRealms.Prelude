@@ -14,6 +14,7 @@ public sealed record CharacterData
     /// Gets the character's display name.
     /// </summary>
     public required string Name { get; init; }
+    public string[] StatusSymbols { get; init; } = [];
     public int Initiative { get; init; }
     public int Health { get; init; } = 5;
     public int Focus { get; init; } = 2;

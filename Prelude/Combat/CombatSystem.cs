@@ -7,7 +7,7 @@ public sealed class Combatant(string id, bool playerControlled, float turn = 0f,
     int initiative = 0, CombatTeam team = CombatTeam.PlayerAndAllies,
     CombatRow row = CombatRow.Front)
 {
-    public int Initiative { get; } = initiative;
+    public int Initiative { get; internal set; } = initiative;
     public CombatTeam Team { get; } = team;
     public CombatRow Row { get; } = row;
     public uint RandomRank { get; internal set; }
@@ -31,6 +31,8 @@ public sealed class CombatSystem
     public Func<CombatSystem, bool>? IsCombatOver { get; set; }
     public event Action? Changed;
 
+    private bool _resolving;
+    public bool IsResolving => _resolving;
     private uint _randomState;
     public CombatSystem(uint seed = 1)
     {
@@ -55,6 +57,8 @@ public sealed class CombatSystem
             TimelinePriority.Combatant, combatant.Id, initiative: combatant.Initiative,
             team: combatant.Team, row: combatant.Row, randomRank: combatant.RandomRank);
     }
+
+    public bool Contains(string id) => _combatants.ContainsKey(id);
 
     public void Remove(string id)
     {
@@ -120,6 +124,7 @@ public sealed class CombatSystem
     public void SubmitAction(CombatAction action)
     {
         EnsureRunning();
+        if (_resolving) throw new InvalidOperationException("An action is already resolving.");
         if (ActiveCombatant is not { PlayerControlled: true })
             throw new InvalidOperationException("No player action is pending.");
         ResolveAction(action);
@@ -135,7 +140,9 @@ public sealed class CombatSystem
         var next = actor.Turn + action.TurnCost;
         if (action.TurnCost <= 0f || !float.IsFinite(next) || next <= actor.Turn)
             throw new ArgumentOutOfRangeException(nameof(action), "Cost must advance the float timeline.");
-        action.Resolve(this, actor);
+        _resolving = true;
+        try { action.Resolve(this, actor); }
+        finally { _resolving = false; }
         ActiveCombatant = null;
         if (IsCombatOver?.Invoke(this) == true) End();
         if (!HasEnded && _combatants.ContainsKey(actor.Id))
