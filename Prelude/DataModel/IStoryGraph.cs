@@ -8,7 +8,7 @@ public interface IStoryGraph
     /// <summary>
     /// Gets the characters made available to the nodes in this graph.
     /// </summary>
-    public ImmutableArray<Character> Characters { get; }
+    public ImmutableArray<CharacterData> Characters { get; }
 
     /// <summary>
     /// Gets the story nodes contained in this graph.

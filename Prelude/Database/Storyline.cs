@@ -1,5 +1,3 @@
-using System.Collections.Frozen;
-
 namespace NexusRealms.Prelude.Database;
 
 /// <summary>
@@ -10,7 +8,7 @@ public sealed class Storyline
     /// <summary>
     /// Gets the characters declared by the story graphs, keyed by character identifier.
     /// </summary>
-    public FrozenDictionary<CharacterId, Character> Characters { get; }
+    public FrozenDictionary<CharacterId, CharacterData> Characters { get; }
 
     /// <summary>
     /// Gets the nodes declared by the story graphs, keyed by node identifier.
@@ -32,7 +30,7 @@ public sealed class Storyline
     /// </summary>
     public Storyline()
     {
-        var characters = new Dictionary<CharacterId, Character>();
+        var characters = new Dictionary<CharacterId, CharacterData>();
         var nodes = new Dictionary<StoryNodeId, StoryNode>();
         var graphs = new List<(IStoryGraph Graph, string TypeName)>();
         var chapterNamespacePrefix = $"{typeof(Storyline).Namespace}.Chapter";

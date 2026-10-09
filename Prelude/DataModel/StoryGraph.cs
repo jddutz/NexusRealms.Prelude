@@ -10,7 +10,7 @@ public abstract record StoryGraph : IStoryGraph
     /// <summary>
     /// Gets or initializes the characters made available to this graph's nodes.
     /// </summary>
-    public ImmutableArray<Character> Characters { get; init; } = [];
+    public ImmutableArray<CharacterData> Characters { get; init; } = [];
 
     /// <summary>
     /// Gets or initializes the story nodes contained in this graph.

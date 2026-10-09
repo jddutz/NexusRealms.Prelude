@@ -10,6 +10,8 @@ public sealed record CombatScenario : StoryNode
     /// <summary>
     /// Gets the identifier of the encounter background.
     /// </summary>
+    public ImmutableArray<Combat.EncounterEvent> Events { get; init; } = [];
+
     public required ContentId Background { get; init; }
 
     /// <summary>
@@ -17,3 +19,4 @@ public sealed record CombatScenario : StoryNode
     /// </summary>
     public required ImmutableArray<CharacterPlacement> Characters { get; init; }
 }
+

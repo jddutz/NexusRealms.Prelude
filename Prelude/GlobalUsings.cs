@@ -1,4 +1,5 @@
 global using System;
+global using System.Collections.Frozen;
 global using System.Collections.Immutable;
 global using Microsoft.Extensions.Configuration;
 global using Nexus.Core;
@@ -17,5 +18,3 @@ global using Nexus.Runtime;
 global using NexusRealms.Prelude.Database;
 global using NexusRealms.Prelude.DataModel;
 global using Silk.NET.Maths;
-global using CombatBackground = NexusRealms.Prelude.SceneBackground;
-global using CombatCharacter = NexusRealms.Prelude.Combat.Character;

@@ -8,6 +8,9 @@ public sealed record CharacterPlacement
     /// <summary>
     /// Gets the identifier of the placed character.
     /// </summary>
+    public Combat.CombatTeam Team { get; init; } = Combat.CombatTeam.Enemies;
+    public float InitialTurn { get; init; }
+
     public required CharacterId CharacterId { get; init; }
 
     /// <summary>
@@ -15,3 +18,5 @@ public sealed record CharacterPlacement
     /// </summary>
     public required FormationSlot Slot { get; init; }
 }
+
+

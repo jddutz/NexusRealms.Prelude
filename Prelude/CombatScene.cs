@@ -8,7 +8,6 @@ public class CombatScene : Scene
     private const float SideHudWidth = 240f;
     private const float TopHudHeight = 120f;
     private const float BottomHudHeight = 210f;
-    private const float WorldViewBottomGap = 120f;
     private readonly CombatScenario _startScenario;
     private readonly Storyline _storyline;
     private readonly ITextureRegistry _textures;
@@ -22,6 +21,16 @@ public class CombatScene : Scene
     private readonly GameState _gameState;
     private readonly ITextStyle _hudTextStyle;
     private readonly IGraphicalUserInterface _gui;
+    public Combat.CombatSystem Combat { get; } = new();
+    public TimelineEventRenderer TimelineRenderer { get; }
+    private View? _worldView;
+    private AtlasPanel? _centerHudPanel;
+    private TurnOrderStrip? _turnOrder;
+    private Character? _pointerTarget;
+    private Character? _pressedTarget;
+    public Character? FocusedCharacter { get; private set; }
+    public event Action<Character?>? FocusChanged;
+    private readonly Dictionary<string, ContentId> _turnPortraits = [];
     private AtlasPanel? _leftHandPanel;
     private AtlasPanel? _rightHandPanel;
 
@@ -50,6 +59,8 @@ public class CombatScene : Scene
         _gameState = gameState;
         _gui = gui;
         _hudTextStyle = textStyles.GetOrCreate(BuiltInFonts.Default, 16f);
+        TimelineRenderer = new(CreateTimelineElement);
+        TimelineRenderer.Changed += RefreshTurnOrder;
 
         if (!storyline.Nodes.TryGetValue(storyline.StartNodeId, out var startNode))
         {
@@ -77,6 +88,7 @@ public class CombatScene : Scene
         _retreatButton = new TextButton
         {
             Label = "Retreat",
+            Action = _ => Combat.End(),
             Width = 120f,
             Height = 54f,
             HorizontalAlignment = AlignHorizontal.Right,
@@ -84,8 +96,11 @@ public class CombatScene : Scene
             Style = textStyles.GetOrCreate(BuiltInFonts.Default, 16f),
             Texture = uiAtlas,
             TexCoord = new(
-                retreatRegion.Origin.X, retreatRegion.Origin.Y,
-                retreatRegion.Size.X, retreatRegion.Size.Y),
+                retreatRegion.Origin.X,
+                retreatRegion.Origin.Y,
+                retreatRegion.Size.X,
+                retreatRegion.Size.Y
+            ),
             SourceBorders = new(48f, 32f, 48f, 32f),
             BorderScale = 0.4f,
             RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
@@ -109,15 +124,65 @@ public class CombatScene : Scene
         foreach (var placement in _startScenario.Characters)
         {
             var character = _storyline.Characters[placement.CharacterId];
-            var combatCharacter = new CombatCharacter(
+            var combatCharacter = new Character(
                 character,
-                _textures.GetOrCreate(character.Artwork)
+                _textures.GetOrCreate(character.Artwork),
+                _textures.GetOrCreate(new ContentId("shadow"))
             );
             combatCharacter.Renderer.RenderLayerMask = _worldLayerMask;
+            combatCharacter.ShadowRenderer.RenderLayerMask = _worldLayerMask;
+            combatCharacter.ConfigureFocusIndicator(
+                _textures.GetOrCreate(new ContentId("ui.selection_indicator.png")),
+                _textures.GetOrCreate(new ContentId("ui.invalid_selection.png")), _worldLayerMask);
             _formation.SetSlot(placement.Slot, combatCharacter);
         }
 
-        var inputMap = new InputMap(eventHub);
+        _turnPortraits.Add("player", _gameState.Portrait);
+        Combat.Add(new Combat.Combatant("player", true, initiative: _gameState.Initiative));
+        for (var index = 0; index < _startScenario.Characters.Length; index++)
+        {
+            var placement = _startScenario.Characters[index];
+            var id = $"encounter-{index}";
+            _turnPortraits.Add(id, _storyline.Characters[placement.CharacterId].Portrait);
+            var row = placement.Slot switch
+            {
+                <= FormationSlot.BackRight => NexusRealms.Prelude.Combat.CombatRow.Back,
+                <= FormationSlot.MiddleRight => NexusRealms.Prelude.Combat.CombatRow.Middle,
+                _ => NexusRealms.Prelude.Combat.CombatRow.Front,
+            };
+            Combat.Add(
+                new Combat.Combatant(
+                    id,
+                    false,
+                    placement.InitialTurn,
+                    _storyline.Characters[placement.CharacterId].Initiative,
+                    placement.Team,
+                    row
+                )
+            );
+        }
+        // Until authored abilities/AI are available, opponents pass with a standard cost.
+        Combat.DecideAction = (_, _) => new Combat.CombatAction(0.6f, (_, _) => { });
+        foreach (var occurrence in _startScenario.Events)
+            Combat.ScheduleEvent(
+                occurrence.Turn,
+                occurrence.Label,
+                occurrence.Resolve,
+                occurrence.Priority,
+                occurrence.Icon,
+                occurrence.IsVisible,
+                occurrence.PresentationKey
+            );
+        Combat.Changed += RefreshTurnOrder;
+        Combat.Changed += () => { if (Combat.HasEnded) FocusCharacter(null); };
+        Combat.Process();
+
+        var inputMap = new InputMap(eventHub, HitTestTargetSelection);
+        inputMap.OnMouseButtonPressed(MouseButtonEnum.Left).Invoke(() => _pressedTarget = _pointerTarget);
+        inputMap.OnMouseButtonReleased(MouseButtonEnum.Left).Invoke(() =>
+        {
+            if (_pressedTarget == _pointerTarget) FocusCharacter(_pointerTarget);
+        });
         inputMap.OnKeyPressed(KeyEnum.Escape).Invoke(() => _windowService.GetMainWindow().Close());
         inputMap
             .OnAnyControllerButtonPressed(ControllerSemanticNames.Back)
@@ -140,14 +205,8 @@ public class CombatScene : Scene
             PreserveDrawOrder = true,
             SizingMode = ViewSizingMode.Fill,
         };
-        var viewLayout = new GridLayout
-        {
-            SortOrder = -100,
-            Rows = [GridSize.Relative(), GridSize.Absolute(WorldViewBottomGap)],
-            Columns = [GridSize.Relative()],
-        };
+        _worldView = worldView;
         worldView.SortOrder = -100;
-        viewLayout.SetCell(0, 0, worldView);
         var layout = new GridLayout
         {
             Rows =
@@ -166,71 +225,69 @@ public class CombatScene : Scene
 
         var atlas = _textures.GetOrCreate(new ContentId("ui.ui_panels.png"));
         layout.SetCell(0, 2, _retreatButton);
-        var turnOrder = new TurnOrderStrip(atlas, _hudTextStyle)
+        var turnOrder = new TurnOrderStrip(atlas, _hudTextStyle,
+            _textures.GetOrCreate(new ContentId("square_shadow")))
         {
-            Width = (1 + _startScenario.Characters.Length) * 80f + _startScenario.Characters.Length * 10f,
+            Width =
+                (1 + _startScenario.Characters.Length) * 80f
+                + _startScenario.Characters.Length * 10f,
             Height = 96f,
             HorizontalAlignment = AlignHorizontal.Center,
             VerticalAlignment = AlignVertical.Top,
-            Margins = new(0f, 0f, 10f, 0f),
+            Margins = new(0f),
         };
-        turnOrder.Items.Children.Add(new TurnOrderPortrait(_textures.GetOrCreate(_gameState.Portrait), atlas)
-        {
-            IsActive = true,
-        });
-        foreach (var placement in _startScenario.Characters)
-        {
-            turnOrder.Items.Children.Add(new ImageElement
-            {
-                Texture = atlas,
-                SourceRegion = atlas.GetRegion("region-0003").Bounds,
-                Width = 10f,
-                Height = 10f,
-                VerticalAlignment = AlignVertical.Top,
-                Margins = new(0f, 0f, 33f, 0f),
-                SizingMode = ImageSizingMode.Fit,
-                RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
-            });
-            turnOrder.Items.Children.Add(new TurnOrderPortrait(
-                _textures.GetOrCreate(_storyline.Characters[placement.CharacterId].Portrait), atlas));
-        }
-        layout.SetCell(0, 1, turnOrder);
+        _turnOrder = turnOrder;
+        RefreshTurnOrder();
+        Children.Add(turnOrder);
         var bottomLeft = CreateAtlasPanel(atlas, "region-0000");
         _leftHandPanel = bottomLeft;
         bottomLeft.IsSelected = ActiveHand == PlayerHand.Left;
         // A primary-pointer press and release within the panel simulates a tap.
-        bottomLeft.InputMap.OnMouseButtonReleased(MouseButtonEnum.Left)
+        bottomLeft
+            .InputMap.OnMouseButtonReleased(MouseButtonEnum.Left)
             .Invoke(() => SelectHand(PlayerHand.Left));
         bottomLeft.InputMap.OnLongPress(() => OpenHandDialog(PlayerHand.Left));
         bottomLeft.Margins = new(10f, 10f);
         // The ice spell occupies the second cell in the sheet's first row.
-        bottomLeft.Children.Add(CreateHudImage("abilities.basic_spells.png", new(410, 0, 397, 334)));
+        bottomLeft.Children.Add(
+            CreateHudImage("abilities.basic_spells.png", new(410, 0, 397, 334))
+        );
         bottomLeft.Children.Add(CreateHudLabel("Left Hand", AlignVertical.Top));
         bottomLeft.Children.Add(CreateHudLabel("Frost", AlignVertical.Bottom));
         layout.SetCell(2, 0, bottomLeft);
         var bottomCenter = CreateAtlasPanel(atlas, "region-0006");
-        bottomCenter.Height = 128f;
+        _centerHudPanel = bottomCenter;
+        bottomCenter.Height = 160f;
         bottomCenter.Margins = new(3f, 3f, 3f, 10f);
         bottomCenter.VerticalAlignment = AlignVertical.Bottom;
-        bottomCenter.Children.Add(new PlayerHudPortrait(_textures.GetOrCreate(_gameState.Portrait)));
-        bottomCenter.Children.Add(new PlayerStatusBars(_gameState,
-            _textures.GetOrCreate(new ContentId("icons.status_icons.png"))));
+        bottomCenter.Children.Add(
+            new PlayerHudPortrait(_textures.GetOrCreate(_gameState.Portrait))
+        );
+        bottomCenter.Children.Add(
+            new PlayerStatusBars(
+                _gameState,
+                _textures.GetOrCreate(new ContentId("icons.status_icons.png"))
+            )
+        );
         bottomCenter.Children.Add(CreateZodiacImage());
         layout.SetCell(2, 1, bottomCenter);
         var bottomRight = CreateAtlasPanel(atlas, "region-0000");
         _rightHandPanel = bottomRight;
         bottomRight.IsSelected = ActiveHand == PlayerHand.Right;
-        bottomRight.InputMap.OnMouseButtonReleased(MouseButtonEnum.Left)
+        bottomRight
+            .InputMap.OnMouseButtonReleased(MouseButtonEnum.Left)
             .Invoke(() => SelectHand(PlayerHand.Right));
         bottomRight.InputMap.OnLongPress(() => OpenHandDialog(PlayerHand.Right));
         bottomRight.Margins = new(10f, 10f);
         // The sword occupies the first cell in the sheet's first row.
-        bottomRight.Children.Add(CreateHudImage("equipment.weapons_one_handed.png", new(0, 0, 405, 334)));
+        bottomRight.Children.Add(
+            CreateHudImage("equipment.weapons_one_handed.png", new(0, 0, 405, 334))
+        );
         bottomRight.Children.Add(CreateHudLabel("Right Hand", AlignVertical.Top));
         bottomRight.Children.Add(CreateHudLabel("Sword", AlignVertical.Bottom));
         layout.SetCell(2, 2, bottomRight);
 
-        Children.Add(viewLayout);
+        Children.Add(worldView);
         Children.Add(layout);
         var uiView = new View
         {
@@ -247,6 +304,109 @@ public class CombatScene : Scene
         ApplyWorldSize();
     }
 
+    /// <summary>Called by the action selection flow once its effects and cost are chosen.</summary>
+    public void SubmitAction(Combat.CombatAction action) => Combat.SubmitAction(action);
+
+    /// <summary>Changes selection without resolving an action, including invalid targets.</summary>
+    public void FocusCharacter(Character? character)
+    {
+        if (Combat.HasEnded) character = null;
+        FormationSlot? selectedSlot = null;
+        foreach (var slot in Enum.GetValues<FormationSlot>())
+            if (character is not null && _formation[slot] == character) selectedSlot = slot;
+        if (character is not null && selectedSlot is null)
+            throw new ArgumentException("Character is not in this encounter.", nameof(character));
+        if (FocusedCharacter == character) return;
+        var previous = FocusedCharacter;
+        FocusedCharacter = character;
+        previous?.SetFocus(false, previous.IsValidTarget);
+        character?.SetFocus(true, selectedSlot >= FormationSlot.FrontLeft);
+        FocusChanged?.Invoke(character);
+    }
+
+    private bool HitTestTargetSelection(Vector2D<float> screenPosition)
+    {
+        _pointerTarget = null;
+        if (Combat.HasEnded || _worldView is null) return false;
+        bool Contains(Rectangle<float> rect) => screenPosition.X >= rect.Origin.X
+            && screenPosition.Y >= rect.Origin.Y
+            && screenPosition.X < rect.Origin.X + rect.Size.X
+            && screenPosition.Y < rect.Origin.Y + rect.Size.Y;
+        if (!Contains(_worldView.Bounds)
+            || (_centerHudPanel is { } center && Contains(center.Bounds))
+            || (_leftHandPanel is { } left && Contains(left.Bounds))
+            || (_rightHandPanel is { } right && Contains(right.Bounds))
+            || Contains(_retreatButton.Bounds)
+            || (_turnOrder is { } order && screenPosition.Y < order.Bounds.Origin.Y + 130f)) return false;
+        var viewport = _worldView.ViewComponent.ViewportRegion;
+        if (viewport.Size.X <= 0 || viewport.Size.Y <= 0) return false;
+        var world = new Vector2D<float>(
+            (screenPosition.X - viewport.Origin.X) * _worldSize.X / viewport.Size.X,
+            (screenPosition.Y - viewport.Origin.Y) * _worldSize.Y / viewport.Size.Y);
+        // Hit the frontmost drawn opaque character when sprites overlap.
+        foreach (var slot in Enum.GetValues<FormationSlot>().Reverse())
+            if (_formation[slot] is { } candidate && candidate.HitTest(world))
+            {
+                _pointerTarget = candidate;
+                break;
+            }
+        return true;
+    }
+    private void RefreshTurnOrder()
+    {
+        if (_turnOrder is null)
+            return;
+        var entries = new List<(float Turn, Element Element)>();
+        if (Combat.ActiveCombatant is { } active)
+        {
+            var occurrence = new Combat.TimelineOccurrence(
+                0,
+                Combat.Timeline.CurrentTurn,
+                NexusRealms.Prelude.Combat.TimelinePriority.Combatant,
+                0,
+                active.Id,
+                active.Id
+            );
+            entries.Add((occurrence.Turn, TimelineRenderer.Create(occurrence, isActive: true)));
+        }
+        var eventCount = 0;
+        foreach (var occurrence in Combat.Timeline.TurnOrder.Where(x => x.IsVisible))
+        {
+            if (occurrence.CombatantId is null && eventCount++ >= 7)
+                continue;
+            entries.Add((occurrence.Turn, TimelineRenderer.Create(occurrence)));
+        }
+        _turnOrder.SetOccurrences(Combat.Timeline.CurrentTurn, entries);
+        _turnOrder.Width = 640f;
+    }
+
+    private Element CreateTimelineElement(Combat.TimelineOccurrence occurrence, bool isActive)
+    {
+        if (occurrence.CombatantId is { } id)
+            return new TurnOrderPortrait(
+                _textures.GetOrCreate(_turnPortraits[id]),
+                _textures.GetOrCreate(new ContentId("ui.ui_panels.png"))
+            )
+            {
+                IsActive = isActive,
+            };
+        if (occurrence.Icon is { } icon)
+            return new ImageElement
+            {
+                Texture = _textures.GetOrCreate(new ContentId(icon)),
+                Width = 64f,
+                Height = 64f,
+                SizingMode = ImageSizingMode.Fit,
+                RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+            };
+        return new TextElement(occurrence.Label, _hudTextStyle)
+        {
+            Width = 80f,
+            Height = 64f,
+            RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+        };
+    }
+
     private void OpenHandDialog(PlayerHand hand)
     {
         var dialog = _gui.StartModalDialog();
@@ -255,31 +415,38 @@ public class CombatScene : Scene
         var panel = CreateAtlasPanel(atlas, "region-0006");
         dialog.Content.Children.Add(panel);
         var left = hand == PlayerHand.Left;
-        panel.Children.Add(new TextElement(left ? "Left Hand — Frost" : "Right Hand — Sword", _hudTextStyle)
-        {
-            Height = 32f,
-            VerticalAlignment = AlignVertical.Top,
-            Margins = new(24f, 24f),
-            RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
-        });
-        panel.Children.Add(CreateHudImage(
-            left ? "abilities.basic_spells.png" : "equipment.weapons_one_handed.png",
-            left ? new(410, 0, 397, 334) : new(0, 0, 405, 334)));
-        panel.Children.Add(new TextButton
-        {
-            Label = "Close",
-            Style = _hudTextStyle,
-            Texture = atlas,
-            TexCoord = _retreatButton.TexCoord,
-            SourceBorders = new(48f, 32f, 48f, 32f),
-            BorderScale = 0.4f,
-            Width = 120f,
-            Height = 44f,
-            VerticalAlignment = AlignVertical.Bottom,
-            Margins = new(16f, 16f),
-            RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
-            Action = _ => dialog.Dispose(),
-        });
+        panel.Children.Add(
+            new TextElement(left ? "Left Hand — Frost" : "Right Hand — Sword", _hudTextStyle)
+            {
+                Height = 32f,
+                VerticalAlignment = AlignVertical.Top,
+                Margins = new(24f, 24f),
+                RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+            }
+        );
+        panel.Children.Add(
+            CreateHudImage(
+                left ? "abilities.basic_spells.png" : "equipment.weapons_one_handed.png",
+                left ? new(410, 0, 397, 334) : new(0, 0, 405, 334)
+            )
+        );
+        panel.Children.Add(
+            new TextButton
+            {
+                Label = "Close",
+                Style = _hudTextStyle,
+                Texture = atlas,
+                TexCoord = _retreatButton.TexCoord,
+                SourceBorders = new(48f, 32f, 48f, 32f),
+                BorderScale = 0.4f,
+                Width = 120f,
+                Height = 44f,
+                VerticalAlignment = AlignVertical.Bottom,
+                Margins = new(16f, 16f),
+                RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+                Action = _ => dialog.Dispose(),
+            }
+        );
     }
 
     private void SelectHand(PlayerHand hand)
@@ -325,36 +492,41 @@ public class CombatScene : Scene
         };
     }
 
-    private ImageElement CreateHudImage(string contentId, Rectangle<int> sourceRegion) => new()
-    {
-        Texture = _textures.GetOrCreate(new ContentId(contentId)),
-        SourceRegion = sourceRegion,
-        Width = 210f,
-        Height = 180f,
-        Margins = new(0f, 0f, 24f, 24f),
-        HorizontalAlignment = AlignHorizontal.Center,
-        VerticalAlignment = AlignVertical.Center,
-        SizingMode = ImageSizingMode.Fit,
-        SortOrder = 1,
-        RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
-    };
+    private ImageElement CreateHudImage(string contentId, Rectangle<int> sourceRegion) =>
+        new()
+        {
+            Texture = _textures.GetOrCreate(new ContentId(contentId)),
+            SourceRegion = sourceRegion,
+            Width = 210f,
+            Height = 180f,
+            Margins = new(0f, 0f, 24f, 24f),
+            HorizontalAlignment = AlignHorizontal.Center,
+            VerticalAlignment = AlignVertical.Center,
+            SizingMode = ImageSizingMode.Fit,
+            SortOrder = 1,
+            RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+        };
 
-    private TextElement CreateHudLabel(string text, AlignVertical alignment) => new(text, _hudTextStyle)
-    {
-        Height = 20f,
-        HorizontalAlignment = AlignHorizontal.Center,
-        VerticalAlignment = alignment,
-        Margins = new(10f, 10f, 8f, 8f),
-        SortOrder = 2,
-        RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
-    };
+    private TextElement CreateHudLabel(string text, AlignVertical alignment) =>
+        new(text, _hudTextStyle)
+        {
+            Height = 20f,
+            HorizontalAlignment = AlignHorizontal.Center,
+            VerticalAlignment = alignment,
+            Margins = new(10f, 10f, 8f, 8f),
+            SortOrder = 2,
+            RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+        };
 
     /// <summary>Uses a named region of the shared atlas as a cell's panel artwork.</summary>
     private static AtlasPanel CreateAtlasPanel(ITexture atlas, string regionName) =>
-        new(atlas, regionName,
+        new(
+            atlas,
+            regionName,
             regionName is "region-0000" or "region-0001"
                 ? new(32f, 32f, 32f, 32f)
-                : new(48f, 32f, 48f, 32f))
+                : new(48f, 32f, 48f, 32f)
+        )
         {
             Margins = new(3f, 3f),
         };
@@ -374,5 +546,21 @@ public class CombatScene : Scene
         _worldCamera.Position = new(_worldSize.X * 0.5f, _worldSize.Y * 0.5f, 1f);
         _background.SetWorldSize(_worldSize);
         _formation.SetWorldSize(_worldSize);
+        if (_worldView is { } view && _centerHudPanel is { } hud && hud.Bounds.Size.Y > 0f)
+        {
+            var viewport = view.ViewComponent.ViewportRegion;
+            if (viewport.Size.Y > 0)
+            {
+                // Map actual screen layout back through the Fill viewport, including cropping.
+                var worldPerPixel = _worldSize.Y / viewport.Size.Y;
+                var top =
+                    (view.Bounds.Origin.Y + TopHudHeight + 24f - viewport.Origin.Y) * worldPerPixel;
+                var bottom = (hud.Bounds.Origin.Y - 32f - viewport.Origin.Y) * worldPerPixel;
+                _formation.SetVerticalLimits(top, bottom);
+            }
+        }
     }
 }
+
+
+

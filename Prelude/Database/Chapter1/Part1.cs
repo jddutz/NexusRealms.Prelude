@@ -7,28 +7,28 @@ public sealed record Part1 : StoryGraph
 {
     public const string SubgraphId = "ch1_p1";
 
-    public static readonly Character AlleywayThug1 = new()
+    public static readonly CharacterData AlleywayThug1 = new()
     {
         Id = new($"{SubgraphId}_{nameof(AlleywayThug1)}"),
         Name = "Alleyway Thug #1",
         Artwork = new("characters.alley_thug_1.png"),
-        Portrait = new("portraits.enforcer_male.png"),
+        Portrait = new("portraits.alley_thug_1.png"),
     };
 
-    public static readonly Character AlleywayThug2 = new()
+    public static readonly CharacterData AlleywayThug2 = new()
     {
         Id = new($"{SubgraphId}_{nameof(AlleywayThug2)}"),
         Name = "Alleyway Thug #2",
         Artwork = new("characters.alley_thug_2.png"),
-        Portrait = new("portraits.pugilist_male.png"),
+        Portrait = new("portraits.alley_thug_2.png"),
     };
 
-    public static readonly Character AlleywayThug3 = new()
+    public static readonly CharacterData AlleywayThug3 = new()
     {
         Id = new($"{SubgraphId}_{nameof(AlleywayThug3)}"),
         Name = "Alleyway Thug #3",
         Artwork = new("characters.alley_thug_3.png"),
-        Portrait = new("portraits.vagabond_male.png"),
+        Portrait = new("portraits.alley_thug_3.png"),
     };
 
     public static readonly StoryNode Intro = new CombatScenario

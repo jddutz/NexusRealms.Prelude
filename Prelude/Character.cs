@@ -1,4 +1,4 @@
-namespace NexusRealms.Prelude.Combat;
+namespace NexusRealms.Prelude;
 
 /// <summary>
 /// Represents a combat character and owns the character's world-space visual.
@@ -6,6 +6,14 @@ namespace NexusRealms.Prelude.Combat;
 public sealed class Character : GameObject2D
 {
     private readonly SpriteInstance _sprite;
+    private SpriteInstance? _focusIndicator;
+    private ITexture? _validIndicator;
+    private ITexture? _invalidIndicator;
+    private byte[]? _hitPixels;
+    public bool IsFocused { get; private set; }
+    public bool IsValidTarget { get; private set; }
+    public event Action<Character>? FocusChanged;
+    public SpriteRenderer FocusRenderer { get; } = new() { IsVisible = false };
     private SpriteAnimationPlayer? _animationPlayer;
     private float _elevation;
 
@@ -14,13 +22,26 @@ public sealed class Character : GameObject2D
     /// </summary>
     /// <param name="definition">The immutable story definition for the character.</param>
     /// <param name="texture">The texture used to render the character.</param>
-    public Character(DataModel.Character definition, ITexture texture)
+    /// <param name="shadowTexture">The ground shadow rendered at the feet.</param>
+    public Character(DataModel.CharacterData definition, ITexture texture, ITexture shadowTexture)
     {
         ArgumentNullException.ThrowIfNull(definition);
         ArgumentNullException.ThrowIfNull(texture);
+        ArgumentNullException.ThrowIfNull(shadowTexture);
 
         Definition = definition;
         Texture = texture;
+        ShadowRenderer = new SpriteRenderer { Texture = shadowTexture };
+        ShadowRenderer.Add(
+            new SpriteInstance
+            {
+                // Flatten the square source into a rectangular patch on the ground.
+                Size = new(texture.Width * 1.10f, texture.Height * 0.12f),
+                // Shift the ground patch up by one quarter of its height.
+                Anchor = new(0.5f, 0.75f),
+            }
+        );
+        AddComponent(ShadowRenderer);
         Renderer = new SpriteRenderer { Texture = texture };
         _sprite = new SpriteInstance
         {
@@ -29,16 +50,67 @@ public sealed class Character : GameObject2D
         };
         SpriteId = Renderer.Add(_sprite);
         AddComponent(Renderer);
+        AddComponent(FocusRenderer);
+    }
+
+    public void ConfigureFocusIndicator(ITexture valid, ITexture invalid, ulong layerMask)
+    {
+        _validIndicator = valid;
+        _invalidIndicator = invalid;
+        FocusRenderer.RenderLayerMask = layerMask;
+        _focusIndicator = new SpriteInstance { Anchor = new(0.5f, 1f) };
+        FocusRenderer.Add(_focusIndicator);
+        RefreshFocusIndicator();
+    }
+
+    internal void SetFocus(bool focused, bool validTarget)
+    {
+        if (IsFocused == focused && IsValidTarget == validTarget) return;
+        var focusChanged = IsFocused != focused;
+        IsFocused = focused;
+        IsValidTarget = validTarget;
+        RefreshFocusIndicator();
+        if (focusChanged) FocusChanged?.Invoke(this);
+    }
+
+    private void RefreshFocusIndicator()
+    {
+        FocusRenderer.IsVisible = IsFocused;
+        var texture = IsValidTarget ? _validIndicator : _invalidIndicator;
+        if (_focusIndicator is null || texture is null) return;
+        FocusRenderer.Texture = texture;
+        var height = Texture.Height * 0.12f;
+        _focusIndicator.Size = new(height * texture.Width / texture.Height, height);
+        _focusIndicator.Transform = Matrix4X4.CreateTranslation(0f,
+            -Texture.Height - Elevation - Texture.Height * 0.02f, 0f);
+        FocusRenderer.DrawOrder = 100;
+    }
+
+    /// <summary>Tests the rendered sprite's opaque pixels rather than its transparent rectangle.</summary>
+    public bool HitTest(Vector2D<float> worldPosition)
+    {
+        var x = (worldPosition.X - Position.X) / Scale.X + Texture.Width * 0.5f;
+        var y = (worldPosition.Y - Position.Y) / Scale.Y + Texture.Height + Elevation;
+        if (x < 0f || y < 0f || x >= Texture.Width || y >= Texture.Height) return false;
+        if (_hitPixels is null)
+        {
+            _hitPixels = new byte[checked((int)Texture.Count * 4)];
+            Texture.WriteTo(0, Texture.Count, ColorFormatEnum.RGBA8UNorm, _hitPixels);
+        }
+        return _hitPixels[((int)y * (int)Texture.Width + (int)x) * 4 + 3] > 16;
     }
 
     /// <summary>Gets the immutable story definition represented by this entity.</summary>
-    public DataModel.Character Definition { get; }
+    public DataModel.CharacterData Definition { get; }
 
     /// <summary>Gets the texture used by the character's sprite.</summary>
     public ITexture Texture { get; }
 
     /// <summary>Gets the renderer owned by this character.</summary>
     public SpriteRenderer Renderer { get; }
+
+    /// <summary>Gets the ground shadow renderer anchored at the character position.</summary>
+    public SpriteRenderer ShadowRenderer { get; }
 
     /// <summary>Gets the stable identifier of the character's primary sprite instance.</summary>
     public SpriteInstanceId SpriteId { get; }
@@ -56,6 +128,7 @@ public sealed class Character : GameObject2D
 
             _elevation = value;
             _sprite.Transform = Matrix4X4.CreateTranslation(0f, -value, 0f);
+            RefreshFocusIndicator();
         }
     }
 
@@ -77,3 +150,5 @@ public sealed class Character : GameObject2D
         base.Update(deltaTime);
     }
 }
+
+

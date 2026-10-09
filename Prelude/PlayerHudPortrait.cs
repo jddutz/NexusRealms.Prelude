@@ -6,8 +6,8 @@ public sealed class PlayerHudPortrait : ImageElement
     public PlayerHudPortrait(ITexture texture)
     {
         Texture = texture;
-        Width = 128f;
-        Height = 128f;
+        Width = 160f;
+        Height = 160f;
         HorizontalAlignment = AlignHorizontal.Left;
         VerticalAlignment = AlignVertical.Top;
         Margins = new(16f, 0f, 0f, 0f);
