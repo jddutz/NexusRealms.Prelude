@@ -21,6 +21,7 @@ public class CombatScene : Scene
     private readonly Vector2D<float> _worldSize;
     private readonly GameState _gameState;
     private readonly ITextStyle _hudTextStyle;
+    private readonly IGraphicalUserInterface _gui;
     private AtlasPanel? _leftHandPanel;
     private AtlasPanel? _rightHandPanel;
 
@@ -39,13 +40,15 @@ public class CombatScene : Scene
         IWindowService windowService,
         Storyline storyline,
         ITextStyleRegistry textStyles,
-        GameState gameState
+        GameState gameState,
+        IGraphicalUserInterface gui
     )
     {
         _textures = textures;
         _storyline = storyline;
         _windowService = windowService;
         _gameState = gameState;
+        _gui = gui;
         _hudTextStyle = textStyles.GetOrCreate(BuiltInFonts.Default, 16f);
 
         if (!storyline.Nodes.TryGetValue(storyline.StartNodeId, out var startNode))
@@ -198,6 +201,7 @@ public class CombatScene : Scene
         // A primary-pointer press and release within the panel simulates a tap.
         bottomLeft.InputMap.OnMouseButtonReleased(MouseButtonEnum.Left)
             .Invoke(() => SelectHand(PlayerHand.Left));
+        bottomLeft.InputMap.OnLongPress(() => OpenHandDialog(PlayerHand.Left));
         bottomLeft.Margins = new(10f, 10f);
         // The ice spell occupies the second cell in the sheet's first row.
         bottomLeft.Children.Add(CreateHudImage("abilities.basic_spells.png", new(410, 0, 397, 334)));
@@ -210,7 +214,7 @@ public class CombatScene : Scene
         bottomCenter.VerticalAlignment = AlignVertical.Bottom;
         bottomCenter.Children.Add(new PlayerHudPortrait(_textures.GetOrCreate(_gameState.Portrait)));
         bottomCenter.Children.Add(new PlayerStatusBars(_gameState,
-            _textures.GetOrCreate(new ContentId("icons.status_icons.png")), _hudTextStyle));
+            _textures.GetOrCreate(new ContentId("icons.status_icons.png"))));
         bottomCenter.Children.Add(CreateZodiacImage());
         layout.SetCell(2, 1, bottomCenter);
         var bottomRight = CreateAtlasPanel(atlas, "region-0000");
@@ -218,6 +222,7 @@ public class CombatScene : Scene
         bottomRight.IsSelected = ActiveHand == PlayerHand.Right;
         bottomRight.InputMap.OnMouseButtonReleased(MouseButtonEnum.Left)
             .Invoke(() => SelectHand(PlayerHand.Right));
+        bottomRight.InputMap.OnLongPress(() => OpenHandDialog(PlayerHand.Right));
         bottomRight.Margins = new(10f, 10f);
         // The sword occupies the first cell in the sheet's first row.
         bottomRight.Children.Add(CreateHudImage("equipment.weapons_one_handed.png", new(0, 0, 405, 334)));
@@ -240,6 +245,41 @@ public class CombatScene : Scene
         Children.Add(_background);
         Children.Add(_formation);
         ApplyWorldSize();
+    }
+
+    private void OpenHandDialog(PlayerHand hand)
+    {
+        var dialog = _gui.StartModalDialog();
+        dialog.Content.Height = 340f;
+        var atlas = _textures.GetOrCreate(new ContentId("ui.ui_panels.png"));
+        var panel = CreateAtlasPanel(atlas, "region-0006");
+        dialog.Content.Children.Add(panel);
+        var left = hand == PlayerHand.Left;
+        panel.Children.Add(new TextElement(left ? "Left Hand — Frost" : "Right Hand — Sword", _hudTextStyle)
+        {
+            Height = 32f,
+            VerticalAlignment = AlignVertical.Top,
+            Margins = new(24f, 24f),
+            RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+        });
+        panel.Children.Add(CreateHudImage(
+            left ? "abilities.basic_spells.png" : "equipment.weapons_one_handed.png",
+            left ? new(410, 0, 397, 334) : new(0, 0, 405, 334)));
+        panel.Children.Add(new TextButton
+        {
+            Label = "Close",
+            Style = _hudTextStyle,
+            Texture = atlas,
+            TexCoord = _retreatButton.TexCoord,
+            SourceBorders = new(48f, 32f, 48f, 32f),
+            BorderScale = 0.4f,
+            Width = 120f,
+            Height = 44f,
+            VerticalAlignment = AlignVertical.Bottom,
+            Margins = new(16f, 16f),
+            RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+            Action = _ => dialog.Dispose(),
+        });
     }
 
     private void SelectHand(PlayerHand hand)
