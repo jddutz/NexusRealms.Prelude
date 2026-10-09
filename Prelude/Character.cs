@@ -10,6 +10,31 @@ public sealed class Character : GameObject2D
     private ITexture? _validIndicator;
     private ITexture? _invalidIndicator;
     private byte[]? _hitPixels;
+    private int _health;
+    private int _focus;
+    public event Action<Character>? ResourcesChanged;
+    public int Health
+    {
+        get => _health;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
+            if (_health == value) return;
+            _health = value;
+            ResourcesChanged?.Invoke(this);
+        }
+    }
+    public int Focus
+    {
+        get => _focus;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
+            if (_focus == value) return;
+            _focus = value;
+            ResourcesChanged?.Invoke(this);
+        }
+    }
     public bool IsFocused { get; private set; }
     public bool IsValidTarget { get; private set; }
     public event Action<Character>? FocusChanged;
@@ -30,6 +55,8 @@ public sealed class Character : GameObject2D
         ArgumentNullException.ThrowIfNull(shadowTexture);
 
         Definition = definition;
+        Health = definition.Health;
+        Focus = definition.Focus;
         Texture = texture;
         ShadowRenderer = new SpriteRenderer { Texture = shadowTexture };
         ShadowRenderer.Add(
@@ -75,15 +102,20 @@ public sealed class Character : GameObject2D
 
     private void RefreshFocusIndicator()
     {
-        FocusRenderer.IsVisible = IsFocused;
         var texture = IsValidTarget ? _validIndicator : _invalidIndicator;
-        if (_focusIndicator is null || texture is null) return;
+        if (_focusIndicator is null || texture is null)
+        {
+            FocusRenderer.IsVisible = false;
+            return;
+        }
         FocusRenderer.Texture = texture;
         var height = Texture.Height * 0.12f;
         _focusIndicator.Size = new(height * texture.Width / texture.Height, height);
         _focusIndicator.Transform = Matrix4X4.CreateTranslation(0f,
             -Texture.Height - Elevation - Texture.Height * 0.02f, 0f);
         FocusRenderer.DrawOrder = 100;
+        // Publish the drawable only after its selected texture and geometry are ready.
+        FocusRenderer.IsVisible = IsFocused;
     }
 
     /// <summary>Tests the rendered sprite's opaque pixels rather than its transparent rectangle.</summary>
@@ -150,5 +182,7 @@ public sealed class Character : GameObject2D
         base.Update(deltaTime);
     }
 }
+
+
 
 

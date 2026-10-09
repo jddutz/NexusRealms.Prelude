@@ -38,6 +38,7 @@ public enum FormationSlot
 public sealed class CharacterFormation : GameObject2D
 {
     private const float CharacterHeightFraction = 0.62f;
+    private const float CharacterScale = 0.75f;
     private float _verticalOffset;
     private float _maximumCharacterHeight = float.PositiveInfinity;
 
@@ -161,7 +162,7 @@ public sealed class CharacterFormation : GameObject2D
             WorldSize.Y * slot.Anchor.Y + _verticalOffset
         );
         var targetHeight =
-            Math.Min(WorldSize.Y * CharacterHeightFraction, _maximumCharacterHeight) * slot.Scale;
+            Math.Min(WorldSize.Y * CharacterHeightFraction, _maximumCharacterHeight) * slot.Scale * CharacterScale;
         var scale = targetHeight / character.Texture.Height;
         character.Scale = new(scale, scale);
         character.Renderer.DrawOrder = slot.SortOrder;
@@ -194,3 +195,4 @@ public sealed class CharacterFormation : GameObject2D
         public float Scale { get; } = scale;
     }
 }
+

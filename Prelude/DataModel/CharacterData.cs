@@ -15,6 +15,8 @@ public sealed record CharacterData
     /// </summary>
     public required string Name { get; init; }
     public int Initiative { get; init; }
+    public int Health { get; init; } = 5;
+    public int Focus { get; init; } = 2;
 
     /// <summary>
     /// Gets the identifier of the character's artwork.
@@ -24,3 +26,4 @@ public sealed record CharacterData
     /// <summary>Gets the character's turn-order portrait texture.</summary>
     public required ContentId Portrait { get; init; }
 }
+

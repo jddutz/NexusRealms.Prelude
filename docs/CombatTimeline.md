@@ -82,3 +82,12 @@ clears focus. These validity rules are provisional until authored abilities exis
 Run focus-transition and opaque-pixel hit-test checks with:
 
     dotnet run --project tests/TargetSelectionChecks
+
+Character visuals use 75% of the prior formation scale. Each character's
+screen-space overhead display shows red Health and blue Focus segments beside
+the selection symbol, with fixed-size icons and bars. CharacterData supplies the
+initial values (defaults: Health 5, Focus 2). Runtime Character.Health and
+Character.Focus accept nonnegative values and raise ResourcesChanged on changes.
+The overhead display reads those current values and follows scaling, elevation,
+and the actual world viewport. Selecting a target remains independent of its
+Focus resource.

@@ -15,10 +15,14 @@ var invalid = new Texture(new("invalid"), 1, 1, [new(1f, 0f, 0f, 1f)]);
 var character = new Character(new CharacterData
     { Id = "test", Name = "Test", Artwork = new("test"), Portrait = new("test") }, texture, texture);
 character.ConfigureFocusIndicator(valid, invalid, 1);
+ITexture? firstPublishedTexture = null;
+character.FocusRenderer.DrawableAdded += (_, _) =>
+    firstPublishedTexture ??= character.FocusRenderer.Texture;
 var changes = 0;
 character.FocusChanged += _ => changes++;
 character.SetFocus(true, true);
 Check(character.IsFocused && character.FocusRenderer.IsVisible && character.FocusRenderer.Texture == valid);
+Check(firstPublishedTexture == valid);
 character.SetFocus(true, true);
 Check(changes == 1);
 character.SetFocus(true, false);
@@ -32,4 +36,20 @@ Check(character.HitTest(new(11f, 17f))); // Opaque top-right pixel.
 Check(!character.HitTest(new(15f, 17f)));
 character.Elevation = 3f;
 Check(character.HitTest(new(11f, 11f)));
+Check(character.Health == 5 && character.Focus == 2);
+var resourcesChanged = 0;
+character.ResourcesChanged += _ => resourcesChanged++;
+character.Health = 3;
+character.Focus = 1;
+character.Focus = 1;
+Check(resourcesChanged == 2 && character.Health == 3 && character.Focus == 1);
+try { character.Health = -1; throw new Exception("Accepted negative health"); }
+catch (ArgumentOutOfRangeException) { }
+var formation = new CharacterFormation(new(1000f, 1000f));
+formation.SetSlot(FormationSlot.FrontCenter, character);
+Check(character.Scale.Y == 1000f * 0.62f * 0.75f / texture.Height);
+formation.SetVerticalLimits(200f, 600f);
+Check(character.Scale.Y == 400f * 0.75f / texture.Height);
 Console.WriteLine("Target selection checks passed.");
+
+

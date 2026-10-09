@@ -3,8 +3,10 @@
   <ItemGroup>
     <ProjectReference Include="../../../Nexus/src/Game/Nexus.Game.csproj" />
     <ProjectReference Include="../../../Nexus/src/Graphics/Nexus.Graphics.csproj" />
+    <Compile Include="../../Prelude/CharacterFormation.cs" Link="CharacterFormation.cs" />
     <Compile Include="../../Prelude/Character.cs" Link="Character.cs" />
     <Compile Include="../../Prelude/DataModel/CharacterData.cs" Link="CharacterData.cs" />
     <Compile Include="../../Prelude/DataModel/CharacterId.cs" Link="CharacterId.cs" />
   </ItemGroup>
 </Project>
+

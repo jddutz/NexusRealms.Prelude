@@ -26,6 +26,7 @@ public class CombatScene : Scene
     private View? _worldView;
     private AtlasPanel? _centerHudPanel;
     private TurnOrderStrip? _turnOrder;
+    private readonly List<(Character Character, CharacterStatusDisplay Display)> _characterDisplays = [];
     private Character? _pointerTarget;
     private Character? _pressedTarget;
     public Character? FocusedCharacter { get; private set; }
@@ -135,6 +136,12 @@ public class CombatScene : Scene
                 _textures.GetOrCreate(new ContentId("ui.selection_indicator.png")),
                 _textures.GetOrCreate(new ContentId("ui.invalid_selection.png")), _worldLayerMask);
             _formation.SetSlot(placement.Slot, combatCharacter);
+            var display = new CharacterStatusDisplay(combatCharacter,
+                _textures.GetOrCreate(new ContentId("icons.status_icons.png")))
+            {
+                Width = 132f, Height = 44f, SortOrder = 10,
+            };
+            _characterDisplays.Add((combatCharacter, display));
         }
 
         _turnPortraits.Add("player", _gameState.Portrait);
@@ -302,6 +309,7 @@ public class CombatScene : Scene
         Children.Add(uiView);
         Children.Add(_background);
         Children.Add(_formation);
+        foreach (var (_, display) in _characterDisplays) Children.Add(display);
         ApplyWorldSize();
     }
 
@@ -558,10 +566,25 @@ public class CombatScene : Scene
                     (view.Bounds.Origin.Y + TopHudHeight + 24f - viewport.Origin.Y) * worldPerPixel;
                 var bottom = (hud.Bounds.Origin.Y - 32f - viewport.Origin.Y) * worldPerPixel;
                 _formation.SetVerticalLimits(top, bottom);
+                foreach (var (character, display) in _characterDisplays)
+                {
+                    display.IsVisible = !Combat.HasEnded;
+                    var pixelsPerWorldX = viewport.Size.X / _worldSize.X;
+                    var pixelsPerWorldY = viewport.Size.Y / _worldSize.Y;
+                    var headX = viewport.Origin.X + character.Position.X * pixelsPerWorldX;
+                    var headY = viewport.Origin.Y + (character.Position.Y
+                        - (character.Texture.Height + character.Elevation) * character.Scale.Y) * pixelsPerWorldY;
+                    var symbolWidth = character.FocusRenderer.Instances.Values.First().Size.X
+                        * character.Scale.X * pixelsPerWorldX;
+                    var symbolHeight = character.Texture.Height * 0.12f * character.Scale.Y * pixelsPerWorldY;
+                    display.Arrange(new(headX + symbolWidth * 0.5f + 8f,
+                        headY - symbolHeight * 0.5f - 22f, 132f, 44f));
+                }
             }
         }
     }
 }
+
 
 
 
