@@ -407,7 +407,8 @@ public class CombatScene : Scene
         if (occurrence.CombatantId is { } id)
             return new TurnOrderPortrait(
                 _textures.GetOrCreate(_turnPortraits[id]),
-                _textures.GetOrCreate(new ContentId("ui.ui_panels.png"))
+                _textures.GetOrCreate(new ContentId("ui.ui_panels.png")),
+                _textures.GetOrCreate(new ContentId("ui.ui_panels_selected.png"))
             )
             {
                 IsActive = isActive,
@@ -541,13 +542,14 @@ public class CombatScene : Scene
         };
 
     /// <summary>Uses a named region of the shared atlas as a cell's panel artwork.</summary>
-    private static PanelElement CreatePanelElement(ITexture atlas, string regionName) =>
+    private PanelElement CreatePanelElement(ITexture atlas, string regionName) =>
         new(
             atlas,
             regionName,
             regionName is "region-0000" or "region-0001"
                 ? new(32f, 32f, 32f, 32f)
-                : new(48f, 32f, 48f, 32f)
+                : new(48f, 32f, 48f, 32f),
+            _textures.GetOrCreate(new ContentId("ui.ui_panels_selected.png"))
         )
         {
             Margins = new(3f, 3f),
