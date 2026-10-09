@@ -10,6 +10,9 @@ public sealed record CombatScenario : StoryNode
     /// <summary>
     /// Gets the identifier of the encounter background.
     /// </summary>
+    /// <summary>Optional replay seed; otherwise each encounter receives a fresh seed.</summary>
+    public int? RandomSeed { get; init; }
+
     public ImmutableArray<Combat.EncounterEvent> Events { get; init; } = [];
 
     public required ContentId Background { get; init; }
@@ -19,4 +22,5 @@ public sealed record CombatScenario : StoryNode
     /// </summary>
     public required ImmutableArray<CharacterPlacement> Characters { get; init; }
 }
+
 

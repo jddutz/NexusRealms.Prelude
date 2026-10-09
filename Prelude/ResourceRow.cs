@@ -79,7 +79,7 @@ public sealed class ResourceRow : Element
             var y = Bounds.Origin.Y;
             instances.Add(new(
                 Matrix4X4.CreateScale(width, height, 1f) * Matrix4X4.CreateTranslation(x, y, 0f),
-                new Color(0f, 0f, 0f, 0.35f)));
+                new Color(0f, 0f, 0f, 1f)));
             instances.Add(new(
                 Matrix4X4.CreateScale(MathF.Max(0f, width - 2f * inset), MathF.Max(0f, height - 2f * inset), 1f)
                     * Matrix4X4.CreateTranslation(x + inset, y + inset, 0f),
@@ -95,3 +95,4 @@ public sealed class ResourceRow : Element
 
     }
 }
+

@@ -7,6 +7,7 @@ public sealed class Character : GameObject2D
 {
     private readonly SpriteInstance _sprite;
     private SpriteInstance? _focusIndicator;
+    private Vector2D<float> _indicatorWorldPerPixel = new(1f, 1f);
     private ITexture? _validIndicator;
     private ITexture? _invalidIndicator;
     private byte[]? _hitPixels;
@@ -90,6 +91,15 @@ public sealed class Character : GameObject2D
         RefreshFocusIndicator();
     }
 
+    /// <summary>Compensates for formation scale and viewport zoom to keep symbols screen-sized.</summary>
+    public void SetIndicatorScreenScale(float worldPerPixelX, float worldPerPixelY)
+    {
+        if (!float.IsFinite(worldPerPixelX) || !float.IsFinite(worldPerPixelY)
+            || worldPerPixelX <= 0f || worldPerPixelY <= 0f)
+            throw new ArgumentOutOfRangeException(nameof(worldPerPixelX));
+        _indicatorWorldPerPixel = new(worldPerPixelX, worldPerPixelY);
+        RefreshFocusIndicator();
+    }
     internal void SetFocus(bool focused, bool validTarget)
     {
         if (IsFocused == focused && IsValidTarget == validTarget) return;
@@ -109,10 +119,12 @@ public sealed class Character : GameObject2D
             return;
         }
         FocusRenderer.Texture = texture;
-        var height = Texture.Height * 0.12f;
-        _focusIndicator.Size = new(height * texture.Width / texture.Height, height);
+        const float screenSize = 48f;
+        var fit = screenSize / Math.Max(texture.Width, texture.Height);
+        _focusIndicator.Size = new(texture.Width * fit * _indicatorWorldPerPixel.X / Scale.X,
+            texture.Height * fit * _indicatorWorldPerPixel.Y / Scale.Y);
         _focusIndicator.Transform = Matrix4X4.CreateTranslation(0f,
-            -Texture.Height - Elevation - Texture.Height * 0.02f, 0f);
+            -Texture.Height - Elevation - 8f * _indicatorWorldPerPixel.Y / Scale.Y, 0f);
         FocusRenderer.DrawOrder = 100;
         // Publish the drawable only after its selected texture and geometry are ready.
         FocusRenderer.IsVisible = IsFocused;
@@ -182,6 +194,7 @@ public sealed class Character : GameObject2D
         base.Update(deltaTime);
     }
 }
+
 
 
 

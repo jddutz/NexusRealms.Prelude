@@ -5,9 +5,9 @@ namespace NexusRealms.Prelude;
 /// </summary>
 public class CombatScene : Scene
 {
-    private const float SideHudWidth = 240f;
+    private const float SideHudWidth = 144f;
     private const float TopHudHeight = 120f;
-    private const float BottomHudHeight = 210f;
+    private const float BottomHudHeight = 134f;
     private readonly CombatScenario _startScenario;
     private readonly Storyline _storyline;
     private readonly ITextureRegistry _textures;
@@ -21,10 +21,11 @@ public class CombatScene : Scene
     private readonly GameState _gameState;
     private readonly ITextStyle _hudTextStyle;
     private readonly IGraphicalUserInterface _gui;
-    public Combat.CombatSystem Combat { get; } = new();
+    public Combat.CombatSystem Combat { get; }
+    public int EncounterSeed { get; }
     public TimelineEventRenderer TimelineRenderer { get; }
     private View? _worldView;
-    private AtlasPanel? _centerHudPanel;
+    private PanelElement? _centerHudPanel;
     private TurnOrderStrip? _turnOrder;
     private readonly List<(Character Character, CharacterStatusDisplay Display)> _characterDisplays = [];
     private Character? _pointerTarget;
@@ -32,8 +33,8 @@ public class CombatScene : Scene
     public Character? FocusedCharacter { get; private set; }
     public event Action<Character?>? FocusChanged;
     private readonly Dictionary<string, ContentId> _turnPortraits = [];
-    private AtlasPanel? _leftHandPanel;
-    private AtlasPanel? _rightHandPanel;
+    private PanelElement? _leftHandPanel;
+    private PanelElement? _rightHandPanel;
 
     /// <summary>The hand whose action is currently selected for the player's turn.</summary>
     public PlayerHand ActiveHand { get; private set; } = PlayerHand.Left;
@@ -75,6 +76,10 @@ public class CombatScene : Scene
             ?? throw new InvalidOperationException(
                 $"The storyline start node '{storyline.StartNodeId}' is not a combat scenario."
             );
+
+        EncounterSeed = _startScenario.RandomSeed ?? Random.Shared.Next();
+        Combat = new(unchecked((uint)EncounterSeed));
+        var startingStats = new Random(EncounterSeed);
 
         MainCamera = new StaticCamera();
         _worldLayerMask = 1UL << RenderLayers.Create("World", RenderPasses.Main).Index;
@@ -125,6 +130,13 @@ public class CombatScene : Scene
         foreach (var placement in _startScenario.Characters)
         {
             var character = _storyline.Characters[placement.CharacterId];
+            if (placement.Team == NexusRealms.Prelude.Combat.CombatTeam.Enemies)
+                character = character with
+                {
+                    Health = startingStats.Next(3, 8),
+                    Focus = startingStats.Next(0, 4),
+                    Initiative = startingStats.Next(0, 6),
+                };
             var combatCharacter = new Character(
                 character,
                 _textures.GetOrCreate(character.Artwork),
@@ -136,10 +148,9 @@ public class CombatScene : Scene
                 _textures.GetOrCreate(new ContentId("ui.selection_indicator.png")),
                 _textures.GetOrCreate(new ContentId("ui.invalid_selection.png")), _worldLayerMask);
             _formation.SetSlot(placement.Slot, combatCharacter);
-            var display = new CharacterStatusDisplay(combatCharacter,
-                _textures.GetOrCreate(new ContentId("icons.status_icons.png")))
+            var display = new CharacterStatusDisplay(combatCharacter)
             {
-                Width = 132f, Height = 44f, SortOrder = 10,
+                Width = 132f, Height = 44f, SortOrder = 10, IsVisible = false,
             };
             _characterDisplays.Add((combatCharacter, display));
         }
@@ -162,7 +173,7 @@ public class CombatScene : Scene
                     id,
                     false,
                     placement.InitialTurn,
-                    _storyline.Characters[placement.CharacterId].Initiative,
+                    _formation[placement.Slot]!.Definition.Initiative,
                     placement.Team,
                     row
                 )
@@ -247,7 +258,7 @@ public class CombatScene : Scene
         _turnOrder = turnOrder;
         RefreshTurnOrder();
         Children.Add(turnOrder);
-        var bottomLeft = CreateAtlasPanel(atlas, "region-0000");
+        var bottomLeft = CreatePanelElement(atlas, "region-0000");
         _leftHandPanel = bottomLeft;
         bottomLeft.IsSelected = ActiveHand == PlayerHand.Left;
         // A primary-pointer press and release within the panel simulates a tap.
@@ -263,9 +274,9 @@ public class CombatScene : Scene
         bottomLeft.Children.Add(CreateHudLabel("Left Hand", AlignVertical.Top));
         bottomLeft.Children.Add(CreateHudLabel("Frost", AlignVertical.Bottom));
         layout.SetCell(2, 0, bottomLeft);
-        var bottomCenter = CreateAtlasPanel(atlas, "region-0006");
+        var bottomCenter = CreatePanelElement(atlas, "region-0006");
         _centerHudPanel = bottomCenter;
-        bottomCenter.Height = 160f;
+        bottomCenter.Height = 84f;
         bottomCenter.Margins = new(3f, 3f, 3f, 10f);
         bottomCenter.VerticalAlignment = AlignVertical.Bottom;
         bottomCenter.Children.Add(
@@ -279,7 +290,7 @@ public class CombatScene : Scene
         );
         bottomCenter.Children.Add(CreateZodiacImage());
         layout.SetCell(2, 1, bottomCenter);
-        var bottomRight = CreateAtlasPanel(atlas, "region-0000");
+        var bottomRight = CreatePanelElement(atlas, "region-0000");
         _rightHandPanel = bottomRight;
         bottomRight.IsSelected = ActiveHand == PlayerHand.Right;
         bottomRight
@@ -330,6 +341,8 @@ public class CombatScene : Scene
         FocusedCharacter = character;
         previous?.SetFocus(false, previous.IsValidTarget);
         character?.SetFocus(true, selectedSlot >= FormationSlot.FrontLeft);
+        foreach (var (owner, display) in _characterDisplays)
+            display.IsVisible = owner == character && !Combat.HasEnded;
         FocusChanged?.Invoke(character);
     }
 
@@ -421,7 +434,7 @@ public class CombatScene : Scene
         var dialog = _gui.StartModalDialog();
         dialog.Content.Height = 340f;
         var atlas = _textures.GetOrCreate(new ContentId("ui.ui_panels.png"));
-        var panel = CreateAtlasPanel(atlas, "region-0006");
+        var panel = CreatePanelElement(atlas, "region-0006");
         dialog.Content.Children.Add(panel);
         var left = hand == PlayerHand.Left;
         panel.Children.Add(
@@ -436,7 +449,7 @@ public class CombatScene : Scene
         panel.Children.Add(
             CreateHudImage(
                 left ? "abilities.basic_spells.png" : "equipment.weapons_one_handed.png",
-                left ? new(410, 0, 397, 334) : new(0, 0, 405, 334)
+                left ? new(410, 0, 397, 334) : new(0, 0, 405, 334), scale: 1f
             )
         );
         panel.Children.Add(
@@ -490,25 +503,25 @@ public class CombatScene : Scene
         {
             Texture = _textures.GetOrCreate(new ContentId("zodiac_signs")),
             SourceRegion = signs[Random.Shared.Next(signs.Length)],
-            Width = 112f,
-            Height = 112f,
+            Width = 60f,
+            Height = 60f,
             HorizontalAlignment = AlignHorizontal.Right,
             VerticalAlignment = AlignVertical.Center,
-            Margins = new(0f, 16f, 0f, 0f),
+            Margins = new(0f, 8f, 0f, 0f),
             SizingMode = ImageSizingMode.Fit,
             SortOrder = 1,
             RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
         };
     }
 
-    private ImageElement CreateHudImage(string contentId, Rectangle<int> sourceRegion) =>
+    private ImageElement CreateHudImage(string contentId, Rectangle<int> sourceRegion, float scale = 0.6f) =>
         new()
         {
             Texture = _textures.GetOrCreate(new ContentId(contentId)),
             SourceRegion = sourceRegion,
-            Width = 210f,
-            Height = 180f,
-            Margins = new(0f, 0f, 24f, 24f),
+            Width = 210f * scale,
+            Height = 180f * scale,
+            Margins = new(0f, 0f, 24f * scale, 24f * scale),
             HorizontalAlignment = AlignHorizontal.Center,
             VerticalAlignment = AlignVertical.Center,
             SizingMode = ImageSizingMode.Fit,
@@ -528,7 +541,7 @@ public class CombatScene : Scene
         };
 
     /// <summary>Uses a named region of the shared atlas as a cell's panel artwork.</summary>
-    private static AtlasPanel CreateAtlasPanel(ITexture atlas, string regionName) =>
+    private static PanelElement CreatePanelElement(ITexture atlas, string regionName) =>
         new(
             atlas,
             regionName,
@@ -568,22 +581,27 @@ public class CombatScene : Scene
                 _formation.SetVerticalLimits(top, bottom);
                 foreach (var (character, display) in _characterDisplays)
                 {
-                    display.IsVisible = !Combat.HasEnded;
+                    display.IsVisible = character.IsFocused && !Combat.HasEnded;
                     var pixelsPerWorldX = viewport.Size.X / _worldSize.X;
                     var pixelsPerWorldY = viewport.Size.Y / _worldSize.Y;
+                    character.SetIndicatorScreenScale(1f / pixelsPerWorldX, 1f / pixelsPerWorldY);
                     var headX = viewport.Origin.X + character.Position.X * pixelsPerWorldX;
                     var headY = viewport.Origin.Y + (character.Position.Y
                         - (character.Texture.Height + character.Elevation) * character.Scale.Y) * pixelsPerWorldY;
                     var symbolWidth = character.FocusRenderer.Instances.Values.First().Size.X
                         * character.Scale.X * pixelsPerWorldX;
-                    var symbolHeight = character.Texture.Height * 0.12f * character.Scale.Y * pixelsPerWorldY;
+                    var symbolHeight = character.FocusRenderer.Instances.Values.First().Size.Y
+                        * character.Scale.Y * pixelsPerWorldY;
                     display.Arrange(new(headX + symbolWidth * 0.5f + 8f,
-                        headY - symbolHeight * 0.5f - 22f, 132f, 44f));
+                        headY - 8f - symbolHeight * 0.5f - 22f, 132f, 44f));
                 }
             }
         }
     }
 }
+
+
+
 
 
 

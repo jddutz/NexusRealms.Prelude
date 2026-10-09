@@ -2,193 +2,193 @@
   "Textures": {
     "Content": {
       "shadow": {
-        "FilePath": "Textures/shadow.png"
+        "FilePath": "Textures/shadow.ktx2"
       },
       "square_shadow": {
-        "FilePath": "Textures/square_shadow.png"
+        "FilePath": "Textures/square_shadow.ktx2"
       },
       "zodiac_signs": {
-        "FilePath": "Textures/zodiac_signs.png"
+        "FilePath": "Textures/zodiac_signs.ktx2"
       },
       "abilities.basic_abilities.png": {
-        "FilePath": "Textures/Abilities/basic_abilities.png"
+        "FilePath": "Textures/Abilities/basic_abilities.ktx2"
       },
       "abilities.basic_spells.png": {
-        "FilePath": "Textures/Abilities/basic_spells.png"
+        "FilePath": "Textures/Abilities/basic_spells.ktx2"
       },
       "background.harbor_district_dockside_dusk.png": {
-        "FilePath": "Textures/Background/HarborDistrict/harbor_district_dockside_dusk.png"
+        "FilePath": "Textures/Background/HarborDistrict/harbor_district_dockside_dusk.ktx2"
       },
       "background.harbor_district_dockside_night.png": {
-        "FilePath": "Textures/Background/HarborDistrict/harbor_district_dockside_night.png"
+        "FilePath": "Textures/Background/HarborDistrict/harbor_district_dockside_night.ktx2"
       },
       "background.market_daytime.png": {
-        "FilePath": "Textures/Background/Market/market_daytime.png"
+        "FilePath": "Textures/Background/Market/market_daytime.ktx2"
       },
       "characters.alley_thug_1.png": {
-        "FilePath": "Textures/Characters/alley_thug_1.png"
+        "FilePath": "Textures/Characters/alley_thug_1.ktx2"
       },
       "characters.alley_thug_2.png": {
-        "FilePath": "Textures/Characters/alley_thug_2.png"
+        "FilePath": "Textures/Characters/alley_thug_2.ktx2"
       },
       "characters.alley_thug_3.png": {
-        "FilePath": "Textures/Characters/alley_thug_3.png"
+        "FilePath": "Textures/Characters/alley_thug_3.ktx2"
       },
       "portraits.alley_thug_1.png": {
-        "FilePath": "Textures/Characters/Portraits/alley_thug_1.png"
+        "FilePath": "Textures/Characters/Portraits/alley_thug_1.ktx2"
       },
       "portraits.alley_thug_2.png": {
-        "FilePath": "Textures/Characters/Portraits/alley_thug_2.png"
+        "FilePath": "Textures/Characters/Portraits/alley_thug_2.ktx2"
       },
       "portraits.alley_thug_3.png": {
-        "FilePath": "Textures/Characters/Portraits/alley_thug_3.png"
+        "FilePath": "Textures/Characters/Portraits/alley_thug_3.ktx2"
       },
       "portraits.anarchist_female.png": {
-        "FilePath": "Textures/Characters/Portraits/anarchist_female.png"
+        "FilePath": "Textures/Characters/Portraits/anarchist_female.ktx2"
       },
       "portraits.anarchist_male.png": {
-        "FilePath": "Textures/Characters/Portraits/anarchist_male.png"
+        "FilePath": "Textures/Characters/Portraits/anarchist_male.ktx2"
       },
       "portraits.assassin_female.png": {
-        "FilePath": "Textures/Characters/Portraits/assassin_female.png"
+        "FilePath": "Textures/Characters/Portraits/assassin_female.ktx2"
       },
       "portraits.assassin_male.png": {
-        "FilePath": "Textures/Characters/Portraits/assassin_male.png"
+        "FilePath": "Textures/Characters/Portraits/assassin_male.ktx2"
       },
       "portraits.berserker_female.png": {
-        "FilePath": "Textures/Characters/Portraits/berserker_female.png"
+        "FilePath": "Textures/Characters/Portraits/berserker_female.ktx2"
       },
       "portraits.berserker_male.png": {
-        "FilePath": "Textures/Characters/Portraits/berserker_male.png"
+        "FilePath": "Textures/Characters/Portraits/berserker_male.ktx2"
       },
       "portraits.catalyst_female.png": {
-        "FilePath": "Textures/Characters/Portraits/catalyst_female.png"
+        "FilePath": "Textures/Characters/Portraits/catalyst_female.ktx2"
       },
       "portraits.catalyst_male.png": {
-        "FilePath": "Textures/Characters/Portraits/catalyst_male.png"
+        "FilePath": "Textures/Characters/Portraits/catalyst_male.ktx2"
       },
       "portraits.cyborg_female.png": {
-        "FilePath": "Textures/Characters/Portraits/cyborg_female.png"
+        "FilePath": "Textures/Characters/Portraits/cyborg_female.ktx2"
       },
       "portraits.cyborg_male.png": {
-        "FilePath": "Textures/Characters/Portraits/cyborg_male.png"
+        "FilePath": "Textures/Characters/Portraits/cyborg_male.ktx2"
       },
       "portraits.demonhunter_female.png": {
-        "FilePath": "Textures/Characters/Portraits/demonhunter_female.png"
+        "FilePath": "Textures/Characters/Portraits/demonhunter_female.ktx2"
       },
       "portraits.demonhunter_male.png": {
-        "FilePath": "Textures/Characters/Portraits/demonhunter_male.png"
+        "FilePath": "Textures/Characters/Portraits/demonhunter_male.ktx2"
       },
       "portraits.enchanter_female.png": {
-        "FilePath": "Textures/Characters/Portraits/enchanter_female.png"
+        "FilePath": "Textures/Characters/Portraits/enchanter_female.ktx2"
       },
       "portraits.enchanter_male.png": {
-        "FilePath": "Textures/Characters/Portraits/enchanter_male.png"
+        "FilePath": "Textures/Characters/Portraits/enchanter_male.ktx2"
       },
       "portraits.enforcer_female.png": {
-        "FilePath": "Textures/Characters/Portraits/enforcer_female.png"
+        "FilePath": "Textures/Characters/Portraits/enforcer_female.ktx2"
       },
       "portraits.enforcer_male.png": {
-        "FilePath": "Textures/Characters/Portraits/enforcer_male.png"
+        "FilePath": "Textures/Characters/Portraits/enforcer_male.ktx2"
       },
       "portraits.guardian_female.png": {
-        "FilePath": "Textures/Characters/Portraits/guardian_female.png"
+        "FilePath": "Textures/Characters/Portraits/guardian_female.ktx2"
       },
       "portraits.guardian_male.png": {
-        "FilePath": "Textures/Characters/Portraits/guardian_male.png"
+        "FilePath": "Textures/Characters/Portraits/guardian_male.ktx2"
       },
       "portraits.juggernaut_female.png": {
-        "FilePath": "Textures/Characters/Portraits/juggernaut_female.png"
+        "FilePath": "Textures/Characters/Portraits/juggernaut_female.ktx2"
       },
       "portraits.juggernaut_male.png": {
-        "FilePath": "Textures/Characters/Portraits/juggernaut_male.png"
+        "FilePath": "Textures/Characters/Portraits/juggernaut_male.ktx2"
       },
       "portraits.mage_female.png": {
-        "FilePath": "Textures/Characters/Portraits/mage_female.png"
+        "FilePath": "Textures/Characters/Portraits/mage_female.ktx2"
       },
       "portraits.mage_male.png": {
-        "FilePath": "Textures/Characters/Portraits/mage_male.png"
+        "FilePath": "Textures/Characters/Portraits/mage_male.ktx2"
       },
       "portraits.mercenary_female.png": {
-        "FilePath": "Textures/Characters/Portraits/mercenary_female.png"
+        "FilePath": "Textures/Characters/Portraits/mercenary_female.ktx2"
       },
       "portraits.mercenary_male.png": {
-        "FilePath": "Textures/Characters/Portraits/mercenary_male.png"
+        "FilePath": "Textures/Characters/Portraits/mercenary_male.ktx2"
       },
       "portraits.pugilist_female.png": {
-        "FilePath": "Textures/Characters/Portraits/pugilist_female.png"
+        "FilePath": "Textures/Characters/Portraits/pugilist_female.ktx2"
       },
       "portraits.pugilist_male.png": {
-        "FilePath": "Textures/Characters/Portraits/pugilist_male.png"
+        "FilePath": "Textures/Characters/Portraits/pugilist_male.ktx2"
       },
       "portraits.saboteur_female.png": {
-        "FilePath": "Textures/Characters/Portraits/saboteur_female.png"
+        "FilePath": "Textures/Characters/Portraits/saboteur_female.ktx2"
       },
       "portraits.saboteur_male.png": {
-        "FilePath": "Textures/Characters/Portraits/saboteur_male.png"
+        "FilePath": "Textures/Characters/Portraits/saboteur_male.ktx2"
       },
       "portraits.shadowmancer_female.png": {
-        "FilePath": "Textures/Characters/Portraits/shadowmancer_female.png"
+        "FilePath": "Textures/Characters/Portraits/shadowmancer_female.ktx2"
       },
       "portraits.shadowmancer_male.png": {
-        "FilePath": "Textures/Characters/Portraits/shadowmancer_male.png"
+        "FilePath": "Textures/Characters/Portraits/shadowmancer_male.ktx2"
       },
       "portraits.shaman_female.png": {
-        "FilePath": "Textures/Characters/Portraits/shaman_female.png"
+        "FilePath": "Textures/Characters/Portraits/shaman_female.ktx2"
       },
       "portraits.shaman_male.png": {
-        "FilePath": "Textures/Characters/Portraits/shaman_male.png"
+        "FilePath": "Textures/Characters/Portraits/shaman_male.ktx2"
       },
       "portraits.shapeshifter_female.png": {
-        "FilePath": "Textures/Characters/Portraits/shapeshifter_female.png"
+        "FilePath": "Textures/Characters/Portraits/shapeshifter_female.ktx2"
       },
       "portraits.shapeshifter_male.png": {
-        "FilePath": "Textures/Characters/Portraits/shapeshifter_male.png"
+        "FilePath": "Textures/Characters/Portraits/shapeshifter_male.ktx2"
       },
       "portraits.sharpshooter_female.png": {
-        "FilePath": "Textures/Characters/Portraits/sharpshooter_female.png"
+        "FilePath": "Textures/Characters/Portraits/sharpshooter_female.ktx2"
       },
       "portraits.sharpshooter_male.png": {
-        "FilePath": "Textures/Characters/Portraits/sharpshooter_male.png"
+        "FilePath": "Textures/Characters/Portraits/sharpshooter_male.ktx2"
       },
       "portraits.smuggler_female.png": {
-        "FilePath": "Textures/Characters/Portraits/smuggler_female.png"
+        "FilePath": "Textures/Characters/Portraits/smuggler_female.ktx2"
       },
       "portraits.smuggler_male.png": {
-        "FilePath": "Textures/Characters/Portraits/smuggler_male.png"
+        "FilePath": "Textures/Characters/Portraits/smuggler_male.ktx2"
       },
       "portraits.summoner_female.png": {
-        "FilePath": "Textures/Characters/Portraits/summoner_female.png"
+        "FilePath": "Textures/Characters/Portraits/summoner_female.ktx2"
       },
       "portraits.summoner_male.png": {
-        "FilePath": "Textures/Characters/Portraits/summoner_male.png"
+        "FilePath": "Textures/Characters/Portraits/summoner_male.ktx2"
       },
       "portraits.technomancer_female.png": {
-        "FilePath": "Textures/Characters/Portraits/technomancer_female.png"
+        "FilePath": "Textures/Characters/Portraits/technomancer_female.ktx2"
       },
       "portraits.technomancer_male.png": {
-        "FilePath": "Textures/Characters/Portraits/technomancer_male.png"
+        "FilePath": "Textures/Characters/Portraits/technomancer_male.ktx2"
       },
       "portraits.vagabond_female.png": {
-        "FilePath": "Textures/Characters/Portraits/vagabond_female.png"
+        "FilePath": "Textures/Characters/Portraits/vagabond_female.ktx2"
       },
       "portraits.vagabond_male.png": {
-        "FilePath": "Textures/Characters/Portraits/vagabond_male.png"
+        "FilePath": "Textures/Characters/Portraits/vagabond_male.ktx2"
       },
       "portraits.warden_female.png": {
-        "FilePath": "Textures/Characters/Portraits/warden_female.png"
+        "FilePath": "Textures/Characters/Portraits/warden_female.ktx2"
       },
       "portraits.warden_male.png": {
-        "FilePath": "Textures/Characters/Portraits/warden_male.png"
+        "FilePath": "Textures/Characters/Portraits/warden_male.ktx2"
       },
       "items.items_basic.png": {
-        "FilePath": "Textures/Items/items_basic.png"
+        "FilePath": "Textures/Items/items_basic.ktx2"
       },
       "equipment.weapons_one_handed.png": {
-        "FilePath": "Textures/Items/Equipment/weapons_one_handed.png"
+        "FilePath": "Textures/Items/Equipment/weapons_one_handed.ktx2"
       },
       "ui.ground_shadow.png": {
-        "FilePath": "Textures/UI/ground_shadow.png",
+        "FilePath": "Textures/UI/ground_shadow.ktx2",
         "Regions": {
           "region-0000": {
             "Bounds": {
@@ -207,7 +207,7 @@
         }
       },
       "ui.invalid_selection.png": {
-        "FilePath": "Textures/UI/invalid_selection.png",
+        "FilePath": "Textures/UI/invalid_selection.ktx2",
         "Regions": {
           "region-0000": {
             "Bounds": {
@@ -226,7 +226,7 @@
         }
       },
       "ui.selection_indicator.png": {
-        "FilePath": "Textures/UI/selection_indicator.png",
+        "FilePath": "Textures/UI/selection_indicator.ktx2",
         "Regions": {
           "region-0000": {
             "Bounds": {
@@ -244,8 +244,979 @@
           }
         }
       },
+      "ui.ui_elements.png": {
+        "FilePath": "Textures/UI/ui_elements.ktx2",
+        "Regions": {
+          "region-0000": {
+            "Bounds": {
+              "X": 988,
+              "Y": 8,
+              "Width": 125,
+              "Height": 139
+            },
+            "TexCoords": {
+              "X": 0.6432292,
+              "Y": 0.0078125,
+              "Width": 0.08138021,
+              "Height": 0.13574219
+            }
+          },
+          "region-0001": {
+            "Bounds": {
+              "X": 1437,
+              "Y": 25,
+              "Width": 86,
+              "Height": 95
+            },
+            "TexCoords": {
+              "X": 0.9355469,
+              "Y": 0.024414062,
+              "Width": 0.055989582,
+              "Height": 0.09277344
+            }
+          },
+          "region-0002": {
+            "Bounds": {
+              "X": 1234,
+              "Y": 26,
+              "Width": 69,
+              "Height": 97
+            },
+            "TexCoords": {
+              "X": 0.80338544,
+              "Y": 0.025390625,
+              "Width": 0.044921875,
+              "Height": 0.09472656
+            }
+          },
+          "region-0003": {
+            "Bounds": {
+              "X": 1127,
+              "Y": 27,
+              "Width": 74,
+              "Height": 101
+            },
+            "TexCoords": {
+              "X": 0.73372394,
+              "Y": 0.026367188,
+              "Width": 0.048177082,
+              "Height": 0.09863281
+            }
+          },
+          "region-0004": {
+            "Bounds": {
+              "X": 1291,
+              "Y": 27,
+              "Width": 89,
+              "Height": 97
+            },
+            "TexCoords": {
+              "X": 0.8404948,
+              "Y": 0.026367188,
+              "Width": 0.057942707,
+              "Height": 0.09472656
+            }
+          },
+          "region-0005": {
+            "Bounds": {
+              "X": 775,
+              "Y": 29,
+              "Width": 106,
+              "Height": 107
+            },
+            "TexCoords": {
+              "X": 0.5045573,
+              "Y": 0.028320312,
+              "Width": 0.069010414,
+              "Height": 0.10449219
+            }
+          },
+          "region-0006": {
+            "Bounds": {
+              "X": 15,
+              "Y": 32,
+              "Width": 456,
+              "Height": 81
+            },
+            "TexCoords": {
+              "X": 0.009765625,
+              "Y": 0.03125,
+              "Width": 0.296875,
+              "Height": 0.07910156
+            }
+          },
+          "region-0007": {
+            "Bounds": {
+              "X": 432,
+              "Y": 32,
+              "Width": 226,
+              "Height": 80
+            },
+            "TexCoords": {
+              "X": 0.28125,
+              "Y": 0.03125,
+              "Width": 0.14713542,
+              "Height": 0.078125
+            }
+          },
+          "region-0008": {
+            "Bounds": {
+              "X": 666,
+              "Y": 35,
+              "Width": 103,
+              "Height": 95
+            },
+            "TexCoords": {
+              "X": 0.43359375,
+              "Y": 0.034179688,
+              "Width": 0.06705729,
+              "Height": 0.09277344
+            }
+          },
+          "region-0009": {
+            "Bounds": {
+              "X": 1368,
+              "Y": 36,
+              "Width": 68,
+              "Height": 79
+            },
+            "TexCoords": {
+              "X": 0.890625,
+              "Y": 0.03515625,
+              "Width": 0.044270832,
+              "Height": 0.07714844
+            }
+          },
+          "region-0010": {
+            "Bounds": {
+              "X": 889,
+              "Y": 37,
+              "Width": 95,
+              "Height": 94
+            },
+            "TexCoords": {
+              "X": 0.57877606,
+              "Y": 0.036132812,
+              "Width": 0.061848957,
+              "Height": 0.091796875
+            }
+          },
+          "region-0011": {
+            "Bounds": {
+              "X": 16,
+              "Y": 126,
+              "Width": 632,
+              "Height": 79
+            },
+            "TexCoords": {
+              "X": 0.010416667,
+              "Y": 0.123046875,
+              "Width": 0.41145834,
+              "Height": 0.07714844
+            }
+          },
+          "region-0012": {
+            "Bounds": {
+              "X": 1455,
+              "Y": 132,
+              "Width": 72,
+              "Height": 118
+            },
+            "TexCoords": {
+              "X": 0.9472656,
+              "Y": 0.12890625,
+              "Width": 0.046875,
+              "Height": 0.115234375
+            }
+          },
+          "region-0013": {
+            "Bounds": {
+              "X": 1329,
+              "Y": 135,
+              "Width": 67,
+              "Height": 90
+            },
+            "TexCoords": {
+              "X": 0.8652344,
+              "Y": 0.13183594,
+              "Width": 0.043619793,
+              "Height": 0.087890625
+            }
+          },
+          "region-0014": {
+            "Bounds": {
+              "X": 1397,
+              "Y": 137,
+              "Width": 53,
+              "Height": 102
+            },
+            "TexCoords": {
+              "X": 0.9095052,
+              "Y": 0.13378906,
+              "Width": 0.034505207,
+              "Height": 0.099609375
+            }
+          },
+          "region-0015": {
+            "Bounds": {
+              "X": 1233,
+              "Y": 140,
+              "Width": 98,
+              "Height": 94
+            },
+            "TexCoords": {
+              "X": 0.8027344,
+              "Y": 0.13671875,
+              "Width": 0.063802086,
+              "Height": 0.091796875
+            }
+          },
+          "region-0016": {
+            "Bounds": {
+              "X": 1127,
+              "Y": 142,
+              "Width": 107,
+              "Height": 95
+            },
+            "TexCoords": {
+              "X": 0.73372394,
+              "Y": 0.13867188,
+              "Width": 0.06966146,
+              "Height": 0.09277344
+            }
+          },
+          "region-0017": {
+            "Bounds": {
+              "X": 778,
+              "Y": 147,
+              "Width": 114,
+              "Height": 116
+            },
+            "TexCoords": {
+              "X": 0.50651044,
+              "Y": 0.14355469,
+              "Width": 0.07421875,
+              "Height": 0.11328125
+            }
+          },
+          "region-0018": {
+            "Bounds": {
+              "X": 659,
+              "Y": 148,
+              "Width": 114,
+              "Height": 114
+            },
+            "TexCoords": {
+              "X": 0.42903647,
+              "Y": 0.14453125,
+              "Width": 0.07421875,
+              "Height": 0.111328125
+            }
+          },
+          "region-0019": {
+            "Bounds": {
+              "X": 1007,
+              "Y": 148,
+              "Width": 114,
+              "Height": 116
+            },
+            "TexCoords": {
+              "X": 0.65559894,
+              "Y": 0.14453125,
+              "Width": 0.07421875,
+              "Height": 0.11328125
+            }
+          },
+          "region-0020": {
+            "Bounds": {
+              "X": 894,
+              "Y": 149,
+              "Width": 113,
+              "Height": 114
+            },
+            "TexCoords": {
+              "X": 0.58203125,
+              "Y": 0.14550781,
+              "Width": 0.07356771,
+              "Height": 0.111328125
+            }
+          },
+          "region-0021": {
+            "Bounds": {
+              "X": 15,
+              "Y": 215,
+              "Width": 536,
+              "Height": 81
+            },
+            "TexCoords": {
+              "X": 0.009765625,
+              "Y": 0.20996094,
+              "Width": 0.34895834,
+              "Height": 0.07910156
+            }
+          },
+          "region-0022": {
+            "Bounds": {
+              "X": 512,
+              "Y": 215,
+              "Width": 133,
+              "Height": 81
+            },
+            "TexCoords": {
+              "X": 0.33333334,
+              "Y": 0.20996094,
+              "Width": 0.08658854,
+              "Height": 0.07910156
+            }
+          },
+          "region-0023": {
+            "Bounds": {
+              "X": 1381,
+              "Y": 263,
+              "Width": 67,
+              "Height": 121
+            },
+            "TexCoords": {
+              "X": 0.89908856,
+              "Y": 0.25683594,
+              "Width": 0.043619793,
+              "Height": 0.11816406
+            }
+          },
+          "region-0024": {
+            "Bounds": {
+              "X": 1446,
+              "Y": 263,
+              "Width": 81,
+              "Height": 123
+            },
+            "TexCoords": {
+              "X": 0.94140625,
+              "Y": 0.25683594,
+              "Width": 0.052734375,
+              "Height": 0.12011719
+            }
+          },
+          "region-0025": {
+            "Bounds": {
+              "X": 1245,
+              "Y": 265,
+              "Width": 140,
+              "Height": 107
+            },
+            "TexCoords": {
+              "X": 0.8105469,
+              "Y": 0.25878906,
+              "Width": 0.091145836,
+              "Height": 0.10449219
+            }
+          },
+          "region-0026": {
+            "Bounds": {
+              "X": 1142,
+              "Y": 266,
+              "Width": 93,
+              "Height": 106
+            },
+            "TexCoords": {
+              "X": 0.74348956,
+              "Y": 0.25976562,
+              "Width": 0.060546875,
+              "Height": 0.103515625
+            }
+          },
+          "region-0027": {
+            "Bounds": {
+              "X": 781,
+              "Y": 290,
+              "Width": 106,
+              "Height": 113
+            },
+            "TexCoords": {
+              "X": 0.50846356,
+              "Y": 0.28320312,
+              "Width": 0.069010414,
+              "Height": 0.11035156
+            }
+          },
+          "region-0028": {
+            "Bounds": {
+              "X": 663,
+              "Y": 292,
+              "Width": 44,
+              "Height": 46
+            },
+            "TexCoords": {
+              "X": 0.43164062,
+              "Y": 0.28515625,
+              "Width": 0.028645834,
+              "Height": 0.044921875
+            }
+          },
+          "region-0029": {
+            "Bounds": {
+              "X": 728,
+              "Y": 292,
+              "Width": 44,
+              "Height": 46
+            },
+            "TexCoords": {
+              "X": 0.47395834,
+              "Y": 0.28515625,
+              "Width": 0.028645834,
+              "Height": 0.044921875
+            }
+          },
+          "region-0030": {
+            "Bounds": {
+              "X": 901,
+              "Y": 292,
+              "Width": 44,
+              "Height": 46
+            },
+            "TexCoords": {
+              "X": 0.58658856,
+              "Y": 0.28515625,
+              "Width": 0.028645834,
+              "Height": 0.044921875
+            }
+          },
+          "region-0031": {
+            "Bounds": {
+              "X": 965,
+              "Y": 292,
+              "Width": 45,
+              "Height": 46
+            },
+            "TexCoords": {
+              "X": 0.6282552,
+              "Y": 0.28515625,
+              "Width": 0.029296875,
+              "Height": 0.044921875
+            }
+          },
+          "region-0032": {
+            "Bounds": {
+              "X": 1027,
+              "Y": 292,
+              "Width": 45,
+              "Height": 46
+            },
+            "TexCoords": {
+              "X": 0.6686198,
+              "Y": 0.28515625,
+              "Width": 0.029296875,
+              "Height": 0.044921875
+            }
+          },
+          "region-0033": {
+            "Bounds": {
+              "X": 1090,
+              "Y": 292,
+              "Width": 45,
+              "Height": 46
+            },
+            "TexCoords": {
+              "X": 0.70963544,
+              "Y": 0.28515625,
+              "Width": 0.029296875,
+              "Height": 0.044921875
+            }
+          },
+          "region-0034": {
+            "Bounds": {
+              "X": 15,
+              "Y": 305,
+              "Width": 373,
+              "Height": 81
+            },
+            "TexCoords": {
+              "X": 0.009765625,
+              "Y": 0.29785156,
+              "Width": 0.24283855,
+              "Height": 0.07910156
+            }
+          },
+          "region-0035": {
+            "Bounds": {
+              "X": 349,
+              "Y": 306,
+              "Width": 122,
+              "Height": 79
+            },
+            "TexCoords": {
+              "X": 0.22721355,
+              "Y": 0.29882812,
+              "Width": 0.079427086,
+              "Height": 0.07714844
+            }
+          },
+          "region-0036": {
+            "Bounds": {
+              "X": 431,
+              "Y": 306,
+              "Width": 122,
+              "Height": 79
+            },
+            "TexCoords": {
+              "X": 0.28059897,
+              "Y": 0.29882812,
+              "Width": 0.079427086,
+              "Height": 0.07714844
+            }
+          },
+          "region-0037": {
+            "Bounds": {
+              "X": 514,
+              "Y": 306,
+              "Width": 132,
+              "Height": 80
+            },
+            "TexCoords": {
+              "X": 0.3346354,
+              "Y": 0.29882812,
+              "Width": 0.0859375,
+              "Height": 0.078125
+            }
+          },
+          "region-0038": {
+            "Bounds": {
+              "X": 664,
+              "Y": 353,
+              "Width": 44,
+              "Height": 46
+            },
+            "TexCoords": {
+              "X": 0.43229166,
+              "Y": 0.34472656,
+              "Width": 0.028645834,
+              "Height": 0.044921875
+            }
+          },
+          "region-0039": {
+            "Bounds": {
+              "X": 1091,
+              "Y": 353,
+              "Width": 44,
+              "Height": 46
+            },
+            "TexCoords": {
+              "X": 0.71028644,
+              "Y": 0.34472656,
+              "Width": 0.028645834,
+              "Height": 0.044921875
+            }
+          },
+          "region-0040": {
+            "Bounds": {
+              "X": 727,
+              "Y": 354,
+              "Width": 45,
+              "Height": 45
+            },
+            "TexCoords": {
+              "X": 0.47330728,
+              "Y": 0.34570312,
+              "Width": 0.029296875,
+              "Height": 0.043945312
+            }
+          },
+          "region-0041": {
+            "Bounds": {
+              "X": 900,
+              "Y": 354,
+              "Width": 45,
+              "Height": 45
+            },
+            "TexCoords": {
+              "X": 0.5859375,
+              "Y": 0.34570312,
+              "Width": 0.029296875,
+              "Height": 0.043945312
+            }
+          },
+          "region-0042": {
+            "Bounds": {
+              "X": 965,
+              "Y": 354,
+              "Width": 45,
+              "Height": 45
+            },
+            "TexCoords": {
+              "X": 0.6282552,
+              "Y": 0.34570312,
+              "Width": 0.029296875,
+              "Height": 0.043945312
+            }
+          },
+          "region-0043": {
+            "Bounds": {
+              "X": 1027,
+              "Y": 354,
+              "Width": 46,
+              "Height": 45
+            },
+            "TexCoords": {
+              "X": 0.6686198,
+              "Y": 0.34570312,
+              "Width": 0.029947916,
+              "Height": 0.043945312
+            }
+          },
+          "region-0044": {
+            "Bounds": {
+              "X": 14,
+              "Y": 420,
+              "Width": 676,
+              "Height": 161
+            },
+            "TexCoords": {
+              "X": 0.009114583,
+              "Y": 0.41015625,
+              "Width": 0.44010416,
+              "Height": 0.15722656
+            }
+          },
+          "region-0045": {
+            "Bounds": {
+              "X": 686,
+              "Y": 421,
+              "Width": 407,
+              "Height": 160
+            },
+            "TexCoords": {
+              "X": 0.4466146,
+              "Y": 0.4111328,
+              "Width": 0.26497397,
+              "Height": 0.15625
+            }
+          },
+          "region-0046": {
+            "Bounds": {
+              "X": 1090,
+              "Y": 421,
+              "Width": 436,
+              "Height": 160
+            },
+            "TexCoords": {
+              "X": 0.70963544,
+              "Y": 0.4111328,
+              "Width": 0.28385416,
+              "Height": 0.15625
+            }
+          },
+          "region-0047": {
+            "Bounds": {
+              "X": 15,
+              "Y": 591,
+              "Width": 349,
+              "Height": 101
+            },
+            "TexCoords": {
+              "X": 0.009765625,
+              "Y": 0.57714844,
+              "Width": 0.22721355,
+              "Height": 0.09863281
+            }
+          },
+          "region-0048": {
+            "Bounds": {
+              "X": 368,
+              "Y": 591,
+              "Width": 245,
+              "Height": 102
+            },
+            "TexCoords": {
+              "X": 0.23958333,
+              "Y": 0.57714844,
+              "Width": 0.1595052,
+              "Height": 0.099609375
+            }
+          },
+          "region-0049": {
+            "Bounds": {
+              "X": 616,
+              "Y": 592,
+              "Width": 258,
+              "Height": 99
+            },
+            "TexCoords": {
+              "X": 0.40104166,
+              "Y": 0.578125,
+              "Width": 0.16796875,
+              "Height": 0.09667969
+            }
+          },
+          "region-0050": {
+            "Bounds": {
+              "X": 876,
+              "Y": 592,
+              "Width": 281,
+              "Height": 207
+            },
+            "TexCoords": {
+              "X": 0.5703125,
+              "Y": 0.578125,
+              "Width": 0.1829427,
+              "Height": 0.20214844
+            }
+          },
+          "region-0051": {
+            "Bounds": {
+              "X": 1154,
+              "Y": 596,
+              "Width": 79,
+              "Height": 81
+            },
+            "TexCoords": {
+              "X": 0.75130206,
+              "Y": 0.58203125,
+              "Width": 0.051432293,
+              "Height": 0.07910156
+            }
+          },
+          "region-0052": {
+            "Bounds": {
+              "X": 1234,
+              "Y": 604,
+              "Width": 214,
+              "Height": 88
+            },
+            "TexCoords": {
+              "X": 0.80338544,
+              "Y": 0.58984375,
+              "Width": 0.13932292,
+              "Height": 0.0859375
+            }
+          },
+          "region-0053": {
+            "Bounds": {
+              "X": 1454,
+              "Y": 630,
+              "Width": 69,
+              "Height": 27
+            },
+            "TexCoords": {
+              "X": 0.94661456,
+              "Y": 0.6152344,
+              "Width": 0.044921875,
+              "Height": 0.026367188
+            }
+          },
+          "region-0054": {
+            "Bounds": {
+              "X": 1339,
+              "Y": 688,
+              "Width": 187,
+              "Height": 113
+            },
+            "TexCoords": {
+              "X": 0.8717448,
+              "Y": 0.671875,
+              "Width": 0.12174479,
+              "Height": 0.11035156
+            }
+          },
+          "region-0055": {
+            "Bounds": {
+              "X": 15,
+              "Y": 693,
+              "Width": 350,
+              "Height": 104
+            },
+            "TexCoords": {
+              "X": 0.009765625,
+              "Y": 0.6767578,
+              "Width": 0.22786458,
+              "Height": 0.1015625
+            }
+          },
+          "region-0056": {
+            "Bounds": {
+              "X": 368,
+              "Y": 694,
+              "Width": 245,
+              "Height": 103
+            },
+            "TexCoords": {
+              "X": 0.23958333,
+              "Y": 0.6777344,
+              "Width": 0.1595052,
+              "Height": 0.10058594
+            }
+          },
+          "region-0057": {
+            "Bounds": {
+              "X": 616,
+              "Y": 694,
+              "Width": 263,
+              "Height": 104
+            },
+            "TexCoords": {
+              "X": 0.40104166,
+              "Y": 0.6777344,
+              "Width": 0.17122395,
+              "Height": 0.1015625
+            }
+          },
+          "region-0058": {
+            "Bounds": {
+              "X": 1270,
+              "Y": 707,
+              "Width": 32,
+              "Height": 85
+            },
+            "TexCoords": {
+              "X": 0.82682294,
+              "Y": 0.6904297,
+              "Width": 0.020833334,
+              "Height": 0.08300781
+            }
+          },
+          "region-0059": {
+            "Bounds": {
+              "X": 1305,
+              "Y": 708,
+              "Width": 31,
+              "Height": 84
+            },
+            "TexCoords": {
+              "X": 0.8496094,
+              "Y": 0.69140625,
+              "Width": 0.020182291,
+              "Height": 0.08203125
+            }
+          },
+          "region-0060": {
+            "Bounds": {
+              "X": 1176,
+              "Y": 712,
+              "Width": 91,
+              "Height": 86
+            },
+            "TexCoords": {
+              "X": 0.765625,
+              "Y": 0.6953125,
+              "Width": 0.059244793,
+              "Height": 0.083984375
+            }
+          },
+          "region-0061": {
+            "Bounds": {
+              "X": 1037,
+              "Y": 814,
+              "Width": 487,
+              "Height": 158
+            },
+            "TexCoords": {
+              "X": 0.6751302,
+              "Y": 0.7949219,
+              "Width": 0.31705728,
+              "Height": 0.15429688
+            }
+          },
+          "region-0062": {
+            "Bounds": {
+              "X": 15,
+              "Y": 816,
+              "Width": 563,
+              "Height": 46
+            },
+            "TexCoords": {
+              "X": 0.009765625,
+              "Y": 0.796875,
+              "Width": 0.36653647,
+              "Height": 0.044921875
+            }
+          },
+          "region-0063": {
+            "Bounds": {
+              "X": 688,
+              "Y": 825,
+              "Width": 349,
+              "Height": 141
+            },
+            "TexCoords": {
+              "X": 0.44791666,
+              "Y": 0.80566406,
+              "Width": 0.22721355,
+              "Height": 0.13769531
+            }
+          },
+          "region-0064": {
+            "Bounds": {
+              "X": 581,
+              "Y": 838,
+              "Width": 110,
+              "Height": 119
+            },
+            "TexCoords": {
+              "X": 0.37825522,
+              "Y": 0.8183594,
+              "Width": 0.071614586,
+              "Height": 0.11621094
+            }
+          },
+          "region-0065": {
+            "Bounds": {
+              "X": 15,
+              "Y": 868,
+              "Width": 314,
+              "Height": 45
+            },
+            "TexCoords": {
+              "X": 0.009765625,
+              "Y": 0.84765625,
+              "Width": 0.20442708,
+              "Height": 0.043945312
+            }
+          },
+          "region-0066": {
+            "Bounds": {
+              "X": 331,
+              "Y": 869,
+              "Width": 245,
+              "Height": 44
+            },
+            "TexCoords": {
+              "X": 0.2154948,
+              "Y": 0.8486328,
+              "Width": 0.1595052,
+              "Height": 0.04296875
+            }
+          },
+          "region-0067": {
+            "Bounds": {
+              "X": 15,
+              "Y": 920,
+              "Width": 314,
+              "Height": 44
+            },
+            "TexCoords": {
+              "X": 0.009765625,
+              "Y": 0.8984375,
+              "Width": 0.20442708,
+              "Height": 0.04296875
+            }
+          },
+          "region-0068": {
+            "Bounds": {
+              "X": 330,
+              "Y": 920,
+              "Width": 247,
+              "Height": 44
+            },
+            "TexCoords": {
+              "X": 0.21484375,
+              "Y": 0.8984375,
+              "Width": 0.1608073,
+              "Height": 0.04296875
+            }
+          }
+        }
+      },
       "ui.ui_panels.png": {
-        "FilePath": "Textures/UI/ui_panels.png",
+        "FilePath": "Textures/UI/ui_panels.ktx2",
         "Regions": {
           "region-0000": {
             "Bounds": {
@@ -572,7 +1543,7 @@
         }
       },
       "icons.retreat.png": {
-        "FilePath": "Textures/UI/Icons/retreat.png",
+        "FilePath": "Textures/UI/Icons/retreat.ktx2",
         "Regions": {
           "region-0000": {
             "Bounds": {
@@ -605,7 +1576,7 @@
         }
       },
       "icons.status_icons.png": {
-        "FilePath": "Textures/UI/Icons/status_icons.png",
+        "FilePath": "Textures/UI/Icons/status_icons.ktx2",
         "Regions": {
           "health": {
             "Bounds": {

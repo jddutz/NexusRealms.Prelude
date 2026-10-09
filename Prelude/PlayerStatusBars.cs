@@ -5,11 +5,12 @@ public sealed class PlayerStatusBars : Element
 {
     private const string HealthRegion = "health";
     private const string FocusRegion = "focus";
-    private const float BlockWidth = 20f;
+    private const float BlockWidth = 12f;
     private const float BlockGap = 2f;
-    private const float BlockHeight = 24f;
-    private const float IconSize = 40f;
+    private const float BlockHeight = 14f;
+    private const float IconSize = 22f;
     private const float RowHeight = IconSize;
+    private const float StatusIconSize = 18f;
     private const float RowGap = 2f;
     private readonly GameState _state;
     private sealed record Row(ImageElement Icon, ResourceRow Segments, Color Color);
@@ -20,7 +21,7 @@ public sealed class PlayerStatusBars : Element
     public PlayerStatusBars(GameState state, ITexture icons)
     {
         _state = state;
-        Margins = new(188f, 176f, 14f, 10f);
+        Margins = new(100f, 80f, 6f, 6f);
         _health = CreateRow(icons, icons.GetRegion(HealthRegion).Bounds, new Color(0.75f, 0.12f, 0.1f));
         _focus = CreateRow(icons, icons.GetRegion(FocusRegion).Bounds, new Color(0.16f, 0.62f, 0.9f));
         // Select once per HUD so layout updates never reshuffle the effects.
@@ -60,7 +61,7 @@ public sealed class PlayerStatusBars : Element
         var rowHeight = ResourceRowHeight;
         var statusY = Bounds.Origin.Y + rowHeight * 2f + RowGap + 4f;
         var remainingHeight = MathF.Max(0f, Bounds.Origin.Y + Bounds.Size.Y - statusY);
-        var iconSize = MathF.Min(IconSize, remainingHeight);
+        var iconSize = MathF.Min(StatusIconSize, MathF.Max(0f, remainingHeight - 4f));
         var statusX = Bounds.Origin.X + (IconSize - iconSize) * 0.5f;
         for (var index = 0; index < _statusIcons.Length; index++)
         {
@@ -83,7 +84,7 @@ public sealed class PlayerStatusBars : Element
         var height = MathF.Min(BlockHeight, rowHeight);
         var count = Math.Max(0, points);
         var width = count > 0 ? count * (BlockWidth + BlockGap) - BlockGap : 0f;
-        row.Segments.Arrange(new(Bounds.Origin.X + IconSize + 8f, y - height * 0.5f, width, height));
+        row.Segments.Arrange(new(Bounds.Origin.X + IconSize + 4f, y - height * 0.5f, width, height));
         row.Segments.SetPoints(count, BlockWidth, BlockGap, row.Color);
     }
 }

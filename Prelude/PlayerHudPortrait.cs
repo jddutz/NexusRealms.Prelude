@@ -6,11 +6,11 @@ public sealed class PlayerHudPortrait : ImageElement
     public PlayerHudPortrait(ITexture texture)
     {
         Texture = texture;
-        Width = 160f;
-        Height = 160f;
+        Width = 84f;
+        Height = 84f;
         HorizontalAlignment = AlignHorizontal.Left;
         VerticalAlignment = AlignVertical.Top;
-        Margins = new(16f, 0f, 0f, 0f);
+        Margins = new(8f, 0f, 0f, 0f);
         SizingMode = ImageSizingMode.Fit;
         SortOrder = 1;
         RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI;
@@ -19,7 +19,7 @@ public sealed class PlayerHudPortrait : ImageElement
     public override void Arrange(Rectangle<float> bounds)
     {
         // Shift the allocation so the full image remains visible above the panel.
-        base.Arrange(new(bounds.Origin.X, bounds.Origin.Y - 12f,
+        base.Arrange(new(bounds.Origin.X, bounds.Origin.Y - 6f,
             bounds.Size.X, bounds.Size.Y));
     }
 }

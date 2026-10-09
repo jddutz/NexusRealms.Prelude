@@ -50,6 +50,14 @@ formation.SetSlot(FormationSlot.FrontCenter, character);
 Check(character.Scale.Y == 1000f * 0.62f * 0.75f / texture.Height);
 formation.SetVerticalLimits(200f, 600f);
 Check(character.Scale.Y == 400f * 0.75f / texture.Height);
+character.SetIndicatorScreenScale(2f, 2f);
+var screenHeight = character.FocusRenderer.Instances.Values.Single().Size.Y * character.Scale.Y / 2f;
+Check(MathF.Abs(screenHeight - 48f) < 0.001f);
+character.Scale = new(0.5f, 0.5f);
+character.SetIndicatorScreenScale(3f, 3f);
+screenHeight = character.FocusRenderer.Instances.Values.Single().Size.Y * character.Scale.Y / 3f;
+Check(MathF.Abs(screenHeight - 48f) < 0.001f);
 Console.WriteLine("Target selection checks passed.");
+
 
 
