@@ -1,6 +1,6 @@
 # Combat interaction
 
-The portrait opens Character, the zodiac opens the ability map, and three quick slots select commands. Only the right panel confirms a command. Selection and free assignments do not advance the timeline.
+The portrait opens Character, the zodiac opens the ability map, and six quick slots select commands. Only the right panel confirms a command. Selection and free assignments do not advance the timeline.
 
 `GameState.Loadout` owns the current player's command definitions, carried items, committed equipment, focus, and shortcuts. The encounter currently authors only Wait, using the existing 0.6-turn pass operation. No attack damage or progression rules have been added. Item actions and additional learned/unlearned nodes render from the loadout's definitions when authored.
 
@@ -15,3 +15,5 @@ Status definitions live in `Database/StatusEffects.cs` and are exposed through `
 The Zodiac dialog currently presents a fixed three-column, five-row grid with four placeholder abilities: Slash, Push, Parry, and Blade Storm. Each entry displays an icon, name, and brief description from `Storyline.Abilities`, authored in `Database/Abilities.cs`. Remaining cells are empty. The shorter dialog is aligned near the top to expose the center HUD action slots. Drag an ability onto a slot to assign it for free; a drop outside the slots leaves assignments unchanged. Close remains its only button. These presentation placeholders do not grant combat commands or implement their effects.
 
 Drag input checks: `dotnet run --project tests/AbilityDragChecks`. Placeholder ability assignments remain unavailable for execution until their combat cost and behavior are authored.
+
+The center HUD holds six 56-pixel square action frames, separated by 4 pixels and aligned to the right beside the Zodiac opener. Slots display ability icons, dim unavailable commands, and highlight the selected command. Drag targets follow the actual frame bounds.

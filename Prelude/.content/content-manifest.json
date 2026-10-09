@@ -255,6 +255,9 @@
       "ui.item_frame.png": {
         "FilePath": "Textures/UI/Elements/item_frame.ktx2"
       },
+      "ui.item_frame_selected.png": {
+        "FilePath": "Textures/UI/Elements/item_frame_selected.ktx2"
+      },
       "ui.item_placeholder_acc_belt.png": {
         "FilePath": "Textures/UI/Elements/item_placeholder_acc_belt.ktx2"
       },

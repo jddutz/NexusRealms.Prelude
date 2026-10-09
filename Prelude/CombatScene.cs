@@ -43,12 +43,14 @@ public class CombatScene : Scene
     private bool _closeDialogRequested;
     private string? _inspectedItem;
     private int _inventoryPage;
+    private AbilityId? _selectedZodiacAbility;
     private Element? _assignmentChoices;
     private Dictionary<string, string>? _pending;
     private ImageElement? _actionIcon;
     private string? _renderedIconKey;
     private TextElement? _actionLabel;
-    private readonly List<TextButton> _quickButtons = [];
+    private readonly List<ImageElement> _quickSlots = [];
+    private readonly List<ImageElement> _quickSlotIcons = [];
     private Combat.CommandTarget? CurrentTarget()
     {
         var index = Array.FindIndex(_startScenario.Characters.ToArray(), p => _formation[p.Slot] == FocusedCharacter);
@@ -83,10 +85,20 @@ public class CombatScene : Scene
             }
         }
         if (_actionLabel is not null) _actionLabel.Text = a?.Name ?? "Select action";
-        for (var i = 0; i < _quickButtons.Count; i++)
+        for (var i = 0; i < _quickSlots.Count; i++)
         {
             var q = Loadout.Find(Loadout.QuickSlots[i]);
-            _quickButtons[i].Label = $"{(q?.Id.Value == SelectedActionId ? "> " : "")}{q?.Name ?? "Empty"}{(q is not null && !Loadout.Available(q) ? " (unavailable)" : "")}";
+            _quickSlots[i].Texture = _textures.GetOrCreate(new ContentId(
+                q is not null && q.Id.Value == SelectedActionId ? "ui.item_frame_selected.png" : "ui.item_frame.png"));
+            var slotIcon = _quickSlotIcons[i];
+            slotIcon.IsVisible = q?.Icon is not null;
+            slotIcon.Color = new Color(1f, 1f, 1f, q is not null && Loadout.Available(q) ? 1f : 0.4f);
+            slotIcon.SourceRegion = null;
+            if (q?.Icon is { } slotTexture)
+            {
+                slotIcon.Texture = _textures.GetOrCreate(new ContentId(slotTexture));
+                if (q.IconRegion is { } region) slotIcon.SourceRegion = slotIcon.Texture.GetRegion(region).Bounds;
+            }
         }
         FocusedCharacter?.SetFocus(true, a is null || !a.RequiresTarget || ValidTarget());
         foreach (var (character, display) in _characterDisplays)
@@ -315,13 +327,43 @@ public class CombatScene : Scene
         bottomCenter.Height = 84f;
         bottomCenter.Margins = new(3f, 3f, 3f, 10f);
         bottomCenter.VerticalAlignment = AlignVertical.Bottom;
+        const float actionSlotSize = 56f;
+        const float actionSlotGap = 4f;
+        var actionSlots = new GridLayout
+        {
+            Width = Loadout.QuickSlots.Length * (actionSlotSize + actionSlotGap) - actionSlotGap,
+            Height = actionSlotSize,
+            HorizontalAlignment = AlignHorizontal.Right,
+            VerticalAlignment = AlignVertical.Center,
+            Margins = new(Left: 0f, Right: 100f, Top: 0f, Bottom: 0f),
+            Columns = Enumerable.Repeat(GridSize.Absolute(actionSlotSize + actionSlotGap), Loadout.QuickSlots.Length - 1)
+                .Append(GridSize.Absolute(actionSlotSize)).ToArray(),
+            Rows = [GridSize.Absolute(actionSlotSize)],
+        };
         for (var i = 0; i < Loadout.QuickSlots.Length; i++)
         {
-            var slot = i; var button = DialogButton("Empty", () => SelectQuickAction(slot));
-            button.Width = 128f; button.Height = 30f;
-            Place(bottomCenter, button, 160f + i * 132f, 2f);
-            _quickButtons.Add(button);
+            var slot = i;
+            var frame = new ImageElement
+            {
+                Texture = _textures.GetOrCreate(new ContentId("ui.item_frame.png")),
+                Width = actionSlotSize, Height = actionSlotSize,
+                HorizontalAlignment = AlignHorizontal.Left,
+                SizingMode = ImageSizingMode.Stretch,
+                RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+            };
+            frame.InputMap.OnMouseButtonReleased(MouseButtonEnum.Left).Invoke(() => SelectQuickAction(slot));
+            var icon = new ImageElement
+            {
+                Width = 36f, Height = 36f, SizingMode = ImageSizingMode.Fit,
+                IsVisible = false,
+                RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+            };
+            frame.Children.Add(icon);
+            actionSlots.SetCell(0, i, frame);
+            _quickSlots.Add(frame);
+            _quickSlotIcons.Add(icon);
         }
+        bottomCenter.Children.Add(actionSlots);
         bottomCenter.Children.Add(
             new PlayerStatusBars(
                 _gameState,
@@ -518,7 +560,9 @@ public class CombatScene : Scene
             for (var i = 0; i < Loadout.QuickSlots.Length; i++)
             {
                 var slot = i;
-                Place(_assignmentChoices, DialogButton($"Slot {i + 1}", () => { Loadout.Assign(slot, a.Id.Value); RefreshCommand(); }), 230f + i * 200f, 0f);
+                var button = DialogButton($"Slot {i + 1}", () => { Loadout.Assign(slot, a.Id.Value); RefreshCommand(); });
+                button.Width = 96f;
+                Place(_assignmentChoices, button, 230f + i * 100f, 0f);
             }
         }), 24f, y);
     }
@@ -761,13 +805,14 @@ public class CombatScene : Scene
         const float cellWidth = 280f;
         const float cellHeight = 72f;
         _dialog!.Content.VerticalAlignment = AlignVertical.Top;
-        _dialog.Content.Margins = new(Left: 0f, Right: 0f, Top: 24f, Bottom: 0f);
+        _dialog.Content.Margins = new(Left: 0f, Right: 0f, Top: 72f, Bottom: 0f);
         var grid = new GridLayout
         {
             Width = columns * cellWidth, Height = rows * cellHeight,
             Columns = Enumerable.Repeat(GridSize.Absolute(cellWidth), columns).ToArray(),
             Rows = Enumerable.Repeat(GridSize.Absolute(cellHeight), rows).ToArray(),
         };
+        var selectionFrames = new Dictionary<AbilityId, ImageElement>();
         for (var index = 0; index < columns * rows; index++)
         {
             if (index >= Database.Abilities.DisplayOrder.Count)
@@ -801,9 +846,9 @@ public class CombatScene : Scene
                 if (dragIcon is not null) dialog.Children.Remove(dragIcon);
                 dragIcon = null;
                 if (_dialog != dialog || _closeDialogRequested) return;
-                for (var slot = 0; slot < _quickButtons.Count; slot++)
+                for (var slot = 0; slot < _quickSlots.Count; slot++)
                 {
-                    var bounds = _quickButtons[slot].Bounds;
+                    var bounds = _quickSlots[slot].Bounds;
                     if (position.X < bounds.Origin.X || position.X >= bounds.Max.X
                         || position.Y < bounds.Origin.Y || position.Y >= bounds.Max.Y) continue;
                     // Presentation placeholders can be assigned, but are unavailable until authored for combat.
@@ -814,24 +859,39 @@ public class CombatScene : Scene
                     RefreshCommand();
                     break;
                 }
+            }, selected: () =>
+            {
+                if (_dialog != dialog || _closeDialogRequested) return;
+                _selectedZodiacAbility = ability.Id;
+                foreach (var (id, frame) in selectionFrames)
+                    frame.IsVisible = id == ability.Id;
             });
             grid.SetCell(index / columns, index % columns, cell);
+            var selectionFrame = new ImageElement
+            {
+                Texture = _textures.GetOrCreate(new ContentId("ui.item_frame_selected.png")),
+                Width = 56f, Height = 56f, SizingMode = ImageSizingMode.Stretch,
+                IsVisible = _selectedZodiacAbility == ability.Id,
+                RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+            };
+            selectionFrames.Add(ability.Id, selectionFrame);
+            Place(cell, selectionFrame, 0f, 0f);
             Place(cell, new ImageElement
             {
                 Texture = _textures.GetOrCreate(ability.Icon),
                 Width = 32f, Height = 32f, SizingMode = ImageSizingMode.Fit,
                 RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
-            }, 0f, 0f);
+            }, 12f, 12f);
             Place(cell, new TextElement(ability.Name, _hudTextStyle)
             {
-                Width = 224f, Height = 24f,
+                Width = 200f, Height = 24f,
                 RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
-            }, 40f, 0f);
+            }, 64f, 0f);
             Place(cell, new TextElement(ability.Description, _hudTextStyle)
             {
-                Width = 224f, Height = 48f,
+                Width = 200f, Height = 48f,
                 RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
-            }, 40f, 24f);
+            }, 64f, 24f);
         }
         Place(panel, grid, 24f, 24f);
         const float footerY = 24f + rows * cellHeight + 16f;

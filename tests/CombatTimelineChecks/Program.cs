@@ -207,3 +207,8 @@ Check(accessoryLoadout.ChangedEquipmentSlots(unchanged).Count == 1);
 Check(accessoryLoadout.Cost(unchanged) == 0.6f);
 Check(accessoryLoadout.Equipment["Acc1"] == "charm");
 Console.WriteLine("Per-slot equipment cost checks passed.");
+
+Check(loadout.QuickSlots.Length == 6);
+Check(loadout.Assign(5, "wait") && loadout.QuickSlots[5] == "wait");
+Check(!loadout.Assign(6, "wait"));
+Console.WriteLine("Six action slot checks passed.");

@@ -20,7 +20,7 @@ public sealed class CombatLoadout
     public List<CommandDefinition> Abilities { get; } = [];
     private Dictionary<string, string> _equipment = [];
     public IReadOnlyDictionary<string, string> Equipment => _equipment;
-    public string?[] QuickSlots { get; } = new string?[3];
+    public string?[] QuickSlots { get; } = new string?[6];
     public int Focus { get; set; }
     /// <summary>Turn cost for each equipment slot whose final item changes.</summary>
     public float EquipmentChangeCost { get; init; } = 0.6f;

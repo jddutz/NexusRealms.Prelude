@@ -9,13 +9,14 @@ static void Check(bool value) { if (!value) throw new Exception("Drag check fail
 var mouse = new TestMouse(1);
 var other = new TestMouse(2);
 var starts = 0;
+var selections = 0;
 var drops = new List<Vector2D<float>>();
-var cell = new AbilityDragCell(_ => starts++, _ => { }, drops.Add);
+var cell = new AbilityDragCell(_ => starts++, _ => { }, drops.Add, () => selections++);
 cell.Arrange(new(0f, 0f, 100f, 60f));
 // Clicking is not a drag, and starting outside the cell is ignored.
 cell.Handle(new MouseButtonPressedEvent(mouse, MouseButtonEnum.Left, new(10f, 10f)));
 cell.Handle(new MouseButtonReleasedEvent(mouse, MouseButtonEnum.Left, new(10f, 10f)));
-Check(starts == 0 && drops.Count == 0);
+Check(starts == 0 && drops.Count == 0 && selections == 1);
 cell.Handle(new MouseButtonPressedEvent(mouse, MouseButtonEnum.Left, new(110f, 10f)));
 cell.Handle(new MouseMovedEvent(mouse, new(200f, 200f)));
 Check(starts == 0);
