@@ -22,7 +22,8 @@ public sealed class PlayerStatusBars : Element
     public PlayerStatusBars(GameState state, ITexture stats, ITexture icons)
     {
         _state = state;
-        Margins = new(100f, 80f, 6f, 6f);
+        // The portrait overlaps this panel by 29px; leave an 8px gap beside it.
+        Margins = new(37f, 80f, 6f, 6f);
         _health = CreateRow(stats, stats.GetRegion(HealthRegion).Bounds, "health-bar");
         _focus = CreateRow(stats, stats.GetRegion(FocusRegion).Bounds, "focus-bar");
         // Select once per HUD so layout updates never reshuffle the effects.

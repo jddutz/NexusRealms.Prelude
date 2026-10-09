@@ -1,25 +1,30 @@
 namespace NexusRealms.Prelude;
 
-/// <summary>Places the player's portrait slightly above its HUD panel.</summary>
+/// <summary>Standalone portrait overlapping the left edge of the center HUD.</summary>
 public sealed class PlayerHudPortrait : ImageElement
 {
+    public const float PortraitSize = 168f;
+    public const float LeftInset = 8f;
+    public const float BottomInset = 10f;
+
     public PlayerHudPortrait(ITexture texture)
     {
         Texture = texture;
-        Width = 84f;
-        Height = 84f;
+        Width = PortraitSize;
+        Height = PortraitSize;
         HorizontalAlignment = AlignHorizontal.Left;
         VerticalAlignment = AlignVertical.Top;
-        Margins = new(8f, 0f, 0f, 0f);
         SizingMode = ImageSizingMode.Fit;
-        SortOrder = 1;
+        SortOrder = 10;
         RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI;
     }
 
     public override void Arrange(Rectangle<float> bounds)
     {
-        // Shift the allocation so the full image remains visible above the panel.
-        base.Arrange(new(bounds.Origin.X, bounds.Origin.Y - 6f,
-            bounds.Size.X, bounds.Size.Y));
+        // Expand beyond the side cell so the portrait overlaps the center panel.
+        // Keep its bottom aligned with the center panel's bottom inset.
+        base.Arrange(new(bounds.Origin.X + LeftInset,
+            bounds.Origin.Y + bounds.Size.Y - PortraitSize - BottomInset,
+            PortraitSize, PortraitSize));
     }
 }

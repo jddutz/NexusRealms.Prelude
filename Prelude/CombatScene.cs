@@ -33,7 +33,7 @@ public class CombatScene : Scene
     public Character? FocusedCharacter { get; private set; }
     public event Action<Character?>? FocusChanged;
     private readonly Dictionary<string, ContentId> _turnPortraits = [];
-    private PanelElement? _portraitPanel;
+    private PlayerHudPortrait? _playerPortrait;
     private PanelElement? _confirmationPanel;
 
     /// <summary>The player's committed loadout and free quick-slot customization.</summary>
@@ -315,11 +315,9 @@ public class CombatScene : Scene
         _turnOrder = turnOrder;
         RefreshTurnOrder();
         Children.Add(turnOrder);
-        var bottomLeft = CreatePanelElement(atlas, "region-0000");
-        _portraitPanel = bottomLeft;
+        var bottomLeft = new PlayerHudPortrait(_textures.GetOrCreate(_gameState.Portrait));
+        _playerPortrait = bottomLeft;
         bottomLeft.InputMap.OnMouseButtonReleased(MouseButtonEnum.Left).Invoke(OpenCharacterDialog);
-        bottomLeft.Children.Add(new PlayerHudPortrait(_textures.GetOrCreate(_gameState.Portrait)));
-        bottomLeft.Children.Add(CreateHudLabel("Character", AlignVertical.Bottom));
         layout.SetCell(2, 0, bottomLeft);
         var bottomCenter = CreatePanelElement(atlas, "region-0006");
         _centerHudPanel = bottomCenter;
@@ -330,7 +328,7 @@ public class CombatScene : Scene
         {
             var slot = i; var button = DialogButton("Empty", () => SelectQuickAction(slot));
             button.Width = 128f; button.Height = 30f;
-            Place(bottomCenter, button, 8f + i * 132f, 2f);
+            Place(bottomCenter, button, 160f + i * 132f, 2f);
             _quickButtons.Add(button);
         }
         bottomCenter.Children.Add(
@@ -404,7 +402,7 @@ public class CombatScene : Scene
             && screenPosition.Y < rect.Origin.Y + rect.Size.Y;
         if (!Contains(_worldView.Bounds)
             || (_centerHudPanel is { } center && Contains(center.Bounds))
-            || (_portraitPanel is { } left && Contains(left.Bounds))
+            || (_playerPortrait is { } left && Contains(left.Bounds))
             || (_confirmationPanel is { } right && Contains(right.Bounds))
             || Contains(_retreatButton.Bounds)
             || (_turnOrder is { } order && screenPosition.Y < order.Bounds.Origin.Y + 130f)) return false;
