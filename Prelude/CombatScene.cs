@@ -226,6 +226,7 @@ public class CombatScene : Scene
         var atlas = _textures.GetOrCreate(new ContentId("ui.ui_panels.png"));
         layout.SetCell(0, 2, _retreatButton);
         var turnOrder = new TurnOrderStrip(atlas, _hudTextStyle,
+            _textures.GetOrCreate(new ContentId("shadow")),
             _textures.GetOrCreate(new ContentId("square_shadow")))
         {
             Width =
@@ -561,6 +562,7 @@ public class CombatScene : Scene
         }
     }
 }
+
 
 
 

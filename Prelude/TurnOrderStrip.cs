@@ -46,11 +46,11 @@ public sealed class TurnOrderStrip : Element
         }
         InvalidateLayout();
     }
-    public TurnOrderStrip(ITexture atlas, ITextStyle style, ITexture shadow)
+    public TurnOrderStrip(ITexture atlas, ITextStyle style, ITexture shadow, ITexture instructionShadow)
     {
         _atlas = atlas;
         _shadow.Texture = shadow;
-        _instructions = new InstructionPanel(style, shadow);
+        _instructions = new InstructionPanel(style, instructionShadow);
         _separator = new ImageElement
         {
             Texture = atlas,
@@ -120,6 +120,7 @@ public sealed class TurnOrderStrip : Element
             separatorTop, separatorWidth, separatorHeight));
     }
 }
+
 
 
 
