@@ -759,7 +759,9 @@ public class CombatScene : Scene
         const int columns = 3;
         const int rows = 5;
         const float cellWidth = 280f;
-        const float cellHeight = 88f;
+        const float cellHeight = 72f;
+        _dialog!.Content.VerticalAlignment = AlignVertical.Top;
+        _dialog.Content.Margins = new(Left: 0f, Right: 0f, Top: 24f, Bottom: 0f);
         var grid = new GridLayout
         {
             Width = columns * cellWidth, Height = rows * cellHeight,
@@ -768,10 +770,52 @@ public class CombatScene : Scene
         };
         for (var index = 0; index < columns * rows; index++)
         {
-            var cell = new Element();
-            grid.SetCell(index / columns, index % columns, cell);
-            if (index >= Database.Abilities.DisplayOrder.Count) continue;
+            if (index >= Database.Abilities.DisplayOrder.Count)
+            {
+                grid.SetCell(index / columns, index % columns, new Element());
+                continue;
+            }
             var ability = _storyline.Abilities[Database.Abilities.DisplayOrder[index].Id];
+            var dialog = _dialog!;
+            ImageElement? dragIcon = null;
+            void MoveDragIcon(Vector2D<float> position)
+            {
+                if (dragIcon is not null)
+                    dragIcon.Margins = new(Left: Math.Max(0f, position.X + 8f), Right: 0f,
+                        Top: Math.Max(0f, position.Y + 8f), Bottom: 0f);
+            }
+            var cell = new AbilityDragCell(position =>
+            {
+                if (_dialog != dialog || _closeDialogRequested) return;
+                dragIcon = new ImageElement
+                {
+                    Texture = _textures.GetOrCreate(ability.Icon),
+                    Width = 32f, Height = 32f, SizingMode = ImageSizingMode.Fit,
+                    HorizontalAlignment = AlignHorizontal.Left, VerticalAlignment = AlignVertical.Top,
+                    SortOrder = 20000, RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+                };
+                dialog.Children.Add(dragIcon);
+                MoveDragIcon(position);
+            }, MoveDragIcon, position =>
+            {
+                if (dragIcon is not null) dialog.Children.Remove(dragIcon);
+                dragIcon = null;
+                if (_dialog != dialog || _closeDialogRequested) return;
+                for (var slot = 0; slot < _quickButtons.Count; slot++)
+                {
+                    var bounds = _quickButtons[slot].Bounds;
+                    if (position.X < bounds.Origin.X || position.X >= bounds.Max.X
+                        || position.Y < bounds.Origin.Y || position.Y >= bounds.Max.Y) continue;
+                    // Presentation placeholders can be assigned, but are unavailable until authored for combat.
+                    if (Loadout.Find(ability.Id.Value) is null)
+                        Loadout.Abilities.Add(new(ability.Id, ability.Name, ability.TurnCost,
+                            Icon: ability.Icon.ToString()));
+                    Loadout.Assign(slot, ability.Id.Value);
+                    RefreshCommand();
+                    break;
+                }
+            });
+            grid.SetCell(index / columns, index % columns, cell);
             Place(cell, new ImageElement
             {
                 Texture = _textures.GetOrCreate(ability.Icon),
@@ -785,7 +829,7 @@ public class CombatScene : Scene
             }, 40f, 0f);
             Place(cell, new TextElement(ability.Description, _hudTextStyle)
             {
-                Width = 224f, Height = 56f,
+                Width = 224f, Height = 48f,
                 RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
             }, 40f, 24f);
         }
