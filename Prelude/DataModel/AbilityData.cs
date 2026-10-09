@@ -10,7 +10,11 @@ public sealed record AbilityData
     /// </summary>
     public required AbilityId Id { get; init; }
 
+    public required string Name { get; init; }
+
+    public required string Description { get; init; }
+
     public float TurnCost { get; set; }
 
-    public ContentId Icon { get; set; }
+    public required ContentId Icon { get; init; }
 }

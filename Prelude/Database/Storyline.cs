@@ -13,6 +13,9 @@ public sealed class Storyline
     /// <summary>Gets the authored status effect definitions keyed by identifier.</summary>
     public FrozenDictionary<StatusEffectId, StatusEffectData> StatusEffects { get; } = Database.StatusEffects.All;
 
+    /// <summary>Gets the authored ability definitions keyed by identifier.</summary>
+    public FrozenDictionary<AbilityId, AbilityData> Abilities { get; } = Database.Abilities.All;
+
     /// <summary>
     /// Gets the nodes declared by the story graphs, keyed by node identifier.
     /// </summary>

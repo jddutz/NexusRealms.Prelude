@@ -43,7 +43,6 @@ public class CombatScene : Scene
     private bool _closeDialogRequested;
     private string? _inspectedItem;
     private int _inventoryPage;
-    private string? _inspectedAbility;
     private Element? _assignmentChoices;
     private Dictionary<string, string>? _pending;
     private ImageElement? _actionIcon;
@@ -500,29 +499,14 @@ public class CombatScene : Scene
         if (title is not null)
         {
             panel.Children.Add(CreateHudLabel(title, AlignVertical.Top));
-            panel.Children.Add(CreateDialogCloseButton());
         }
         return panel;
     }
-    private TextButton CreateDialogCloseButton()
+    private void PlaceDialogFooterButton(Element panel, string label, Action action, float x, float y)
     {
-        var button = DialogButton("", CloseDialog);
-        button.Width = 36f;
-        button.Height = 36f;
-        button.Padding = new(4f);
-        button.HorizontalAlignment = AlignHorizontal.Right;
-        button.VerticalAlignment = AlignVertical.Top;
-        button.Margins = new(Left: 0f, Right: 16f, Top: 12f, Bottom: 0f);
-        button.Icon = new ImageElement
-        {
-            Texture = _textures.GetOrCreate(new ContentId("icons.x.png")),
-            Width = 24f,
-            Height = 24f,
-            HorizontalAlignment = AlignHorizontal.Center,
-            VerticalAlignment = AlignVertical.Center,
-            SizingMode = ImageSizingMode.Fit,
-        };
-        return button;
+        var button = DialogButton(label, action);
+        button.Width = 110f;
+        Place(panel, button, x, y);
     }
     private void AssignControls(Element panel, Combat.CommandDefinition a, float y, float destinationY = 350f)
     {
@@ -751,22 +735,16 @@ public class CombatScene : Scene
         var message = CreateHudLabel("", AlignVertical.Top);
         Place(panel, message, 200f, footerY + 8f);
         Place(panel, CreateHudLabel($"Turn +{Loadout.Cost(pending):0.##}", AlignVertical.Top), 24f, footerY + 8f);
-        void FooterButton(string label, Action action, float x)
-        {
-            var button = DialogButton(label, action);
-            button.Width = 110f;
-            Place(panel, button, x, footerY);
-        }
         if (Loadout.ChangedEquipmentSlots(pending).Count == 0)
-            FooterButton("Close", CloseDialog, 760f);
+            PlaceDialogFooterButton(panel, "Close", CloseDialog, 760f, footerY);
         else
         {
-            FooterButton("Cancel", CloseDialog, 638f);
-            FooterButton("Confirm", () =>
+            PlaceDialogFooterButton(panel, "Cancel", CloseDialog, 638f, footerY);
+            PlaceDialogFooterButton(panel, "Confirm", () =>
             {
                 if (Loadout.Commit(Combat, "player", pending)) CloseDialog();
                 else message.Text = "Cannot commit equipment now";
-            }, 760f);
+            }, 760f, footerY);
         }
     }
     public void OpenZodiacDialog()
@@ -777,20 +755,44 @@ public class CombatScene : Scene
     private void RenderZodiacDialog()
     {
         _dialog?.Dispose(); _dialog = null;
-        var panel = BeginDialog("Zodiac / Ability map"); var index = 0;
-        foreach (var a in Loadout.Abilities.Where(a => a.RequiredItem is null))
+        var panel = BeginDialog(null);
+        const int columns = 3;
+        const int rows = 5;
+        const float cellWidth = 280f;
+        const float cellHeight = 88f;
+        var grid = new GridLayout
         {
-            var node = DialogButton($"{a.Name} / {(a.Learned ? "Learned" : "Unlearned")}", () => { _inspectedAbility = a.Id.Value; RenderZodiacDialog(); });
-            Place(panel, node, 24f + (index % 3) * 200f, 60f + (index / 3) * 50f); index++;
-        }
-        var selected = Loadout.Find(_inspectedAbility);
-        if (selected is not null)
+            Width = columns * cellWidth, Height = rows * cellHeight,
+            Columns = Enumerable.Repeat(GridSize.Absolute(cellWidth), columns).ToArray(),
+            Rows = Enumerable.Repeat(GridSize.Absolute(cellHeight), rows).ToArray(),
+        };
+        for (var index = 0; index < columns * rows; index++)
         {
-            Place(panel, CreateHudLabel($"{selected.Name} / {(selected.Passive ? "Passive" : "Active")}", AlignVertical.Top), 640f, 60f);
-            Place(panel, CreateHudLabel($"Cost {selected.TurnCost} / Focus {selected.FocusCost}", AlignVertical.Top), 640f, 90f);
-            if (selected.Learned && !selected.Passive) AssignControls(panel, selected, 280f);
+            var cell = new Element();
+            grid.SetCell(index / columns, index % columns, cell);
+            if (index >= Database.Abilities.DisplayOrder.Count) continue;
+            var ability = _storyline.Abilities[Database.Abilities.DisplayOrder[index].Id];
+            Place(cell, new ImageElement
+            {
+                Texture = _textures.GetOrCreate(ability.Icon),
+                Width = 32f, Height = 32f, SizingMode = ImageSizingMode.Fit,
+                RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+            }, 0f, 0f);
+            Place(cell, new TextElement(ability.Name, _hudTextStyle)
+            {
+                Width = 224f, Height = 24f,
+                RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+            }, 40f, 0f);
+            Place(cell, new TextElement(ability.Description, _hudTextStyle)
+            {
+                Width = 224f, Height = 56f,
+                RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+            }, 40f, 24f);
         }
-
+        Place(panel, grid, 24f, 24f);
+        const float footerY = 24f + rows * cellHeight + 16f;
+        _dialog!.Content.Height = footerY + 56f;
+        PlaceDialogFooterButton(panel, "Close", CloseDialog, 760f, footerY);
     }
 
     private ImageElement CreateZodiacImage()
