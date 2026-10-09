@@ -61,3 +61,17 @@ Console.WriteLine("Target selection checks passed.");
 
 
 
+
+// The same character can receive different initiative in different scenarios.
+var firstPlacement = new CharacterPlacement { CharacterId = "test", Slot = FormationSlot.FrontCenter, Initiative = 1 };
+var secondPlacement = firstPlacement with { Initiative = 7 };
+Check(firstPlacement.CharacterId == secondPlacement.CharacterId && firstPlacement.Initiative == 1);
+Check(new CharacterPlacement { CharacterId = "test", Slot = FormationSlot.FrontCenter }.Initiative == 0);
+var encounter = new NexusRealms.Prelude.Combat.CombatSystem();
+encounter.Add(new("first-scenario", true, initiative: firstPlacement.Initiative));
+encounter.Add(new("second-scenario", true, initiative: secondPlacement.Initiative));
+encounter.Process();
+Check(encounter.ActiveCombatant!.Id == "second-scenario");
+encounter.SubmitAction(new(0.6f, (_, _) => { }));
+Check(encounter.ActiveCombatant!.Id == "first-scenario");
+Console.WriteLine("Scenario placement initiative checks passed.");

@@ -11,6 +11,9 @@ public sealed record CharacterPlacement
     public Combat.CombatTeam Team { get; init; } = Combat.CombatTeam.Enemies;
     public float InitialTurn { get; init; }
 
+    /// <summary>Scenario-specific priority used to break ties at the same turn.</summary>
+    public int Initiative { get; init; }
+
     public required CharacterId CharacterId { get; init; }
 
     /// <summary>

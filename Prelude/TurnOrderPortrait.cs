@@ -1,14 +1,16 @@
 namespace NexusRealms.Prelude;
 
-/// <summary>A turn-order portrait with a lower diamond mask, atlas frame, and active marker.</summary>
+/// <summary>A turn-order portrait with a lower diamond mask, standalone frame, and active marker.</summary>
 public sealed class TurnOrderPortrait : Element
 {
     private readonly ImageElement _portrait;
     private readonly ImageElement _topFrame;
     private readonly ImageElement _bottomFrame;
     private readonly ImageElement _marker;
-    private readonly ITexture _atlas;
-    private readonly ITexture _selectedAtlas;
+    private readonly ITexture _topTexture;
+    private readonly ITexture _bottomTexture;
+    private readonly ITexture _selectedTopTexture;
+    private readonly ITexture _selectedBottomTexture;
     private bool _isActive;
 
     public bool IsActive
@@ -18,23 +20,21 @@ public sealed class TurnOrderPortrait : Element
         {
             if (_isActive == value) return;
             _isActive = value;
-            var atlas = value ? _selectedAtlas : _atlas;
-            _topFrame.Texture = atlas;
-            _bottomFrame.Texture = atlas;
-            _marker.Texture = atlas;
-            _topFrame.SourceRegion = atlas.GetRegion(value ? "region-0013" : "region-0016").Bounds;
-            _bottomFrame.SourceRegion = atlas.GetRegion(value ? "region-0018" : "region-0020").Bounds;
-            _marker.SourceRegion = atlas.GetRegion("region-0004").Bounds;
+            _topFrame.Texture = value ? _selectedTopTexture : _topTexture;
+            _bottomFrame.Texture = value ? _selectedBottomTexture : _bottomTexture;
             _marker.IsVisible = value;
             Arrange(Bounds);
             InvalidateLayout();
         }
     }
 
-    public TurnOrderPortrait(ITexture portrait, ITexture atlas, ITexture selectedAtlas)
+    public TurnOrderPortrait(ITexture portrait, ITextureRegistry textures, bool isEnemy = false)
     {
-        _atlas = atlas;
-        _selectedAtlas = selectedAtlas;
+        var prefix = isEnemy ? "enemy" : "character";
+        _topTexture = textures.GetOrCreate(new ContentId($"ui.{prefix}_portrait_top.png"));
+        _bottomTexture = textures.GetOrCreate(new ContentId($"ui.{prefix}_portrait_bottom.png"));
+        _selectedTopTexture = isEnemy ? _topTexture : textures.GetOrCreate(new ContentId("ui.character_portrait_top_selected.png"));
+        _selectedBottomTexture = isEnemy ? _bottomTexture : textures.GetOrCreate(new ContentId("ui.character_portrait_bottom_selected.png"));
         Width = 80f;
         Height = 96f;
         VerticalAlignment = AlignVertical.Top;
@@ -49,9 +49,9 @@ public sealed class TurnOrderPortrait : Element
             SizingMode = ImageSizingMode.Stretch,
             RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
         };
-        _topFrame = AtlasImage("region-0016");
-        _bottomFrame = AtlasImage("region-0020");
-        _marker = AtlasImage("region-0004");
+        _topFrame = FrameImage(_topTexture);
+        _bottomFrame = FrameImage(_bottomTexture);
+        _marker = FrameImage(textures.GetOrCreate(new ContentId("ui.triangle.png")));
         _marker.IsVisible = false;
         Children.Add(_topFrame);
         Children.Add(_portrait);
@@ -59,10 +59,9 @@ public sealed class TurnOrderPortrait : Element
         Children.Add(_marker);
     }
 
-    private ImageElement AtlasImage(string name) => new()
+    private ImageElement FrameImage(ITexture texture) => new()
     {
-        Texture = _atlas,
-        SourceRegion = _atlas.GetRegion(name).Bounds,
+        Texture = texture,
         SizingMode = ImageSizingMode.Stretch,
         RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
     };
@@ -80,8 +79,8 @@ public sealed class TurnOrderPortrait : Element
         _portrait.Arrange(new(left, top, side, side));
         // Both pieces use the same pixel scale. The lower piece includes the side
         // tips, so its bounds overlap the upper piece rather than starting halfway down.
-        var topSource = _topFrame.SourceRegion!.Value.Size;
-        var bottomSource = _bottomFrame.SourceRegion!.Value.Size;
+        var topSource = new Vector2D<float>(_topFrame.Texture!.Width, _topFrame.Texture.Height);
+        var bottomSource = new Vector2D<float>(_bottomFrame.Texture!.Width, _bottomFrame.Texture.Height);
         var frameScale = side / bottomSource.X;
         var topWidth = topSource.X * frameScale;
         var topHeight = topSource.Y * frameScale;
@@ -89,7 +88,7 @@ public sealed class TurnOrderPortrait : Element
         _topFrame.Arrange(new(left + (side - topWidth) * 0.5f, top, topWidth, topHeight));
         _bottomFrame.Arrange(new(left, top + side - bottomHeight, side, bottomHeight));
         var markerSize = MathF.Min(18f, side);
-        var markerSource = _marker.SourceRegion!.Value.Size;
+        var markerSource = new Vector2D<float>(_marker.Texture!.Width, _marker.Texture.Height);
         var markerHeight = markerSize * markerSource.Y / markerSource.X;
         _marker.Arrange(new(Bounds.Origin.X + (Bounds.Size.X - markerSize) * 0.5f,
             top + side + 2f, markerSize, markerHeight));

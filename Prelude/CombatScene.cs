@@ -42,6 +42,7 @@ public class CombatScene : Scene
     private ModalDialog? _dialog;
     private bool _closeDialogRequested;
     private string? _inspectedItem;
+    private int _inventoryPage;
     private string? _inspectedAbility;
     private Element? _assignmentChoices;
     private Dictionary<string, string>? _pending;
@@ -143,8 +144,7 @@ public class CombatScene : Scene
         );
         _worldSize = new(_background.Texture.Width, _background.Texture.Height);
         _formation = new CharacterFormation(_worldSize);
-        var uiAtlas = _textures.GetOrCreate(new ContentId("ui.ui_panels.png"));
-        var retreatRegion = uiAtlas.GetRegion("region-0008").TexCoords;
+        var buttonTexture = _textures.GetOrCreate(new ContentId("ui.panel_small.png"));
         _retreatButton = new TextButton
         {
             Label = "Retreat",
@@ -154,13 +154,7 @@ public class CombatScene : Scene
             HorizontalAlignment = AlignHorizontal.Right,
             VerticalAlignment = AlignVertical.Top,
             Style = textStyles.GetOrCreate(BuiltInFonts.Default, 16f),
-            Texture = uiAtlas,
-            TexCoord = new(
-                retreatRegion.Origin.X,
-                retreatRegion.Origin.Y,
-                retreatRegion.Size.X,
-                retreatRegion.Size.Y
-            ),
+            Texture = buttonTexture,
             SourceBorders = new(48f, 32f, 48f, 32f),
             BorderScale = 0.4f,
             RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
@@ -189,7 +183,6 @@ public class CombatScene : Scene
                 {
                     Health = startingStats.Next(3, 8),
                     Focus = startingStats.Next(0, 4),
-                    Initiative = startingStats.Next(0, 6),
                 };
             var combatCharacter = new Character(
                 character,
@@ -202,7 +195,7 @@ public class CombatScene : Scene
                 _textures.GetOrCreate(new ContentId("ui.selection_indicator.png")),
                 _textures.GetOrCreate(new ContentId("ui.invalid_selection.png")), _worldLayerMask);
             _formation.SetSlot(placement.Slot, combatCharacter);
-            var display = new CharacterStatusDisplay(combatCharacter, _textures.GetOrCreate(new ContentId("stats.stats.png")), _hudTextStyle, _textures.GetOrCreate(new ContentId("icons.status_icons.png")))
+            var display = new CharacterStatusDisplay(combatCharacter, _textures, _hudTextStyle)
             {
                 Width = 132f,
                 Height = 66f,
@@ -213,7 +206,7 @@ public class CombatScene : Scene
         }
 
         _turnPortraits.Add("player", _gameState.Portrait);
-        Combat.Add(new Combat.Combatant("player", true, initiative: _gameState.Initiative));
+        Combat.Add(new Combat.Combatant("player", true, initiative: _startScenario.PlayerInitiative));
         for (var index = 0; index < _startScenario.Characters.Length; index++)
         {
             var placement = _startScenario.Characters[index];
@@ -230,7 +223,7 @@ public class CombatScene : Scene
                     id,
                     false,
                     placement.InitialTurn,
-                    _formation[placement.Slot]!.Definition.Initiative,
+                    placement.Initiative,
                     placement.Team,
                     row
                 )
@@ -298,9 +291,8 @@ public class CombatScene : Scene
             ],
         };
 
-        var atlas = _textures.GetOrCreate(new ContentId("ui.ui_panels.png"));
         layout.SetCell(0, 2, _retreatButton);
-        var turnOrder = new TurnOrderStrip(atlas, _hudTextStyle,
+        var turnOrder = new TurnOrderStrip(_textures, _hudTextStyle,
             _textures.GetOrCreate(new ContentId("shadow")),
             _textures.GetOrCreate(new ContentId("square_shadow")))
         {
@@ -319,7 +311,7 @@ public class CombatScene : Scene
         _playerPortrait = bottomLeft;
         bottomLeft.InputMap.OnMouseButtonReleased(MouseButtonEnum.Left).Invoke(OpenCharacterDialog);
         layout.SetCell(2, 0, bottomLeft);
-        var bottomCenter = CreatePanelElement(atlas, "region-0006");
+        var bottomCenter = CreatePanelElement("ui.panel_wide.png");
         _centerHudPanel = bottomCenter;
         bottomCenter.Height = 84f;
         bottomCenter.Margins = new(3f, 3f, 3f, 10f);
@@ -334,13 +326,12 @@ public class CombatScene : Scene
         bottomCenter.Children.Add(
             new PlayerStatusBars(
                 _gameState,
-                _textures.GetOrCreate(new ContentId("stats.stats.png")),
-                _textures.GetOrCreate(new ContentId("icons.status_icons.png"))
+                _textures
             )
         );
         bottomCenter.Children.Add(CreateZodiacImage());
         layout.SetCell(2, 1, bottomCenter);
-        var bottomRight = CreatePanelElement(atlas, "region-0000");
+        var bottomRight = CreatePanelElement("ui.panel_square.png", square: true);
         _confirmationPanel = bottomRight;
         bottomRight.InputMap.OnMouseButtonReleased(MouseButtonEnum.Left).Invoke(() => ConfirmCombatAction());
         _actionIcon = CreateHudImage("equipment.weapons_one_handed.png", new(0, 0, 405, 334), 0.3f);
@@ -453,8 +444,8 @@ public class CombatScene : Scene
         if (occurrence.CombatantId is { } id)
             return new TurnOrderPortrait(
                 _textures.GetOrCreate(_turnPortraits[id]),
-                _textures.GetOrCreate(new ContentId("ui.ui_panels.png")),
-                _textures.GetOrCreate(new ContentId("ui.ui_panels_selected.png"))
+                _textures,
+                isEnemy: id != "player" && _startScenario.Characters[int.Parse(id["encounter-".Length..])].Team == NexusRealms.Prelude.Combat.CombatTeam.Enemies
             )
             {
                 IsActive = isActive,
@@ -482,8 +473,8 @@ public class CombatScene : Scene
         Style = _hudTextStyle,
         Width = 190f,
         Height = 36f,
-        Texture = _textures.GetOrCreate(new ContentId("ui.ui_panels.png")),
-        TexCoord = _retreatButton.TexCoord,
+        Padding = new(8f, 4f),
+        Texture = _textures.GetOrCreate(new ContentId("ui.panel_small.png")),
         SourceBorders = new(48f, 32f, 48f, 32f),
         BorderScale = 0.4f,
         RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
@@ -492,27 +483,53 @@ public class CombatScene : Scene
     private void Place(Element panel, Element control, float x, float y)
     {
         control.HorizontalAlignment = AlignHorizontal.Left; control.VerticalAlignment = AlignVertical.Top;
-        control.Margins = new(x, y, 0f, 0f); panel.Children.Add(control);
+        control.Margins = new(Left: x, Right: 0f, Top: y, Bottom: 0f); panel.Children.Add(control);
     }
     private void CloseDialog()
     {
         // Keep the scope alive through the current event dispatch, including Escape/Back.
         _pending = null; _closeDialogRequested = true;
     }
-    private PanelElement BeginDialog(string title)
+    private PanelElement BeginDialog(string? title)
     {
         _dialog = _gui.StartModalDialog(); _dialog.Content.Width = 900f; _dialog.Content.Height = 460f;
         _dialog.InputMap.OnKeyPressed(KeyEnum.Escape).Invoke(CloseDialog);
         _dialog.InputMap.OnAnyControllerButtonPressed(ControllerSemanticNames.Back).Invoke(CloseDialog);
-        var panel = CreatePanelElement(_textures.GetOrCreate(new ContentId("ui.ui_panels.png")), "region-0006");
-        _dialog.Content.Children.Add(panel); panel.Children.Add(CreateHudLabel(title, AlignVertical.Top)); return panel;
+        var panel = CreatePanelElement("ui.panel_large.png");
+        _dialog.Content.Children.Add(panel);
+        if (title is not null)
+        {
+            panel.Children.Add(CreateHudLabel(title, AlignVertical.Top));
+            panel.Children.Add(CreateDialogCloseButton());
+        }
+        return panel;
     }
-    private void AssignControls(Element panel, Combat.CommandDefinition a, float y)
+    private TextButton CreateDialogCloseButton()
+    {
+        var button = DialogButton("", CloseDialog);
+        button.Width = 36f;
+        button.Height = 36f;
+        button.Padding = new(4f);
+        button.HorizontalAlignment = AlignHorizontal.Right;
+        button.VerticalAlignment = AlignVertical.Top;
+        button.Margins = new(Left: 0f, Right: 16f, Top: 12f, Bottom: 0f);
+        button.Icon = new ImageElement
+        {
+            Texture = _textures.GetOrCreate(new ContentId("icons.x.png")),
+            Width = 24f,
+            Height = 24f,
+            HorizontalAlignment = AlignHorizontal.Center,
+            VerticalAlignment = AlignVertical.Center,
+            SizingMode = ImageSizingMode.Fit,
+        };
+        return button;
+    }
+    private void AssignControls(Element panel, Combat.CommandDefinition a, float y, float destinationY = 350f)
     {
         Place(panel, DialogButton($"Assign {a.Name}", () =>
         {
             if (_assignmentChoices is not null) panel.Children.Remove(_assignmentChoices);
-            _assignmentChoices = new Element { Height = 36f, VerticalAlignment = AlignVertical.Top, Margins = new(0f, 350f, 0f, 0f) };
+            _assignmentChoices = new Element { Height = 36f, VerticalAlignment = AlignVertical.Top, Margins = new(Left: 0f, Right: 0f, Top: destinationY, Bottom: 0f) };
             panel.Children.Add(_assignmentChoices);
             for (var i = 0; i < Loadout.QuickSlots.Length; i++)
             {
@@ -525,41 +542,232 @@ public class CombatScene : Scene
     {
         if (_dialog is not null) return; _pending = Loadout.BeginEquipment(); RenderCharacterDialog();
     }
+    private const float ItemCellSize = 56f;
+    private const float InventoryCellGap = 4f;
+    private ImageElement ItemCell(Combat.CarriedItem? item, string? placeholder, Action action)
+    {
+        // Scale the complete frame uniformly as a single image, rather than slicing its corners.
+        var frame = new ImageElement
+        {
+            Texture = _textures.GetOrCreate(new ContentId("ui.item_frame.png")),
+            Width = ItemCellSize, Height = ItemCellSize,
+            SizingMode = ImageSizingMode.Stretch,
+            HorizontalAlignment = AlignHorizontal.Left,
+            VerticalAlignment = AlignVertical.Top,
+            RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+        };
+        frame.InputMap.OnMouseButtonReleased(MouseButtonEnum.Left).Invoke(action);
+        var icon = item?.Icon ?? placeholder;
+        if (icon is null && item is not null)
+        {
+            var kind = item.Slot switch
+            {
+                "Head" => "head", "Torso" => "torso", "Feet" => "feet",
+                "Left hand" => "hand_left", "Right hand" => "hand_right",
+                _ => "acc_pouch",
+            };
+            icon = $"ui.item_placeholder_{kind}.png";
+        }
+        if (icon is not null)
+            frame.Children.Add(new ImageElement
+            {
+                Texture = _textures.GetOrCreate(new ContentId(icon)),
+                Width = 42f, Height = 42f, SizingMode = ImageSizingMode.Fit,
+                Color = item is null ? new Color(1f, 1f, 1f, 0.6f) : Colors.White,
+                RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+            });
+        return frame;
+    }
+    private void EditEquipmentSlot(string slot)
+    {
+        var item = Loadout.Inventory.Find(i => i.Id.Value == _inspectedItem);
+        var pending = _pending!;
+        if (item is not null && Loadout.CanEquip(item, slot))
+        {
+            foreach (var previous in pending.Where(p => p.Value == item.Id.Value).Select(p => p.Key).ToArray())
+                pending.Remove(previous);
+            pending[slot] = item.Id.Value;
+        }
+        else _inspectedItem = pending.GetValueOrDefault(slot);
+        RenderCharacterDialog();
+    }
     private void RenderCharacterDialog()
     {
         var pending = _pending!; _dialog?.Dispose(); _dialog = null;
-        var panel = BeginDialog("Character / Inventory / Equipment / Stats preview");
-        var y = 60f;
-        foreach (var item in Loadout.Inventory)
+        var panel = BeginDialog(null);
+        const float inventoryLeft = 24f;
+        const float inventoryWidth = 4f * ItemCellSize + 3f * InventoryCellGap;
+        const float sectionGap = 24f;
+        const float dividerWidth = 12f;
+        const float firstDividerX = inventoryLeft + inventoryWidth + sectionGap;
+        const float equipmentLeft = firstDividerX + dividerWidth + sectionGap;
+        const float equipmentWidth = 4f * ItemCellSize + 3f * 8f;
+        const float secondDividerX = equipmentLeft + equipmentWidth + sectionGap;
+        const float statsLeft = secondDividerX + dividerWidth + sectionGap;
+        const float equipmentCenter = equipmentLeft + (equipmentWidth - ItemCellSize) * 0.5f;
+        foreach (var x in new[] { firstDividerX, secondDividerX })
+            Place(panel, new ImageElement
+            {
+                Texture = _textures.GetOrCreate(new ContentId("ui.divider_vertical.png")),
+                Width = dividerWidth, Height = 320f, SizingMode = ImageSizingMode.Stretch,
+                RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+            }, x, 20f);
+
+        const int pageSize = 20;
+        _inventoryPage = Math.Clamp(_inventoryPage, 0, Math.Max(0, (Loadout.Inventory.Count - 1) / pageSize));
+        var grid = new GridLayout
         {
-            Place(panel, DialogButton(item.Name, () => { _inspectedItem = item.Id.Value; RenderCharacterDialog(); }), 24f, y);
-            Place(panel, DialogButton("Move to top", () => { Loadout.Inventory.Remove(item); Loadout.Inventory.Insert(0, item); RenderCharacterDialog(); }), 225f, y); y += 40f;
-        }
-        y = 60f;
-        foreach (var slot in new[] { "Left hand", "Right hand" })
+            Width = inventoryWidth, Height = 5f * ItemCellSize + 4f * InventoryCellGap,
+            Rows = Enumerable.Repeat(GridSize.Absolute(ItemCellSize + InventoryCellGap), 4)
+                .Append(GridSize.Absolute(ItemCellSize)).ToArray(),
+            Columns = Enumerable.Repeat(GridSize.Absolute(ItemCellSize + InventoryCellGap), 3)
+                .Append(GridSize.Absolute(ItemCellSize)).ToArray(),
+        };
+        for (var index = 0; index < pageSize; index++)
         {
-            Place(panel, DialogButton($"{slot}: {pending.GetValueOrDefault(slot) ?? "Empty"}", () => { pending.Remove(slot); RenderCharacterDialog(); }), 430f, y); y += 40f;
+            var inventoryIndex = _inventoryPage * pageSize + index;
+            var item = inventoryIndex < Loadout.Inventory.Count ? Loadout.Inventory[inventoryIndex] : null;
+            var cell = ItemCell(item, null, () =>
+            {
+                _inspectedItem = item?.Id.Value;
+                RenderCharacterDialog();
+            });
+            grid.SetCell(index / 4, index % 4, cell);
         }
-        Place(panel, CreateHudLabel($"Preview initiative: {_gameState.Initiative + Loadout.InitiativeBonus(pending)}", AlignVertical.Top), 640f, 60f);
-        Place(panel, CreateHudLabel($"Health {_gameState.Health} / Focus {Loadout.Focus}", AlignVertical.Top), 640f, 90f);
+        Place(panel, grid, inventoryLeft, 24f);
+        if (Loadout.Inventory.Count > pageSize)
+        {
+            var previous = DialogButton("Previous", () => { _inventoryPage--; RenderCharacterDialog(); });
+            previous.Width = 110f; previous.Height = 28f; previous.IsEnabled = _inventoryPage > 0;
+            Place(panel, previous, 24f, 328f);
+            var next = DialogButton("Next", () => { _inventoryPage++; RenderCharacterDialog(); });
+            next.Width = 110f; next.Height = 28f; next.IsEnabled = (_inventoryPage + 1) * pageSize < Loadout.Inventory.Count;
+            Place(panel, next, 154f, 328f);
+        }
+        (string Slot, string Icon, float X, float Y)[] slots =
+        [
+            ("Head", "head", equipmentCenter, 24f),
+            ("Torso", "torso", equipmentCenter, 108f),
+            ("Feet", "feet", equipmentCenter, 192f),
+            ("Left hand", "hand_left", equipmentLeft, 108f),
+            ("Right hand", "hand_right", equipmentLeft + equipmentWidth - ItemCellSize, 108f),
+            ("Acc1", "acc_ring", equipmentLeft, 276f),
+            ("Acc2", "acc_belt", equipmentLeft + 64f, 276f),
+            ("Acc3", "acc_neck", equipmentLeft + 128f, 276f),
+            ("Acc4", "acc_pouch", equipmentLeft + 192f, 276f),
+        ];
+        foreach (var slot in slots)
+        {
+            var item = Loadout.Inventory.Find(i => i.Id.Value == pending.GetValueOrDefault(slot.Slot));
+            Place(panel, ItemCell(item, $"ui.item_placeholder_{slot.Icon}.png", () => EditEquipmentSlot(slot.Slot)), slot.X, slot.Y);
+        }
+        (string Icon, string Segment, int Value)[] stats =
+        [
+            ("stats.health_icon.png", "stats.health_bar_segment.png", _gameState.Health),
+            ("stats.focus_icon.png", "stats.focus_bar_segment.png", Loadout.Focus),
+        ];
+        for (var index = 0; index < stats.Length; index++)
+        {
+            var y = 24f + index * 34f;
+            var row = new GridLayout
+            {
+                Width = 220f, Height = 24f,
+                Columns = [GridSize.Absolute(32f), GridSize.Relative()],
+                Rows = [GridSize.Absolute(24f)],
+            };
+            row.SetCell(0, 0, new ImageElement
+            {
+                Texture = _textures.GetOrCreate(new ContentId(stats[index].Icon)),
+                Width = 24f, Height = 24f, SizingMode = ImageSizingMode.Fit,
+                RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+            });
+            var segments = new ResourceRow(_textures.GetOrCreate(new ContentId(stats[index].Segment)))
+            {
+                Height = 16f,
+                HorizontalAlignment = AlignHorizontal.Left,
+                VerticalAlignment = AlignVertical.Center,
+            };
+            segments.SetPoints(stats[index].Value, 14f, -2f);
+            row.SetCell(0, 1, segments);
+            Place(panel, row, statsLeft, y);
+        }
+        var statusY = 102f;
+        foreach (var id in _gameState.StatusEffects)
+        {
+            var effect = _storyline.StatusEffects[id];
+            Place(panel, new ImageElement
+            {
+                Texture = _textures.GetOrCreate(effect.Icon),
+                Width = 32f, Height = 32f,
+                SizingMode = ImageSizingMode.Fit,
+                RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+            }, statsLeft, statusY);
+            var name = new TextElement(effect.Name, _hudTextStyle)
+            {
+                Width = 200f, Height = 24f,
+                RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+            };
+            Place(panel, name, statsLeft + 40f, statusY);
+            var description = new TextElement(effect.Description, _hudTextStyle)
+            {
+                Width = 200f, Height = 48f,
+                RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+            };
+            Place(panel, description, statsLeft + 40f, statusY + 24f);
+            statusY += 80f;
+        }
+        if (_gameState.StatusEffects.Length == 0)
+            Place(panel, CreateHudLabel("No status effects", AlignVertical.Top), statsLeft, statusY);
+        var footerY = Math.Max(Loadout.Inventory.Count > pageSize ? 356f : 340f, statusY) + 16f;
         var selectedItem = Loadout.Inventory.Find(i => i.Id.Value == _inspectedItem);
         if (selectedItem is not null)
         {
-            Place(panel, CreateHudLabel($"{selectedItem.Name} / {selectedItem.Slot} / Initiative +{selectedItem.InitiativeBonus}", AlignVertical.Top), 24f, 165f);
-            Place(panel, DialogButton("Equip selected item", () => { pending[selectedItem.Slot] = selectedItem.Id.Value; RenderCharacterDialog(); }), 430f, 165f);
-            y = 205f;
-            foreach (var a in Loadout.Abilities.Where(a => a.RequiredItem == selectedItem.Id))
+            var contextY = footerY;
+            Place(panel, CreateHudLabel(selectedItem.Name, AlignVertical.Top), 24f, contextY);
+            Place(panel, DialogButton("Move to top", () =>
             {
-                Place(panel, CreateHudLabel($"{a.Name} / Cost {a.TurnCost} / Focus {a.FocusCost}", AlignVertical.Top), 250f, y);
-                if (a.Learned && !a.Passive) AssignControls(panel, a, y); y += 40f;
+                Loadout.Inventory.Remove(selectedItem); Loadout.Inventory.Insert(0, selectedItem);
+                _inventoryPage = 0; RenderCharacterDialog();
+            }), 24f, contextY + 24f);
+            var unequip = DialogButton("Unequip", () =>
+            {
+                foreach (var slot in pending.Where(p => p.Value == selectedItem.Id.Value).Select(p => p.Key).ToArray()) pending.Remove(slot);
+                RenderCharacterDialog();
+            });
+            unequip.IsEnabled = pending.Values.Contains(selectedItem.Id.Value);
+            Place(panel, unequip, 230f, contextY + 24f);
+            var actions = Loadout.Abilities.Where(a => a.RequiredItem == selectedItem.Id).ToArray();
+            var y = contextY + 66f;
+            var assignmentY = y + actions.Length * 40f;
+            foreach (var action in actions)
+            {
+                Place(panel, CreateHudLabel($"{action.Name} / Cost {action.TurnCost} / Focus {action.FocusCost}", AlignVertical.Top), 250f, y);
+                if (action.Learned && !action.Passive) AssignControls(panel, action, y, destinationY: assignmentY);
+                y += 40f;
             }
+            footerY = actions.Length > 0 ? assignmentY + 48f : contextY + 76f;
         }
-        Place(panel, DialogButton("X / Cancel", CloseDialog), 24f, 400f);
-        var message = CreateHudLabel("", AlignVertical.Top); Place(panel, message, 240f, 400f);
-        Place(panel, DialogButton($"Confirm / Cost {Loadout.Cost(pending):0.##}", () =>
+        _dialog!.Content.Height = footerY + 56f;
+        var message = CreateHudLabel("", AlignVertical.Top);
+        Place(panel, message, 200f, footerY + 8f);
+        Place(panel, CreateHudLabel($"Turn +{Loadout.Cost(pending):0.##}", AlignVertical.Top), 24f, footerY + 8f);
+        void FooterButton(string label, Action action, float x)
         {
-            if (Loadout.Commit(Combat, "player", pending)) CloseDialog(); else message.Text = "Cannot commit equipment now";
-        }), 640f, 400f);
+            var button = DialogButton(label, action);
+            button.Width = 110f;
+            Place(panel, button, x, footerY);
+        }
+        if (Loadout.ChangedEquipmentSlots(pending).Count == 0)
+            FooterButton("Close", CloseDialog, 760f);
+        else
+        {
+            FooterButton("Cancel", CloseDialog, 638f);
+            FooterButton("Confirm", () =>
+            {
+                if (Loadout.Commit(Combat, "player", pending)) CloseDialog();
+                else message.Text = "Cannot commit equipment now";
+            }, 760f);
+        }
     }
     public void OpenZodiacDialog()
     {
@@ -582,7 +790,7 @@ public class CombatScene : Scene
             Place(panel, CreateHudLabel($"Cost {selected.TurnCost} / Focus {selected.FocusCost}", AlignVertical.Top), 640f, 90f);
             if (selected.Learned && !selected.Passive) AssignControls(panel, selected, 280f);
         }
-        Place(panel, DialogButton("Close", CloseDialog), 640f, 400f);
+
     }
 
     private ImageElement CreateZodiacImage()
@@ -647,16 +855,10 @@ public class CombatScene : Scene
             RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
         };
 
-    /// <summary>Uses a named region of the shared atlas as a cell's panel artwork.</summary>
-    private PanelElement CreatePanelElement(ITexture atlas, string regionName) =>
-        new(
-            atlas,
-            regionName,
-            regionName is "region-0000" or "region-0001"
-                ? new(32f, 32f, 32f, 32f)
-                : new(48f, 32f, 48f, 32f),
-            _textures.GetOrCreate(new ContentId("ui.ui_panels_selected.png"))
-        )
+    /// <summary>Uses the complete standalone panel texture with fixed-size borders.</summary>
+    private PanelElement CreatePanelElement(string contentId, bool square = false) =>
+        new(_textures.GetOrCreate(new ContentId(contentId)),
+            square ? new(32f, 32f, 32f, 32f) : new(48f, 32f, 48f, 32f))
         {
             Margins = new(3f, 3f),
         };

@@ -13,6 +13,9 @@ public sealed record CombatScenario : StoryNode
     /// <summary>Optional replay seed; otherwise each encounter receives a fresh seed.</summary>
     public int? RandomSeed { get; init; }
 
+    /// <summary>Scenario-specific initiative for the player, who has no formation placement.</summary>
+    public int PlayerInitiative { get; init; }
+
     public ImmutableArray<Combat.EncounterEvent> Events { get; init; } = [];
 
     public required ContentId Background { get; init; }

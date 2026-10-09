@@ -6,7 +6,11 @@
     <Compile Include="../../Prelude/CharacterFormation.cs" Link="CharacterFormation.cs" />
     <Compile Include="../../Prelude/Character.cs" Link="Character.cs" />
     <Compile Include="../../Prelude/DataModel/CharacterData.cs" Link="CharacterData.cs" />
+    <Compile Include="../../Prelude/DataModel/StatusEffectId.cs" Link="StatusEffectId.cs" />
     <Compile Include="../../Prelude/DataModel/CharacterId.cs" Link="CharacterId.cs" />
+    <Compile Include="../../Prelude/DataModel/CharacterPlacement.cs" Link="CharacterPlacement.cs" />
+    <Compile Include="../../Prelude/Combat/CombatSystem.cs" Link="CombatSystem.cs" />
+    <Compile Include="../../Prelude/Combat/CombatTimeline.cs" Link="CombatTimeline.cs" />
   </ItemGroup>
 </Project>
 

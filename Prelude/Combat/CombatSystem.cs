@@ -7,7 +7,7 @@ public sealed class Combatant(string id, bool playerControlled, float turn = 0f,
     int initiative = 0, CombatTeam team = CombatTeam.PlayerAndAllies,
     CombatRow row = CombatRow.Front)
 {
-    public int Initiative { get; internal set; } = initiative;
+    public int Initiative { get; } = initiative;
     public CombatTeam Team { get; } = team;
     public CombatRow Row { get; } = row;
     public uint RandomRank { get; internal set; }

@@ -56,9 +56,10 @@ Combatant ties use higher Initiative first, then PlayerAndAllies before Enemies,
 then Front, Middle, Back, then a random rank assigned once on encounter entry.
 `CombatSystem(seed)` makes this rank reproducible and preserves it on subsequent
 turns. Explicit event priorities still determine effects versus combatant turns;
-sequence is the final fallback. Initiative belongs to character definitions and
-the player GameState; team belongs to encounter placements, and row comes from
-the formation slot.
+sequence is the final fallback. Initiative belongs to each scenario's `CharacterPlacement`; the separately spawned
+player uses `CombatScenario.PlayerInitiative`. Both default to zero. Initiative is
+fixed for the encounter and equipment does not modify it. Team belongs to encounter
+placements, and row comes from the formation slot.
 
 The strip reserves a distinct slot per occurrence, including ties, and distributes
 remaining width according to relative Turn. All visible combatants are included;

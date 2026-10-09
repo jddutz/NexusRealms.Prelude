@@ -104,13 +104,13 @@ Console.WriteLine("Combat timeline checks passed.");
 
 // Commands and equipment transactions share the timeline and never execute on assignment.
 var commandsCombat = new CombatSystem();
-commandsCombat.Add(new Combatant("player", true));
+commandsCombat.Add(new Combatant("player", true, initiative: 3));
 commandsCombat.Process();
 var loadout = new CombatLoadout { Focus = 2 };
 var commandExecutions = 0;
 var slash = new CommandDefinition("slash", "Slash", 0.6f, "sword", "Right hand", FocusCost: 1,
     Resolve: (_, _) => commandExecutions++);
-loadout.Inventory.Add(new("sword", "Sword", "Right hand", 2));
+loadout.Inventory.Add(new("sword", "Sword", "Right hand"));
 loadout.Abilities.Add(slash);
 loadout.Abilities.Add(new("locked", "Locked", 1f, Learned: false));
 loadout.Abilities.Add(new("passive", "Passive", 1f, Passive: true));
@@ -120,7 +120,6 @@ Check(!loadout.Available(slash));
 var pendingLoadout = loadout.BeginEquipment();
 pendingLoadout["Right hand"] = "sword";
 Check(loadout.Equipment.Count == 0 && loadout.Cost(pendingLoadout) == 0.6f);
-Check(loadout.InitiativeBonus(pendingLoadout) == 2);
 pendingLoadout.Clear();
 Check(loadout.Cost(pendingLoadout) == 0f);
 pendingLoadout["Right hand"] = "missing";
@@ -130,7 +129,7 @@ Check(loadout.Equipment.Count == 0 && commandsCombat.Timeline.CurrentTurn == bef
 pendingLoadout["Right hand"] = "sword";
 Check(loadout.Commit(commandsCombat, "player", pendingLoadout));
 Check(loadout.Equipment["Right hand"] == "sword" && loadout.Available(slash));
-Check(commandsCombat.ActiveCombatant!.Initiative == 2);
+Check(commandsCombat.ActiveCombatant!.Initiative == 3);
 Check(commandsCombat.Timeline.CurrentTurn == beforeCommit + 0.6f && commandExecutions == 0);
 Check(!loadout.Confirm(commandsCombat, "player", slash, () => null, () => { }));
 Check(loadout.Focus == 2 && commandExecutions == 0);
@@ -153,7 +152,7 @@ loadout.Abilities.Add(wait);
 Check(loadout.Confirm(commandsCombat, "player", wait, () => null, () => { }));
 Console.WriteLine("Command selection and equipment transaction checks passed.");
 
-Check(commandsCombat.ActiveCombatant!.Initiative == 0);
+Check(commandsCombat.ActiveCombatant!.Initiative == 3);
 Check(!loadout.ValidTarget(slash, new(true, true, CombatTeam.Enemies, CombatRow.Back)));
 Check(!loadout.ValidTarget(slash, new(false, true, CombatTeam.Enemies, CombatRow.Front)));
 Check(!loadout.ValidTarget(slash, new(true, false, CombatTeam.Enemies, CombatRow.Front)));
@@ -166,3 +165,45 @@ pendingLoadout = loadout.BeginEquipment();
 pendingLoadout["Right hand"] = "sword";
 Check(!loadout.Commit(commandsCombat, "player", pendingLoadout));
 Check(loadout.Equipment.Count == 0);
+
+// Accessory artwork does not impose a ring/belt/neck equipment type.
+var accessoryLoadout = new CombatLoadout();
+var charm = new CarriedItem("charm", "Charm", "Accessory");
+accessoryLoadout.Inventory.Add(charm);
+foreach (var slot in new[] { "Acc1", "Acc2", "Acc3", "Acc4" }) Check(accessoryLoadout.CanEquip(charm, slot));
+Check(!accessoryLoadout.CanEquip(charm, "Head"));
+Check(!accessoryLoadout.CanEquip(charm, "Ring"));
+var accessoryCombat = new CombatSystem();
+accessoryCombat.Add(new Combatant("player", true));
+accessoryCombat.Process();
+var accessoryPending = accessoryLoadout.BeginEquipment();
+accessoryPending["Acc4"] = "charm";
+Check(accessoryLoadout.Commit(accessoryCombat, "player", accessoryPending));
+Check(accessoryLoadout.Equipment["Acc4"] == "charm");
+accessoryPending = accessoryLoadout.BeginEquipment();
+accessoryPending["Acc1"] = "charm";
+Check(!accessoryLoadout.Commit(accessoryCombat, "player", accessoryPending));
+Console.WriteLine("Generic accessory slot checks passed.");
+
+// Costs reflect final changed slots, and one confirmation advances Turn once.
+accessoryPending.Remove("Acc4");
+Check(accessoryLoadout.ChangedEquipmentSlots(accessoryPending).Count == 2);
+Check(Math.Abs(accessoryLoadout.Cost(accessoryPending) - 1.2f) < 0.0001f);
+var beforeMove = accessoryCombat.ActiveCombatant!.Turn;
+Check(accessoryLoadout.Commit(accessoryCombat, "player", accessoryPending));
+Check(Math.Abs(accessoryCombat.ActiveCombatant!.Turn - beforeMove - 1.2f) < 0.0001f);
+Check(accessoryLoadout.Equipment.Count == 1 && accessoryLoadout.Equipment["Acc1"] == "charm");
+var unchanged = accessoryLoadout.BeginEquipment();
+unchanged.Remove("Acc1");
+Check(accessoryLoadout.Cost(unchanged) == 0.6f);
+unchanged["Acc1"] = "charm";
+Check(accessoryLoadout.ChangedEquipmentSlots(unchanged).Count == 0);
+var beforeUnchanged = accessoryCombat.ActiveCombatant!.Turn;
+Check(accessoryLoadout.Commit(accessoryCombat, "player", unchanged));
+Check(accessoryCombat.ActiveCombatant!.Turn == beforeUnchanged);
+accessoryLoadout.Inventory.Add(new("other-charm", "Other charm", "Accessory"));
+unchanged["Acc1"] = "other-charm";
+Check(accessoryLoadout.ChangedEquipmentSlots(unchanged).Count == 1);
+Check(accessoryLoadout.Cost(unchanged) == 0.6f);
+Check(accessoryLoadout.Equipment["Acc1"] == "charm");
+Console.WriteLine("Per-slot equipment cost checks passed.");

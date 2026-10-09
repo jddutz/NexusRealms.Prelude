@@ -14,7 +14,7 @@ public sealed class InstructionPanel : Element
             SizingMode = ImageSizingMode.Stretch,
             RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
         };
-        Label = new TextElement("Select a Target", style)
+        Label = new TextElement("Choose an Action", style)
         {
             HorizontalAlignment = AlignHorizontal.Center,
             VerticalAlignment = AlignVertical.Center,

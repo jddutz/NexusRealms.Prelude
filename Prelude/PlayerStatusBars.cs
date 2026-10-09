@@ -3,8 +3,6 @@ namespace NexusRealms.Prelude;
 /// <summary>Displays one fixed-size block for each player resource point.</summary>
 public sealed class PlayerStatusBars : Element
 {
-    private const string HealthRegion = "health";
-    private const string FocusRegion = "focus";
     private const float BlockWidth = 14f;
     private const float BlockGap = -2f;
     private const float BlockHeight = 16f;
@@ -19,21 +17,18 @@ public sealed class PlayerStatusBars : Element
     private readonly Row _focus;
     private readonly ImageElement[] _statusIcons;
 
-    public PlayerStatusBars(GameState state, ITexture stats, ITexture icons)
+    public PlayerStatusBars(GameState state, ITextureRegistry textures)
     {
         _state = state;
         // The portrait overlaps this panel by 29px; leave an 8px gap beside it.
         Margins = new(37f, 80f, 6f, 6f);
-        _health = CreateRow(stats, stats.GetRegion(HealthRegion).Bounds, "health-bar");
-        _focus = CreateRow(stats, stats.GetRegion(FocusRegion).Bounds, "focus-bar");
-        // Select once per HUD so layout updates never reshuffle the effects.
-        var statusRegions = icons.Regions
-            .Where(region => region.Name != HealthRegion && region.Name != FocusRegion && region.Name != "sheet-border").ToArray();
-        Random.Shared.Shuffle(statusRegions);
-        _statusIcons = statusRegions.Take(3).Select(region => new ImageElement
+        _health = CreateRow(textures.GetOrCreate(new ContentId("stats.health_icon.png")),
+            textures.GetOrCreate(new ContentId("stats.health_bar_segment.png")));
+        _focus = CreateRow(textures.GetOrCreate(new ContentId("stats.focus_icon.png")),
+            textures.GetOrCreate(new ContentId("stats.focus_bar_segment.png")));
+        _statusIcons = state.StatusEffects.Select(id => new ImageElement
         {
-            Texture = icons,
-            SourceRegion = region.Bounds,
+            Texture = textures.GetOrCreate(StatusEffects.All[id].Icon),
             SizingMode = ImageSizingMode.Fit,
             RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
             SortOrder = 1,
@@ -42,15 +37,15 @@ public sealed class PlayerStatusBars : Element
             Children.Add(icon);
     }
 
-    private Row CreateRow(ITexture icons, Rectangle<int> source, string barRegion)
+    private Row CreateRow(ITexture iconTexture, ITexture segmentTexture)
     {
         var icon = new ImageElement
         {
-            Texture = icons, SourceRegion = source, SizingMode = ImageSizingMode.Fit,
+            Texture = iconTexture, SizingMode = ImageSizingMode.Fit,
             RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI, SortOrder = 1,
         };
         Children.Add(icon);
-        var segments = new ResourceRow(icons, barRegion) { SortOrder = 3 };
+        var segments = new ResourceRow(segmentTexture) { SortOrder = 3 };
         Children.Add(segments);
         return new Row(icon, segments);
     }

@@ -8,11 +8,12 @@ public record GameState(StoryNodeId CurrentStoryNodeId)
     private static Combat.CombatLoadout CreateLoadout()
     {
         var loadout = new Combat.CombatLoadout { Focus = 2 };
-        loadout.Abilities.Add(new("wait", "Wait", 0.6f, RequiresTarget: false, Icon: "icons.status_icons.png", IconRegion: "moon"));
+        loadout.Abilities.Add(new("wait", "Wait", 0.6f, RequiresTarget: false, Icon: "stats.hourglass.png"));
         loadout.Assign(0, "wait");
         return loadout;
     }
-    public int Initiative { get; init; }
+    /// <summary>Active status effect identifiers shared by the HUD and Character dialog.</summary>
+    public StatusEffectId[] StatusEffects { get; init; } = ["guarded", "inspired", "focused"];
     public int Health { get; init; } = 5;
     public int Focus { get => Loadout.Focus; init => Loadout.Focus = value; }
 }

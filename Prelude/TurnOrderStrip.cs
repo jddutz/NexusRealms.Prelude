@@ -14,7 +14,7 @@ public sealed class TurnOrderStrip : Element
 
     private readonly List<(float Turn, Element Element)> _entries = [];
     private readonly List<ImageElement> _boundaries = [];
-    private readonly ITexture _atlas;
+    private readonly ITexture _boundaryTexture;
     private float _currentTurn;
 
     public Element Items { get; } = new();
@@ -35,8 +35,7 @@ public sealed class TurnOrderStrip : Element
         {
             var marker = new ImageElement
             {
-                Texture = _atlas,
-                SourceRegion = _atlas.GetRegion("region-0002").Bounds,
+                Texture = _boundaryTexture,
                 Width = 20f, Height = 20f,
                 SizingMode = ImageSizingMode.Fit,
                 RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
@@ -46,18 +45,16 @@ public sealed class TurnOrderStrip : Element
         }
         InvalidateLayout();
     }
-    public TurnOrderStrip(ITexture atlas, ITextStyle style, ITexture shadow, ITexture instructionShadow)
+    public TurnOrderStrip(ITextureRegistry textures, ITextStyle style, ITexture shadow, ITexture instructionShadow)
     {
-        _atlas = atlas;
+        _boundaryTexture = textures.GetOrCreate(new ContentId("ui.diamond.png"));
         _shadow.Texture = shadow;
         _instructions = new InstructionPanel(style, instructionShadow);
         _separator = new ImageElement
         {
-            Texture = atlas,
-            SourceRegion = atlas.GetRegion("region-0022").Bounds,
+            Texture = textures.GetOrCreate(new ContentId("ui.divider.png")),
             SizingMode = ImageSizingMode.Fit,
             RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
-            SortOrder = 1,
         };
         Children.Add(_shadow);
         Children.Add(Items);
@@ -110,21 +107,14 @@ public sealed class TurnOrderStrip : Element
         }
         // The instruction overlay extends below the grid's top row, like the marker.
         var separatorWidth = Bounds.Size.X * 0.18f;
-        var sourceSize = _separator.SourceRegion!.Value.Size;
-        var separatorHeight = separatorWidth * sourceSize.Y / sourceSize.X;
+        var texture = _separator.Texture!;
+        var separatorHeight = separatorWidth * texture.Height / texture.Width;
         var separatorTop = Bounds.Origin.Y + 89f - separatorHeight * 0.5f;
-        _instructions.SortOrder = SortOrder;
-        _instructions.Label.SortOrder = SortOrder + 1;
         _separator.SortOrder = SortOrder + 3;
-        _instructions.Arrange(new(Bounds.Origin.X, separatorTop + separatorHeight * 0.5f,
-            Bounds.Size.X, 34f));
         _separator.Arrange(new(Bounds.Origin.X + (Bounds.Size.X - separatorWidth) * 0.5f,
             separatorTop, separatorWidth, separatorHeight));
+        _instructions.SortOrder = SortOrder;
+        _instructions.Label.SortOrder = SortOrder + 1;
+        _instructions.Arrange(new(Bounds.Origin.X, Bounds.Origin.Y + 89f, Bounds.Size.X, 34f));
     }
 }
-
-
-
-
-
-
