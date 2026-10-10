@@ -279,7 +279,7 @@ Check(handHits == 0 && handCombat.ActiveCombatant!.Turn == handTurn);
 Check(hands.Confirm(handCombat, "player", CombatLoadout.LeftHandStrike, () => handTarget, () => { }, Strike));
 Check(lastStrike is { Hand: StrikeHand.Left, Item: null, Damage: 1 });
 Check(handCombat.ActiveCombatant!.Turn == handTurn + 1f && hands.Focus == 0);
-hands.Inventory.Add(new("apple", "Apple", "Right hand", "apple-icon"));
+hands.Inventory.Add(new("apple", "Apple", "Right hand", ["apple-icon"]));
 var handPending = hands.BeginEquipment();
 Check(hands.TryEquip(handPending, "apple", "Right hand"));
 Check(hands.Commit(handCombat, "player", handPending));
@@ -358,3 +358,59 @@ var otherStartingLoadout = CombatLoadout.CreatePlayerLoadout();
 startingLoadout.Inventory.Clear();
 Check(otherStartingLoadout.Inventory.Count == 1 && otherStartingLoadout.Equipment.Count == 1);
 Console.WriteLine("Starting player loadout checks passed.");
+
+// Range checks cover every nonempty combination of occupied enemy rows.
+foreach (var range in Enum.GetValues<WeaponRange>())
+{
+    var ranged = new CombatLoadout();
+    ranged.Inventory.Add(new("ranged", "Ranged", "Right hand", Weapon: new() { Range = range }));
+    var rangedCombat = new CombatSystem();
+    rangedCombat.Add(new("player", true));
+    rangedCombat.Process();
+    var rangedPending = ranged.BeginEquipment();
+    rangedPending["Right hand"] = "ranged";
+    Check(ranged.Commit(rangedCombat, "player", rangedPending));
+    for (var mask = 1; mask < 8; mask++)
+    {
+        var firstOccupied = Enumerable.Range(0, 3).First(row => (mask & (1 << row)) != 0);
+        foreach (var row in Enum.GetValues<CombatRow>())
+        {
+            if ((mask & (1 << (int)row)) == 0) continue;
+            var target = new CommandTarget(true, true, CombatTeam.Enemies, row,
+                (mask & 1) != 0, (mask & 2) != 0);
+            var expected = range == WeaponRange.Long
+                || range == WeaponRange.Short && (int)row == firstOccupied
+                || range == WeaponRange.Medium && (row != CombatRow.Back || (mask & 3) == 0);
+            Check(ranged.ValidTarget(CombatLoadout.RightHandStrike, target) == expected);
+        }
+    }
+    Check(!ranged.ValidTarget(CombatLoadout.RightHandStrike, new(true, true, CombatTeam.PlayerAndAllies, CombatRow.Front)));
+    Check(!ranged.ValidTarget(CombatLoadout.RightHandStrike, new(true, false, CombatTeam.Enemies, CombatRow.Front)));
+}
+var unarmedRange = new CombatLoadout();
+Check(unarmedRange.ValidTarget(CombatLoadout.LeftHandStrike, new(true, true, CombatTeam.Enemies, CombatRow.Back, false, false)));
+Check(!unarmedRange.ValidTarget(CombatLoadout.LeftHandStrike, new(true, true, CombatTeam.Enemies, CombatRow.Back, false, true)));
+Console.WriteLine("Weapon range checks passed.");
+
+var variantWeapon = new WeaponData { Range = WeaponRange.Long };
+var variantItem = new ItemData { Icons = ["firearm-a", "firearm-b"], Weapon = variantWeapon };
+Check(variantItem.Icon == "firearm-a");
+Check((variantItem with { IconIndex = 1 }).Icon == "firearm-b");
+Check((variantItem with { IconIndex = 99 }).Icon == "firearm-b");
+Check((variantItem with { IconIndex = -1 }).Icon == "firearm-b");
+Check(new ItemData().Icon is null);
+var carriedVariant = new CarriedItem("firearm", "Firearm", "Right hand", variantItem.Icons, variantWeapon) { IconIndex = 1 };
+var variants = new CombatLoadout();
+variants.Inventory.Add(carriedVariant);
+var variantCombat = new CombatSystem();
+variantCombat.Add(new("player", true));
+variantCombat.Process();
+var variantPending = variants.BeginEquipment();
+Check(variants.TryEquip(variantPending, "firearm", "Right hand"));
+Check(variants.Commit(variantCombat, "player", variantPending));
+Check(variants.CommandIcon(CombatLoadout.RightHandStrike) == "firearm-b");
+Check(carriedVariant.Icon == "firearm-b" && ReferenceEquals(carriedVariant.Weapon, variantWeapon));
+Check((carriedVariant with { IconIndex = 0 }).Icon == "firearm-a");
+Check((carriedVariant with { IconIndex = 0 }).Weapon == carriedVariant.Weapon);
+Check(new CarriedItem("none", "None", "Head").Icon is null);
+Console.WriteLine("Item icon variant checks passed.");

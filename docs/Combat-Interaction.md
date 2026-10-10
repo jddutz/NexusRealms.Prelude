@@ -29,3 +29,7 @@ Items and carried items can have optional `WeaponData.BonusDamage`, mapping each
 `DamageCategory` groups specific types into Physical, Elemental, Spiritual, Mental, and Magical. `DamageType.GetCategory()` maps Slashing, Piercing, and Crushing to Physical; other categories are available for future specific types. `DamageProfile.AmountIn(category)` counts matching typed points, excluding the uncategorized untyped base point.
 
 The player starts with a Sword equipped in the right hand (+1 Slashing), an empty left hand, RightHandStrike in action slot 1, and LeftHandStrike in action slot 2. Other action slots start empty. Initial equipment is committed during loadout creation without a Turn charge. Wait remains available but is not initially assigned.
+
+Weapons have a `WeaponRange` (Short by default). Short Strikes target only the front-most occupied enemy row. Medium Strikes target the fixed Front/Middle rows, falling back to Back only when both are empty. Long Strikes can target any living enemy position. Empty fists and non-weapons use Short. Live enemy occupancy is recalculated for target indicators and confirmation, excluding defeated/removed enemies and allies.
+
+`ItemData` and `CarriedItem` expose an `Icons` array and zero-based `IconIndex`. Their computed `Icon` selects the variant used by inventory, equipment, drag previews, and hand strikes. Indices wrap using modulo, including negative indices; an empty list keeps the existing placeholder behavior. Variants do not change weapon stats or item identity.

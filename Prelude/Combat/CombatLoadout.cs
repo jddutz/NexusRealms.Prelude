@@ -13,8 +13,13 @@ public sealed record HandStrike(StrikeHand Hand, CarriedItem? Item)
     public DamageProfile DamagePoints { get; } = DamageProfile.ForStrike(Item?.Weapon);
     public int Damage => DamagePoints.Total;
 }
-public sealed record CommandTarget(bool Exists, bool Alive, CombatTeam Team, CombatRow Row);
-public sealed record CarriedItem(ItemId Id, string Name, string Slot, string? Icon = null, WeaponData? Weapon = null);
+public sealed record CommandTarget(bool Exists, bool Alive, CombatTeam Team, CombatRow Row,
+    bool FrontOccupied = true, bool MiddleOccupied = true);
+public sealed record CarriedItem(ItemId Id, string Name, string Slot, string[]? Icons = null, WeaponData? Weapon = null)
+{
+    public int IconIndex { get; init; }
+    public string? Icon => ItemIconVariants.Select(Icons, IconIndex);
+}
 
 /// <summary>Gameplay-owned command validation and transactional equipment state.</summary>
 public sealed class CombatLoadout
@@ -23,7 +28,7 @@ public sealed class CombatLoadout
     public static CombatLoadout CreatePlayerLoadout()
     {
         var loadout = new CombatLoadout { Focus = 2 };
-        var sword = new CarriedItem("starting-sword", "Sword", "Right hand", "stats.swords_crossed.png",
+        var sword = new CarriedItem("starting-sword", "Sword", "Right hand", ["stats.swords_crossed.png"],
             new WeaponData { BonusDamage = new Dictionary<DamageType, int> { [DamageType.Slashing] = 1 } });
         loadout.Inventory.Add(sword);
         loadout._equipment["Right hand"] = sword.Id.Value;
@@ -63,9 +68,27 @@ public sealed class CombatLoadout
         "LeftHandStrike" => LeftHandStrike, "RightHandStrike" => RightHandStrike,
         _ => Abilities.Find(a => a.Id.Value == id),
     };
-    public bool ValidTarget(CommandDefinition? action, CommandTarget? target) =>
-        action is not null && (!action.RequiresTarget || target is { Exists: true, Alive: true }
-            && (action.TargetRule?.Invoke(target) ?? target is { Team: CombatTeam.Enemies, Row: CombatRow.Front }));
+    public bool ValidTarget(CommandDefinition? action, CommandTarget? target)
+    {
+        if (action is null) return false;
+        if (!action.RequiresTarget) return true;
+        if (target is not { Exists: true, Alive: true }) return false;
+        if (action.Hand is { } hand)
+        {
+            if (target.Team != CombatTeam.Enemies || !Enum.IsDefined(target.Row)) return false;
+            var range = HeldItem(hand)?.Weapon?.Range ?? WeaponRange.Short;
+            return range switch
+            {
+                WeaponRange.Short => target.Row == (target.FrontOccupied ? CombatRow.Front
+                    : target.MiddleOccupied ? CombatRow.Middle : CombatRow.Back),
+                WeaponRange.Medium => target.Row is CombatRow.Front or CombatRow.Middle
+                    || !target.FrontOccupied && !target.MiddleOccupied,
+                WeaponRange.Long => true,
+                _ => false,
+            };
+        }
+        return action.TargetRule?.Invoke(target) ?? target is { Team: CombatTeam.Enemies, Row: CombatRow.Front };
+    }
     public bool Available(CommandDefinition a) => (Abilities.Contains(a) || ReferenceEquals(a, LeftHandStrike) || ReferenceEquals(a, RightHandStrike)) && a.Learned && !a.Passive
         && float.IsFinite(a.TurnCost) && a.TurnCost > 0 && a.FocusCost >= 0 && Focus >= a.FocusCost && (a.RequiredItem is null ||
             (a.RequiredSlot is not null && Equipment.GetValueOrDefault(a.RequiredSlot) == a.RequiredItem.Value.Value));

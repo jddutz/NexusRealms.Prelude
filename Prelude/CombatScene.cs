@@ -57,10 +57,19 @@ public class CombatScene : Scene
         var index = Array.FindIndex(_startScenario.Characters.ToArray(), p => _formation[p.Slot] == FocusedCharacter);
         if (index < 0) return null;
         var placement = _startScenario.Characters[index];
-        var row = placement.Slot >= FormationSlot.FrontLeft ? NexusRealms.Prelude.Combat.CombatRow.Front
-            : placement.Slot >= FormationSlot.MiddleLeft ? NexusRealms.Prelude.Combat.CombatRow.Middle : NexusRealms.Prelude.Combat.CombatRow.Back;
-        return new(Combat.Contains($"encounter-{index}"), FocusedCharacter!.Health > 0, placement.Team, row);
+        var row = RowOf(placement.Slot);
+        var occupiedRows = _startScenario.Characters.Select((p, i) => (Placement: p, Index: i))
+            .Where(entry => entry.Placement.Team == NexusRealms.Prelude.Combat.CombatTeam.Enemies
+                && Combat.Contains($"encounter-{entry.Index}")
+                && _formation[entry.Placement.Slot] is { Health: > 0 })
+            .Select(entry => RowOf(entry.Placement.Slot)).ToHashSet();
+        return new(Combat.Contains($"encounter-{index}"), FocusedCharacter!.Health > 0, placement.Team, row,
+            occupiedRows.Contains(NexusRealms.Prelude.Combat.CombatRow.Front),
+            occupiedRows.Contains(NexusRealms.Prelude.Combat.CombatRow.Middle));
     }
+    private static Combat.CombatRow RowOf(FormationSlot slot) => slot >= FormationSlot.FrontLeft
+        ? NexusRealms.Prelude.Combat.CombatRow.Front : slot >= FormationSlot.MiddleLeft
+        ? NexusRealms.Prelude.Combat.CombatRow.Middle : NexusRealms.Prelude.Combat.CombatRow.Back;
     private bool ValidTarget() => Loadout.ValidTarget(Loadout.Find(SelectedActionId), CurrentTarget());
     public void SelectQuickAction(int slot)
     {
