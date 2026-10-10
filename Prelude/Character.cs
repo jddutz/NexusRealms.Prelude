@@ -100,7 +100,7 @@ public sealed class Character : GameObject2D
         if (textureId is null) return;
         var texture = _feedbackTextures!.GetOrCreate(new ContentId(textureId));
         renderer.Texture = texture;
-        var scale = VisualWidth * size / Math.Max(texture.Width, texture.Height);
+        var scale = Math.Max(VisualWidth, VisualHeight) * size / Math.Max(texture.Width, texture.Height);
         sprite.Size = new(texture.Width * scale, texture.Height * scale);
         sprite.Transform = Matrix4X4.CreateTranslation(0f, -VisualHeight * 0.55f - Elevation, 0f);
         renderer.IsVisible = true;
