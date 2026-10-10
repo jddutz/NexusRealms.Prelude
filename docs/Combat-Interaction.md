@@ -1,6 +1,6 @@
 # Combat interaction
 
-The portrait opens Character, the zodiac opens the ability map, and six quick slots select commands. Only the right panel confirms a command. Selection and free assignments do not advance the timeline.
+The portrait opens Character, the zodiac opens the ability map, and ten quick slots select commands. Only the right panel confirms a command. Selection and free assignments do not advance the timeline.
 
 `GameState.Loadout` owns the current player's command definitions, carried items, committed equipment, focus, and shortcuts. The encounter currently authors only Wait, using the existing 0.6-turn pass operation. No attack damage or progression rules have been added. Item actions and additional learned/unlearned nodes render from the loadout's definitions when authored.
 
@@ -16,4 +16,6 @@ The Zodiac dialog currently presents a fixed three-column, five-row grid with fo
 
 Drag input checks: `dotnet run --project tests/AbilityDragChecks`. Placeholder ability assignments remain unavailable for execution until their combat cost and behavior are authored.
 
-The center HUD holds six 56-pixel square action frames, separated by 4 pixels and aligned to the right beside the Zodiac opener. Slots display ability icons, dim unavailable commands, and highlight the selected command. Drag targets follow the actual frame bounds.
+The center HUD holds ten 56-pixel square action frames, separated by 4 pixels and aligned to the right beside the Zodiac opener. Slots display ability icons, dim unavailable commands, and highlight the selected command. Drag targets follow the actual frame bounds.
+
+An action occupies at most one slot. Assigning it elsewhere clears its previous slot and replaces the destination assignment; invalid assignments leave all slots unchanged.

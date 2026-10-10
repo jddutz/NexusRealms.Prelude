@@ -208,7 +208,26 @@ Check(accessoryLoadout.Cost(unchanged) == 0.6f);
 Check(accessoryLoadout.Equipment["Acc1"] == "charm");
 Console.WriteLine("Per-slot equipment cost checks passed.");
 
-Check(loadout.QuickSlots.Length == 6);
+Check(loadout.QuickSlots.Length == 10);
 Check(loadout.Assign(5, "wait") && loadout.QuickSlots[5] == "wait");
-Check(!loadout.Assign(6, "wait"));
-Console.WriteLine("Six action slot checks passed.");
+Check(!loadout.Assign(10, "wait"));
+Console.WriteLine("Ten action slot checks passed.");
+
+Check(loadout.CanSelectQuickSlot(5));
+Check(!loadout.CanSelectQuickSlot(4) && !loadout.CanSelectQuickSlot(10));
+var placeholder = new CommandDefinition("placeholder", "Placeholder", 0f);
+loadout.Abilities.Add(placeholder);
+Check(loadout.Assign(4, "placeholder") && !loadout.CanSelectQuickSlot(4));
+Check(!loadout.CanSelectQuickSlot(0)); // Slash no longer has its required equipment or focus.
+Console.WriteLine("Unavailable action selection checks passed.");
+
+Check(loadout.Assign(9, "wait"));
+Check(loadout.QuickSlots[5] is null && loadout.QuickSlots[9] == "wait");
+Check(loadout.QuickSlots.Count(id => id == "wait") == 1);
+Check(loadout.Assign(9, "wait") && loadout.QuickSlots[9] == "wait");
+Check(!loadout.Assign(10, "wait") && loadout.QuickSlots[9] == "wait");
+Check(!loadout.Assign(9, "locked") && loadout.QuickSlots[9] == "wait");
+Check(loadout.Assign(4, "wait"));
+Check(loadout.QuickSlots[9] is null && loadout.QuickSlots[4] == "wait");
+Check(loadout.QuickSlots.All(id => id != "placeholder"));
+Console.WriteLine("Unique action assignment checks passed.");

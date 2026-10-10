@@ -39,6 +39,7 @@ public class CombatScene : Scene
     /// <summary>The player's committed loadout and free quick-slot customization.</summary>
     public Combat.CombatLoadout Loadout => _gameState.Loadout;
     public string? SelectedActionId { get; private set; }
+    private int? _selectedQuickSlot;
     private ModalDialog? _dialog;
     private bool _closeDialogRequested;
     private string? _inspectedItem;
@@ -64,12 +65,20 @@ public class CombatScene : Scene
     public void SelectQuickAction(int slot)
     {
         if (_dialog is not null || (uint)slot >= Loadout.QuickSlots.Length) return;
-        if (Loadout.QuickSlots[slot] is { } id) SelectedActionId = id;
+        if (!Loadout.CanSelectQuickSlot(slot)) return;
+        _selectedQuickSlot = slot;
+        SelectedActionId = Loadout.QuickSlots[slot];
         RefreshCommand();
     }
     public bool ConfirmCombatAction() => _dialog is null && Loadout.Confirm(Combat, "player", Loadout.Find(SelectedActionId), CurrentTarget, () => { });
     private void RefreshCommand()
     {
+        if (_selectedQuickSlot is { } selectedSlot
+            && (!Loadout.CanSelectQuickSlot(selectedSlot) || Loadout.QuickSlots[selectedSlot] != SelectedActionId))
+        {
+            _selectedQuickSlot = null;
+            SelectedActionId = null;
+        }
         var a = Loadout.Find(SelectedActionId);
         var valid = Loadout.CanConfirm(Combat, "player", a, ValidTarget());
         if (_actionIcon is not null)
@@ -89,7 +98,7 @@ public class CombatScene : Scene
         {
             var q = Loadout.Find(Loadout.QuickSlots[i]);
             _quickSlots[i].Texture = _textures.GetOrCreate(new ContentId(
-                q is not null && q.Id.Value == SelectedActionId ? "ui.item_frame_selected.png" : "ui.item_frame.png"));
+                q is not null && _selectedQuickSlot == i && q.Id.Value == SelectedActionId ? "ui.item_frame_selected.png" : "ui.item_frame.png"));
             var slotIcon = _quickSlotIcons[i];
             slotIcon.IsVisible = q?.Icon is not null;
             slotIcon.Color = new Color(1f, 1f, 1f, q is not null && Loadout.Available(q) ? 1f : 0.4f);
@@ -349,6 +358,7 @@ public class CombatScene : Scene
                 Width = actionSlotSize, Height = actionSlotSize,
                 HorizontalAlignment = AlignHorizontal.Left,
                 SizingMode = ImageSizingMode.Stretch,
+                SortOrder = 2,
                 RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
             };
             frame.InputMap.OnMouseButtonReleased(MouseButtonEnum.Left).Invoke(() => SelectQuickAction(slot));
@@ -356,6 +366,7 @@ public class CombatScene : Scene
             {
                 Width = 36f, Height = 36f, SizingMode = ImageSizingMode.Fit,
                 IsVisible = false,
+                SortOrder = 3,
                 RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
             };
             frame.Children.Add(icon);
@@ -561,8 +572,8 @@ public class CombatScene : Scene
             {
                 var slot = i;
                 var button = DialogButton($"Slot {i + 1}", () => { Loadout.Assign(slot, a.Id.Value); RefreshCommand(); });
-                button.Width = 96f;
-                Place(_assignmentChoices, button, 230f + i * 100f, 0f);
+                button.Width = 80f;
+                Place(_assignmentChoices, button, 24f + i * 86f, 0f);
             }
         }), 24f, y);
     }

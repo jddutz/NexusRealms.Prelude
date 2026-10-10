@@ -20,7 +20,7 @@ public sealed class CombatLoadout
     public List<CommandDefinition> Abilities { get; } = [];
     private Dictionary<string, string> _equipment = [];
     public IReadOnlyDictionary<string, string> Equipment => _equipment;
-    public string?[] QuickSlots { get; } = new string?[6];
+    public string?[] QuickSlots { get; } = new string?[10];
     public int Focus { get; set; }
     /// <summary>Turn cost for each equipment slot whose final item changes.</summary>
     public float EquipmentChangeCost { get; init; } = 0.6f;
@@ -32,10 +32,14 @@ public sealed class CombatLoadout
     public bool Available(CommandDefinition a) => Abilities.Contains(a) && a.Learned && !a.Passive
         && float.IsFinite(a.TurnCost) && a.TurnCost > 0 && a.FocusCost >= 0 && Focus >= a.FocusCost && (a.RequiredItem is null ||
             (a.RequiredSlot is not null && Equipment.GetValueOrDefault(a.RequiredSlot) == a.RequiredItem.Value.Value));
+    public bool CanSelectQuickSlot(int slot) => (uint)slot < QuickSlots.Length
+        && Find(QuickSlots[slot]) is { } action && Available(action);
     public bool Assign(int slot, string id)
     {
         var a = Find(id);
         if ((uint)slot >= QuickSlots.Length || a is null || !a.Learned || a.Passive) return false;
+        for (var index = 0; index < QuickSlots.Length; index++)
+            if (index != slot && QuickSlots[index] == id) QuickSlots[index] = null;
         QuickSlots[slot] = id;
         return true;
     }
