@@ -374,6 +374,10 @@ public class CombatScene : Scene
             PreserveDrawOrder = true,
             SizingMode = ViewSizingMode.Fill,
         };
+        // This view composites transparent 2D sprites in draw order. Depth writes
+        // must not let a formation sprite occlude a later damage overlay.
+        worldView.ViewComponent.EnableDepthTest = false;
+        worldView.ViewComponent.EnableDepthWrite = false;
         _worldView = worldView;
         worldView.SortOrder = -100;
         var layout = new GridLayout
