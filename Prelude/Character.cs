@@ -48,9 +48,9 @@ public sealed class Character : GameObject2D
     private bool _defeatPending;
     private readonly AnimationPlayer<Color> _defeatPlayer;
     private static readonly TimeSpan DamageFlashDuration = TimeSpan.FromMilliseconds(80);
-    // Two extra display frames at 60 Hz; stagger overlaps the final frame.
+    // Duration is elapsed time; stagger overlaps the final nominal 60 Hz frame.
     private static readonly TimeSpan DisplayFrame = TimeSpan.FromSeconds(1d / 60d);
-    private static readonly TimeSpan ImpactDuration = TimeSpan.FromMilliseconds(250) + DisplayFrame * 2;
+    private static readonly TimeSpan ImpactDuration = TimeSpan.FromMilliseconds(500);
     private sealed record ImpactPhase(Combat.AttackImpact Impact, bool FinalFrame);
     private TimeSpan _impactPhaseRemaining;
     public bool IsShowingDamage => !_damagePlayer.IsCompleted;

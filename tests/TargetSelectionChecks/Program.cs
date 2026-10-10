@@ -88,7 +88,7 @@ Check(feedbackTextures.Requests.Select(id => id.Value).SequenceEqual(new[] { "ef
 Check(feedbackCharacter.IsShowingFeedback && feedbackCharacter.Renderer.IsVisible);
 feedbackCharacter.Update(0.25d);
 Check(feedbackCharacter.IsShowingDamage && feedbackCharacter.Renderer.IsVisible);
-feedbackCharacter.Update(0.2d);
+feedbackCharacter.Update(0.25d);
 Check(feedbackCharacter.IsShowingFeedback && feedbackCharacter.Renderer.IsVisible);
 feedbackCharacter.Update(0.25d);
 Check(!feedbackCharacter.IsShowingFeedback && !feedbackCharacter.Renderer.IsVisible && !feedbackCharacter.ShadowRenderer.IsVisible);
@@ -98,14 +98,14 @@ blockedCharacter.ConfigureAttackFeedback(feedbackTextures, 1);
 NexusRealms.Prelude.Combat.DamageResolver.Apply(blockedCharacter.DamageReceiver, new(), impact: new("effects.impact.png"));
 Check(blockedCharacter.IsShowingFeedback && !blockedCharacter.IsShowingDamage);
 Check(feedbackTextures.Requests.Last().Value == "effects.blocked.png");
-blockedCharacter.Update(0.3d);
+blockedCharacter.Update(0.5d);
 Check(!blockedCharacter.IsShowingFeedback && blockedCharacter.Renderer.IsVisible);
 blockedCharacter.Health = 1;
 NexusRealms.Prelude.Combat.DamageResolver.Apply(blockedCharacter.DamageReceiver,
     new(new Dictionary<DamageType, int> { [DamageType.General] = 1 }), impact: new("effects.impact.png"));
 blockedCharacter.Update(0.1d);
 Check(!blockedCharacter.IsShowingDamage && blockedCharacter.IsShowingFeedback && blockedCharacter.Renderer.IsVisible);
-blockedCharacter.Update(0.2d);
+blockedCharacter.Update(0.4d);
 Check(blockedCharacter.IsShowingFeedback && blockedCharacter.Renderer.IsVisible);
 blockedCharacter.Update(0.3d);
 Check(!blockedCharacter.IsShowingFeedback && !blockedCharacter.Renderer.IsVisible);
@@ -136,12 +136,12 @@ Check(!lifecycleCharacter.Renderer.Instances.Values.Single().Color.Equals(physic
 gameSystem.Update(0.08d);
 Check(lifecycleCharacter.Renderer.Instances.Values.Single().Color.Equals(originalTint));
 Check(!lifecycleCharacter.IsShowingDamage && lifecycleCharacter.IsShowingFeedback);
-gameSystem.Update(0.14d);
+gameSystem.Update(0.34d);
 Check(!lifecycleCharacter.IsShowingFeedback);
 NexusRealms.Prelude.Combat.DamageResolver.Apply(lifecycleCharacter.DamageReceiver,
     new(new Dictionary<DamageType, int> { [DamageType.General] = 3 }), impact: new("effects.impact.png"));
 Check(lifecycleCharacter.Health == 0);
-gameSystem.Update(0.299d);
+gameSystem.Update(0.499d);
 Check(lifecycleCharacter.Renderer.IsVisible);
 gameSystem.Update(0.001d);
 Check(lifecycleCharacter.Renderer.IsVisible && lifecycleCharacter.IsShowingFeedback);
@@ -153,7 +153,7 @@ Check(ReferenceEquals(lifecycleFormation[FormationSlot.FrontCenter], lifecycleCh
 Check(lifecycleCharacter.Health == 0 && lifecycleCharacter.Definition.Name == "Lifecycle");
 Check(!lifecycleCharacter.HitTest(lifecycleCharacter.Position));
 Check(!lifecycleCharacter.Renderer.IsVisible && !lifecycleCharacter.IsShowingFeedback);
-Console.WriteLine("Game loop advances 80 ms damage points, 283 ms overlays, and hides defeated characters.");
+Console.WriteLine("Game loop advances 80 ms damage points, 500 ms overlays, and hides defeated characters.");
 
 // Atlas frames retain character geometry and select only the currently displayed pixels.
 var sheetPath = Path.Combine(Path.GetTempPath(), $"character-animation-{Guid.NewGuid():N}.json");
@@ -188,27 +188,29 @@ try
     var effectRenderer = animated.Components.OfType<SpriteRenderer>()
         .Single(renderer => renderer.Texture?.ContentId == texture.ContentId && renderer.DrawOrder == 90);
     Check(effectRenderer.Instances.Values.Single().Size.X == animated.VisualWidth * 0.5f);
-    animated.Update(0.266d);
+    animated.Update(0.483d);
     Check(sprite.TexCoord.X == 0f && effectRenderer.IsVisible);
     animated.Update(0.001d);
     Check(sprite.TexCoord.X == 2f / 6f && effectRenderer.IsVisible);
-    animated.Update(0.017d);
+    animated.Update(0.015d);
+    Check(effectRenderer.IsVisible); // Still visible at 499 ms.
+    animated.Update(0.001d);
     Check(sprite.TexCoord.X == 2f / 6f && !effectRenderer.IsVisible);
-    animated.Update(0.183d);
+    animated.Update(0.184d);
     Check(sprite.TexCoord.X == 0f && !animated.IsShowingFeedback);
     // An update crossing both effect phases advances stagger only after its cue.
     NexusRealms.Prelude.Combat.DamageResolver.Apply(animated.DamageReceiver,
         new(new Dictionary<DamageType, int> { [DamageType.General] = 1 }), impact: new("effects.slash_01.png"));
-    animated.Update(0.3d);
+    animated.Update(0.5d);
     Check(sprite.TexCoord.X == 2f / 6f && !effectRenderer.IsVisible);
-    animated.Update(0.167d);
+    animated.Update(0.184d);
     Check(sprite.TexCoord.X == 0f && !animated.IsShowingFeedback);
     animated.Health = 1;
     NexusRealms.Prelude.Combat.DamageResolver.Apply(animated.DamageReceiver,
         new(new Dictionary<DamageType, int> { [DamageType.General] = 1 }), impact: new("effects.slash_01.png"));
-    animated.Update(0.3d);
+    animated.Update(0.5d);
     Check(animated.Renderer.IsVisible && sprite.Color.A == 1f);
-    animated.Update(0.167d);
+    animated.Update(0.184d);
     animated.Update(0.25d);
     Check(!animated.Renderer.IsVisible && !animated.IsShowingFeedback);
     Console.WriteLine("Atlas idle, stagger, hit testing and lethal feedback checks passed.");
