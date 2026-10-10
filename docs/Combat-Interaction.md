@@ -2,7 +2,7 @@
 
 The portrait opens Character, the zodiac opens the ability map, and ten quick slots select commands. Only the right panel confirms a command. Selection and free assignments do not advance the timeline.
 
-`GameState.Loadout` owns the current player's command definitions, carried items, committed equipment, focus, and shortcuts. The encounter currently authors only Wait, using the existing 0.6-turn pass operation. No attack damage or progression rules have been added. Item actions and additional learned/unlearned nodes render from the loadout's definitions when authored.
+`GameState.Loadout` owns the current player's command definitions, carried items, committed equipment, focus, and shortcuts. The encounter authors Wait using the existing 0.6-turn pass operation, plus intrinsic LeftHandStrike and RightHandStrike commands costing 1.0 Turn and dealing 1 damage. No progression rules have been added. Item actions and additional learned/unlearned nodes render from the loadout's definitions when authored.
 
 A command identifies its operation and optional required item and slot. Definitions supply execution effects, target rules, turn/focus cost, and icon. The default targeted rule preserves the former front-enemy restriction; an authored target rule can override it. Missing equipment and resources preserve assignments while disabling execution. Confirmation rechecks current target state and requirements in gameplay.
 
@@ -19,3 +19,11 @@ Drag input checks: `dotnet run --project tests/AbilityDragChecks`. Placeholder a
 The center HUD holds ten 56-pixel square action frames, separated by 4 pixels and aligned to the right beside the Zodiac opener. Slots display ability icons, dim unavailable commands, and highlight the selected command. Drag targets follow the actual frame bounds.
 
 An action occupies at most one slot. Assigning it elsewhere clears its previous slot and replaces the destination assignment; invalid assignments leave all slots unchanged.
+
+Character items support the same cursor-centered drag gesture as abilities. Drop on a compatible equipment slot to edit the pending loadout. An equipped item exchanges with the target item if both fit their resulting slots; an item dragged from inventory replaces the target while the displaced item remains owned in inventory. Invalid drops leave the layout unchanged. Confirm applies the final slot changes and Turn cost; Cancel discards them.
+
+LeftHandStrike and RightHandStrike are intrinsic commands, separate from the ability DB and learned abilities. Drag either hand equipment slot onto the action bar to assign its strike, including an empty hand. Empty-hand drops outside the action bar do nothing. Each strike currently costs 1.0 Turn and deals one untyped base damage point plus weapon bonuses to a valid front-row enemy, with no Focus cost. Confirmation resolves the currently committed item in the chosen hand, or an empty fist; equipment changes never invalidate these assignments. Item-specific attack rules remain to be authored.
+
+Items and carried items can have optional `WeaponData.BonusDamage`, mapping each `DamageType` to an integer number of bonus points. `Sharp` adds one Slashing point if the weapon already has Slashing damage. A resolved `HandStrike.DamagePoints` snapshots one untyped base point plus these bonuses; `Damage` is their total, applied once. Fists and non-weapons deal only the untyped point. Scimitar: 1 untyped + 1 Slashing; Sharp scimitar: 1 untyped + 2 Slashing; spiked mace: 1 untyped + 1 Crushing + 1 Piercing. `DamageProfile.Negate` removes all matching points, while `Reduce` removes a specified number. Both preserve untyped points. Defense/status rules are not wired to these operations yet.
+
+`DamageCategory` groups specific types into Physical, Elemental, Spiritual, Mental, and Magical. `DamageType.GetCategory()` maps Slashing, Piercing, and Crushing to Physical; other categories are available for future specific types. `DamageProfile.AmountIn(category)` counts matching typed points, excluding the uncategorized untyped base point.

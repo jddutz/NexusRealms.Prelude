@@ -10,13 +10,14 @@ var mouse = new TestMouse(1);
 var other = new TestMouse(2);
 var starts = 0;
 var selections = 0;
+var clicks = 0;
 var drops = new List<Vector2D<float>>();
-var cell = new AbilityDragCell(_ => starts++, _ => { }, drops.Add, () => selections++);
+var cell = new AbilityDragCell(_ => starts++, _ => { }, drops.Add, () => selections++, () => clicks++);
 cell.Arrange(new(0f, 0f, 100f, 60f));
 // Clicking is not a drag, and starting outside the cell is ignored.
 cell.Handle(new MouseButtonPressedEvent(mouse, MouseButtonEnum.Left, new(10f, 10f)));
 cell.Handle(new MouseButtonReleasedEvent(mouse, MouseButtonEnum.Left, new(10f, 10f)));
-Check(starts == 0 && drops.Count == 0 && selections == 1);
+Check(starts == 0 && drops.Count == 0 && selections == 1 && clicks == 1);
 cell.Handle(new MouseButtonPressedEvent(mouse, MouseButtonEnum.Left, new(110f, 10f)));
 cell.Handle(new MouseMovedEvent(mouse, new(200f, 200f)));
 Check(starts == 0);
@@ -29,6 +30,7 @@ cell.Handle(new MouseButtonReleasedEvent(other, MouseButtonEnum.Left, new(200f, 
 Check(starts == 1 && drops.Count == 0);
 cell.Handle(new MouseButtonReleasedEvent(mouse, MouseButtonEnum.Left, new(200f, 200f)));
 cell.Handle(new MouseButtonReleasedEvent(mouse, MouseButtonEnum.Left, new(200f, 200f)));
+Check(clicks == 1);
 Check(drops.Count == 1 && drops[0] == new Vector2D<float>(200f, 200f));
 // Disconnect cancels with a position outside every valid drop target.
 cell.Handle(new MouseButtonPressedEvent(mouse, MouseButtonEnum.Left, new(10f, 10f)));

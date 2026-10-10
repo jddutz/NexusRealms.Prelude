@@ -1,3 +1,4 @@
+using NexusRealms.Prelude.DataModel;
 using NexusRealms.Prelude.Combat;
 
 static void Check(bool condition) { if (!condition) throw new Exception("Check failed."); }
@@ -231,3 +232,116 @@ Check(loadout.Assign(4, "wait"));
 Check(loadout.QuickSlots[9] is null && loadout.QuickSlots[4] == "wait");
 Check(loadout.QuickSlots.All(id => id != "placeholder"));
 Console.WriteLine("Unique action assignment checks passed.");
+
+// Equipment drops edit the pending layout, and exchange items across compatible slots.
+var dragLoadout = new CombatLoadout();
+dragLoadout.Inventory.AddRange([
+    new("charm-a", "Charm A", "Accessory"),
+    new("charm-b", "Charm B", "Accessory"),
+    new("charm-c", "Charm C", "Accessory"),
+    new("hat", "Hat", "Head")]);
+var dragPending = dragLoadout.BeginEquipment();
+Check(dragLoadout.TryEquip(dragPending, "charm-a", "Acc1"));
+Check(dragLoadout.TryEquip(dragPending, "charm-b", "Acc2"));
+Check(dragLoadout.TryEquip(dragPending, "charm-a", "Acc2"));
+Check(dragPending["Acc1"] == "charm-b" && dragPending["Acc2"] == "charm-a");
+Check(dragLoadout.TryEquip(dragPending, "charm-c", "Acc2"));
+Check(dragPending["Acc2"] == "charm-c" && !dragPending.Values.Contains("charm-a"));
+Check(dragLoadout.Inventory.Any(i => i.Id.Value == "charm-a"));
+var beforeInvalidDrop = new Dictionary<string, string>(dragPending);
+Check(!dragLoadout.TryEquip(dragPending, "hat", "Acc1"));
+Check(!dragLoadout.TryEquip(dragPending, "missing", "Head"));
+Check(!dragLoadout.TryEquip(dragPending, "hat", "invalid-slot"));
+Check(dragPending.Count == beforeInvalidDrop.Count && beforeInvalidDrop.All(p => dragPending[p.Key] == p.Value));
+Check(dragLoadout.TryEquip(dragPending, "charm-c", "Acc4"));
+Check(!dragPending.ContainsKey("Acc2") && dragPending["Acc4"] == "charm-c");
+Check(dragLoadout.Equipment.Count == 0); // Cancel leaves committed state untouched.
+Check(dragLoadout.TryEquip(dragPending, "charm-c", "Acc4"));
+Check(dragPending.Values.Distinct().Count() == dragPending.Count);
+Console.WriteLine("Equipment drag swap checks passed.");
+
+// Basic hand strikes are intrinsic commands, independent of learned abilities and held item identity.
+var hands = new CombatLoadout();
+var handCombat = new CombatSystem();
+handCombat.Add(new("player", true));
+handCombat.Process();
+Check(hands.Abilities.Count == 0);
+Check(hands.Assign(0, "LeftHandStrike") && hands.Assign(1, "RightHandStrike"));
+Check(hands.CanSelectQuickSlot(0) && hands.CanSelectQuickSlot(1));
+var handTarget = new CommandTarget(true, true, CombatTeam.Enemies, CombatRow.Front);
+HandStrike? lastStrike = null;
+var handHits = 0;
+void Strike(HandStrike strike) { lastStrike = strike; handHits++; }
+var handTurn = handCombat.ActiveCombatant!.Turn;
+Check(!hands.Confirm(handCombat, "player", CombatLoadout.LeftHandStrike, () => null, () => { }, Strike));
+Check(!hands.Confirm(handCombat, "player", CombatLoadout.LeftHandStrike, () => handTarget, () => { }));
+Check(handHits == 0 && handCombat.ActiveCombatant!.Turn == handTurn);
+Check(hands.Confirm(handCombat, "player", CombatLoadout.LeftHandStrike, () => handTarget, () => { }, Strike));
+Check(lastStrike is { Hand: StrikeHand.Left, Item: null, Damage: 1 });
+Check(handCombat.ActiveCombatant!.Turn == handTurn + 1f && hands.Focus == 0);
+hands.Inventory.Add(new("apple", "Apple", "Right hand", "apple-icon"));
+var handPending = hands.BeginEquipment();
+Check(hands.TryEquip(handPending, "apple", "Right hand"));
+Check(hands.Commit(handCombat, "player", handPending));
+Check(hands.QuickSlots[1] == "RightHandStrike");
+Check(hands.CommandIcon(CombatLoadout.RightHandStrike) == "apple-icon");
+Check(hands.Confirm(handCombat, "player", CombatLoadout.RightHandStrike, () => handTarget, () => { }, Strike));
+Check(lastStrike is { Hand: StrikeHand.Right, Item.Name: "Apple", Damage: 1 });
+handPending.Clear();
+Check(hands.Commit(handCombat, "player", handPending));
+Check(hands.QuickSlots[1] == "RightHandStrike" && hands.CanSelectQuickSlot(1));
+Check(hands.CommandIcon(CombatLoadout.RightHandStrike) == "stats.fist.png");
+Check(hands.Confirm(handCombat, "player", CombatLoadout.RightHandStrike, () => handTarget, () => { }, Strike));
+Check(lastStrike is { Hand: StrikeHand.Right, Item: null } && handHits == 3);
+Check(hands.Assign(9, "RightHandStrike") && hands.QuickSlots[1] is null);
+Console.WriteLine("Intrinsic hand strike checks passed.");
+
+// Each damage point has one type; the basic point remains untyped.
+Check(lastStrike!.DamagePoints.Untyped == 1 && lastStrike.DamagePoints.Typed.Count == 0);
+var scimitarBonus = new Dictionary<DamageType, int> { [DamageType.Slashing] = 1 };
+var scimitar = new WeaponData { BonusDamage = scimitarBonus };
+Check(new ItemData { Weapon = scimitar }.Weapon == scimitar && new ItemData().Weapon is null);
+hands.Inventory.Add(new("scimitar", "Scimitar", "Left hand", Weapon: scimitar));
+handPending = hands.BeginEquipment();
+Check(hands.TryEquip(handPending, "scimitar", "Left hand"));
+Check(hands.Commit(handCombat, "player", handPending));
+var typedHits = 0;
+var typedDamage = 0;
+Check(hands.Confirm(handCombat, "player", CombatLoadout.LeftHandStrike, () => handTarget, () => { }, strike =>
+{
+    lastStrike = strike;
+    typedHits++;
+    typedDamage += strike.Damage;
+}));
+Check(typedHits == 1 && typedDamage == 2);
+Check(lastStrike!.DamagePoints.Untyped == 1 && lastStrike.DamagePoints.Typed[DamageType.Slashing] == 1);
+scimitarBonus[DamageType.Slashing] = 9;
+Check(lastStrike.Damage == 2); // Resolved points are a snapshot.
+scimitarBonus[DamageType.Slashing] = 1;
+var sharp = new HandStrike(StrikeHand.Left, new("sharp", "Sharp scimitar", "Left hand", Weapon: scimitar with { Sharp = true }));
+Check(sharp.Damage == 3 && sharp.DamagePoints.Typed[DamageType.Slashing] == 2);
+Check(sharp.DamagePoints.Negate(DamageType.Slashing).Total == 1);
+Check(sharp.DamagePoints.Reduce(DamageType.Slashing, 1).Total == 2);
+Check(sharp.DamagePoints.Reduce(DamageType.Slashing, 99).Total == 1);
+Check(lastStrike.DamagePoints.Negate(DamageType.Slashing).Total == 1);
+var mace = new HandStrike(StrikeHand.Right, new("mace", "Spiked mace", "Right hand", Weapon: new()
+{
+    BonusDamage = new Dictionary<DamageType, int> { [DamageType.Crushing] = 1, [DamageType.Piercing] = 1 },
+}));
+Check(mace.Damage == 3 && mace.DamagePoints.Untyped == 1);
+Check(mace.DamagePoints.Negate(DamageType.Crushing).Total == 2);
+Check(mace.DamagePoints.Negate(DamageType.Crushing).Negate(DamageType.Piercing).Total == 1);
+var appleStrike = new HandStrike(StrikeHand.Right, hands.Inventory.Find(i => i.Id.Value == "apple"));
+Check(appleStrike.Damage == 1 && appleStrike.DamagePoints.Typed.Count == 0);
+Check(DamageProfile.ForStrike(new WeaponData()).Total == 1);
+try { _ = new DamageProfile(1, new Dictionary<DamageType, int> { [DamageType.Slashing] = -1 }); throw new Exception("Accepted negative damage"); }
+catch (ArgumentOutOfRangeException) { }
+Console.WriteLine("Atomic damage point checks passed.");
+
+foreach (var type in Enum.GetValues<DamageType>()) Check(type.GetCategory() == DamageCategory.Physical);
+Check(mace.DamagePoints.AmountIn(DamageCategory.Physical) == 2);
+Check(mace.DamagePoints.Total == 3); // The untyped point belongs to no category.
+foreach (var category in new[] { DamageCategory.Elemental, DamageCategory.Spiritual, DamageCategory.Mental, DamageCategory.Magical })
+    Check(mace.DamagePoints.AmountIn(category) == 0);
+Check(appleStrike.DamagePoints.AmountIn(DamageCategory.Physical) == 0);
+Console.WriteLine("Damage category checks passed.");

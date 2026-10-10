@@ -15,6 +15,7 @@ public sealed class OutlinedHudText : TextElement
     public OutlinedHudText(ITextStyle style)
         : base("", style)
     {
+        Color = UiTheme.TextColor;
         _outline = new TextElement[Offsets.Length];
         for (var i = 0; i < _outline.Length; i++)
         {

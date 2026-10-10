@@ -70,7 +70,21 @@ public class CombatScene : Scene
         SelectedActionId = Loadout.QuickSlots[slot];
         RefreshCommand();
     }
-    public bool ConfirmCombatAction() => _dialog is null && Loadout.Confirm(Combat, "player", Loadout.Find(SelectedActionId), CurrentTarget, () => { });
+    public bool ConfirmCombatAction()
+    {
+        var target = FocusedCharacter;
+        return _dialog is null && Loadout.Confirm(Combat, "player", Loadout.Find(SelectedActionId), CurrentTarget, () => { }, strike =>
+        {
+            if (target is null) return;
+            target.Health = Math.Max(0, target.Health - strike.Damage);
+            if (target.Health != 0) return;
+            var index = Array.FindIndex(_startScenario.Characters.ToArray(), p => _formation[p.Slot] == target);
+            if (index >= 0) Combat.Remove($"encounter-{index}");
+            target.Renderer.IsVisible = false;
+            target.ShadowRenderer.IsVisible = false;
+            FocusCharacter(null);
+        });
+    }
     private void RefreshCommand()
     {
         if (_selectedQuickSlot is { } selectedSlot
@@ -80,12 +94,13 @@ public class CombatScene : Scene
             SelectedActionId = null;
         }
         var a = Loadout.Find(SelectedActionId);
+        var actionTexture = a is null ? null : Loadout.CommandIcon(a);
         var valid = Loadout.CanConfirm(Combat, "player", a, ValidTarget());
         if (_actionIcon is not null)
         {
-            _actionIcon.IsVisible = a?.Icon is not null;
+            _actionIcon.IsVisible = actionTexture is not null;
             _actionIcon.Color = new Color(1f, 1f, 1f, valid ? 1f : 0.4f);
-            if (a?.Icon is { } icon && _renderedIconKey != $"{icon}:{a.IconRegion}")
+            if (a is not null && actionTexture is { } icon && _renderedIconKey != $"{icon}:{a.IconRegion}")
             {
                 _renderedIconKey = $"{icon}:{a.IconRegion}";
                 _actionIcon.SourceRegion = null;
@@ -100,10 +115,11 @@ public class CombatScene : Scene
             _quickSlots[i].Texture = _textures.GetOrCreate(new ContentId(
                 q is not null && _selectedQuickSlot == i && q.Id.Value == SelectedActionId ? "ui.item_frame_selected.png" : "ui.item_frame.png"));
             var slotIcon = _quickSlotIcons[i];
-            slotIcon.IsVisible = q?.Icon is not null;
+            var quickTexture = q is null ? null : Loadout.CommandIcon(q);
+            slotIcon.IsVisible = quickTexture is not null;
             slotIcon.Color = new Color(1f, 1f, 1f, q is not null && Loadout.Available(q) ? 1f : 0.4f);
             slotIcon.SourceRegion = null;
-            if (q?.Icon is { } slotTexture)
+            if (q is not null && quickTexture is { } slotTexture)
             {
                 slotIcon.Texture = _textures.GetOrCreate(new ContentId(slotTexture));
                 if (q.IconRegion is { } region) slotIcon.SourceRegion = slotIcon.Texture.GetRegion(region).Bounds;
@@ -168,6 +184,7 @@ public class CombatScene : Scene
         _retreatButton = new TextButton
         {
             Label = "Retreat",
+            TextColor = UiTheme.TextColor,
             Action = _ => Combat.End(),
             Width = 120f,
             Height = 54f,
@@ -456,7 +473,7 @@ public class CombatScene : Scene
             (screenPosition.Y - viewport.Origin.Y) * _worldSize.Y / viewport.Size.Y);
         // Hit the frontmost drawn opaque character when sprites overlap.
         foreach (var slot in Enum.GetValues<FormationSlot>().Reverse())
-            if (_formation[slot] is { } candidate && candidate.HitTest(world))
+            if (_formation[slot] is { } candidate && candidate.Health > 0 && candidate.HitTest(world))
             {
                 _pointerTarget = candidate;
                 break;
@@ -513,6 +530,7 @@ public class CombatScene : Scene
             };
         return new TextElement(occurrence.Label, _hudTextStyle)
         {
+            Color = UiTheme.TextColor,
             Width = 80f,
             Height = 64f,
             RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
@@ -522,6 +540,7 @@ public class CombatScene : Scene
     private TextButton DialogButton(string label, Action action) => new()
     {
         Label = label,
+        TextColor = UiTheme.TextColor,
         Style = _hudTextStyle,
         Width = 190f,
         Height = 36f,
@@ -583,7 +602,8 @@ public class CombatScene : Scene
     }
     private const float ItemCellSize = 56f;
     private const float InventoryCellGap = 4f;
-    private ImageElement ItemCell(Combat.CarriedItem? item, string? placeholder, Action action)
+    private Element ItemCell(Combat.CarriedItem? item, string? placeholder, Action action,
+        IReadOnlyDictionary<string, Element>? equipmentTargets = null, string? handSlot = null)
     {
         // Scale the complete frame uniformly as a single image, rather than slicing its corners.
         var frame = new ImageElement
@@ -595,7 +615,9 @@ public class CombatScene : Scene
             VerticalAlignment = AlignVertical.Top,
             RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
         };
-        frame.InputMap.OnMouseButtonReleased(MouseButtonEnum.Left).Invoke(action);
+        var handAction = NexusRealms.Prelude.Combat.CombatLoadout.HandAction(handSlot);
+        if ((item is null && handAction is null) || equipmentTargets is null)
+            frame.InputMap.OnMouseButtonReleased(MouseButtonEnum.Left).Invoke(action);
         var icon = item?.Icon ?? placeholder;
         if (icon is null && item is not null)
         {
@@ -615,19 +637,69 @@ public class CombatScene : Scene
                 Color = item is null ? new Color(1f, 1f, 1f, 0.6f) : Colors.White,
                 RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
             });
-        return frame;
+        if ((item is null && handAction is null) || equipmentTargets is null) return frame;
+        var dialog = _dialog!;
+        ImageElement? dragIcon = null;
+        void MoveDragIcon(Vector2D<float> position)
+        {
+            if (dragIcon is not null)
+                dragIcon.Margins = new(Left: Math.Max(0f, position.X - 21f), Right: 0f,
+                    Top: Math.Max(0f, position.Y - 21f), Bottom: 0f);
+        }
+        var cell = new AbilityDragCell(position =>
+        {
+            if (_dialog != dialog || _closeDialogRequested) return;
+            dragIcon = new ImageElement
+            {
+                Texture = _textures.GetOrCreate(new ContentId(icon!)),
+                Width = 42f, Height = 42f, SizingMode = ImageSizingMode.Fit,
+                HorizontalAlignment = AlignHorizontal.Left, VerticalAlignment = AlignVertical.Top,
+                SortOrder = 20000, RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+            };
+            dialog.Children.Add(dragIcon);
+            MoveDragIcon(position);
+        }, MoveDragIcon, position =>
+        {
+            if (dragIcon is not null) dialog.Children.Remove(dragIcon);
+            dragIcon = null;
+            if (_dialog != dialog || _closeDialogRequested || _pending is null) return;
+            if (handAction is not null)
+                for (var slotIndex = 0; slotIndex < _quickSlots.Count; slotIndex++)
+                {
+                    var bounds = _quickSlots[slotIndex].Bounds;
+                    if (position.X < bounds.Origin.X || position.X >= bounds.Max.X
+                        || position.Y < bounds.Origin.Y || position.Y >= bounds.Max.Y) continue;
+                    Loadout.Assign(slotIndex, handAction.Id.Value);
+                    RefreshCommand();
+                    return;
+                }
+            if (item is null) return;
+            foreach (var (slot, target) in equipmentTargets)
+            {
+                var bounds = target.Bounds;
+                if (position.X < bounds.Origin.X || position.X >= bounds.Max.X
+                    || position.Y < bounds.Origin.Y || position.Y >= bounds.Max.Y) continue;
+                if (Loadout.TryEquip(_pending, item.Id.Value, slot))
+                {
+                    _inspectedItem = item.Id.Value;
+                    RenderCharacterDialog();
+                }
+                break;
+            }
+        }, clicked: action)
+        {
+            Width = ItemCellSize, Height = ItemCellSize,
+            HorizontalAlignment = AlignHorizontal.Left, VerticalAlignment = AlignVertical.Top,
+        };
+        cell.Children.Add(frame);
+        return cell;
     }
     private void EditEquipmentSlot(string slot)
     {
         var item = Loadout.Inventory.Find(i => i.Id.Value == _inspectedItem);
         var pending = _pending!;
-        if (item is not null && Loadout.CanEquip(item, slot))
-        {
-            foreach (var previous in pending.Where(p => p.Value == item.Id.Value).Select(p => p.Key).ToArray())
-                pending.Remove(previous);
-            pending[slot] = item.Id.Value;
-        }
-        else _inspectedItem = pending.GetValueOrDefault(slot);
+        if (item is null || !Loadout.TryEquip(pending, item.Id.Value, slot))
+            _inspectedItem = pending.GetValueOrDefault(slot);
         RenderCharacterDialog();
     }
     private void RenderCharacterDialog()
@@ -652,6 +724,7 @@ public class CombatScene : Scene
                 RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
             }, x, 20f);
 
+        var equipmentTargets = new Dictionary<string, Element>();
         const int pageSize = 20;
         _inventoryPage = Math.Clamp(_inventoryPage, 0, Math.Max(0, (Loadout.Inventory.Count - 1) / pageSize));
         var grid = new GridLayout
@@ -670,7 +743,7 @@ public class CombatScene : Scene
             {
                 _inspectedItem = item?.Id.Value;
                 RenderCharacterDialog();
-            });
+            }, equipmentTargets);
             grid.SetCell(index / 4, index % 4, cell);
         }
         Place(panel, grid, inventoryLeft, 24f);
@@ -698,7 +771,9 @@ public class CombatScene : Scene
         foreach (var slot in slots)
         {
             var item = Loadout.Inventory.Find(i => i.Id.Value == pending.GetValueOrDefault(slot.Slot));
-            Place(panel, ItemCell(item, $"ui.item_placeholder_{slot.Icon}.png", () => EditEquipmentSlot(slot.Slot)), slot.X, slot.Y);
+            var cell = ItemCell(item, $"ui.item_placeholder_{slot.Icon}.png", () => EditEquipmentSlot(slot.Slot), equipmentTargets, slot.Slot);
+            equipmentTargets.Add(slot.Slot, cell);
+            Place(panel, cell, slot.X, slot.Y);
         }
         (string Icon, string Segment, int Value)[] stats =
         [
@@ -743,12 +818,14 @@ public class CombatScene : Scene
             }, statsLeft, statusY);
             var name = new TextElement(effect.Name, _hudTextStyle)
             {
+                Color = UiTheme.TextColor,
                 Width = 200f, Height = 24f,
                 RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
             };
             Place(panel, name, statsLeft + 40f, statusY);
             var description = new TextElement(effect.Description, _hudTextStyle)
             {
+                Color = UiTheme.TextColor,
                 Width = 200f, Height = 48f,
                 RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
             };
@@ -837,8 +914,8 @@ public class CombatScene : Scene
             void MoveDragIcon(Vector2D<float> position)
             {
                 if (dragIcon is not null)
-                    dragIcon.Margins = new(Left: Math.Max(0f, position.X + 8f), Right: 0f,
-                        Top: Math.Max(0f, position.Y + 8f), Bottom: 0f);
+                    dragIcon.Margins = new(Left: Math.Max(0f, position.X - 16f), Right: 0f,
+                        Top: Math.Max(0f, position.Y - 16f), Bottom: 0f);
             }
             var cell = new AbilityDragCell(position =>
             {
@@ -895,11 +972,13 @@ public class CombatScene : Scene
             }, 12f, 12f);
             Place(cell, new TextElement(ability.Name, _hudTextStyle)
             {
+                Color = UiTheme.TextColor,
                 Width = 200f, Height = 24f,
                 RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
             }, 64f, 0f);
             Place(cell, new TextElement(ability.Description, _hudTextStyle)
             {
+                Color = UiTheme.TextColor,
                 Width = 200f, Height = 48f,
                 RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
             }, 64f, 24f);
@@ -964,6 +1043,7 @@ public class CombatScene : Scene
     private TextElement CreateHudLabel(string text, AlignVertical alignment) =>
         new(text, _hudTextStyle)
         {
+            Color = UiTheme.TextColor,
             Height = 20f,
             HorizontalAlignment = AlignHorizontal.Center,
             VerticalAlignment = alignment,

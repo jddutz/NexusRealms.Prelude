@@ -13,7 +13,7 @@ public sealed class CharacterStatusDisplay : Element
     public CharacterStatusDisplay(Character character, ITextureRegistry textures, ITextStyle style)
     {
         _character = character;
-        _eligibility = new TextElement("", style) { Height = 20f, RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI };
+        _eligibility = new TextElement("", style) { Color = UiTheme.TextColor, Height = 20f, RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI };
         Children.Add(_eligibility);
         _health = new ResourceRow(textures.GetOrCreate(new ContentId("stats.health_bar_segment.png")));
         _focus = new ResourceRow(textures.GetOrCreate(new ContentId("stats.focus_bar_segment.png")));

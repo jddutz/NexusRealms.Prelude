@@ -4,7 +4,7 @@ namespace NexusRealms.Prelude;
 
 /// <summary>Captures an ability drag until release, including outside the source cell.</summary>
 public sealed class AbilityDragCell(Action<Vector2D<float>> started,
-    Action<Vector2D<float>> moved, Action<Vector2D<float>> dropped, Action? selected = null) : Element
+    Action<Vector2D<float>> moved, Action<Vector2D<float>> dropped, Action? selected = null, Action? clicked = null) : Element
 {
     private InputDeviceId? _pointer;
     private Vector2D<float> _origin;
@@ -37,6 +37,8 @@ public sealed class AbilityDragCell(Action<Vector2D<float>> started,
         if (message.Button != MouseButtonEnum.Left || _pointer != message.Mouse.Id) return;
         _pointer = null;
         if (_dragging) dropped(message.Position);
+        else if (message.Position.X >= Bounds.Origin.X && message.Position.X < Bounds.Max.X
+            && message.Position.Y >= Bounds.Origin.Y && message.Position.Y < Bounds.Max.Y) clicked?.Invoke();
         _dragging = false;
     }
 

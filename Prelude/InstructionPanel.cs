@@ -16,6 +16,7 @@ public sealed class InstructionPanel : Element
         };
         Label = new TextElement("Choose an Action", style)
         {
+            Color = UiTheme.TextColor,
             HorizontalAlignment = AlignHorizontal.Center,
             VerticalAlignment = AlignVertical.Center,
             Margins = new(8f, 8f, 2f, 2f),
