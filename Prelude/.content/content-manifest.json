@@ -308,30 +308,72 @@
         "Regions": {
           "region-0000": {
             "Bounds": {
-              "X": 77,
-              "Y": 2,
-              "Width": 31,
-              "Height": 30
+              "X": 3,
+              "Y": 6,
+              "Width": 61,
+              "Height": 14
             },
             "TexCoords": {
-              "X": 0.6015625,
-              "Y": 0.015625,
-              "Width": 0.2421875,
-              "Height": 0.234375
+              "X": 0.0234375,
+              "Y": 0.046875,
+              "Width": 0.4765625,
+              "Height": 0.109375
             }
           },
           "region-0001": {
             "Bounds": {
+              "X": 71,
+              "Y": 5,
+              "Width": 31,
+              "Height": 30
+            },
+            "TexCoords": {
+              "X": 0.5546875,
+              "Y": 0.0390625,
+              "Width": 0.2421875,
+              "Height": 0.234375
+            }
+          },
+          "region-0002": {
+            "Bounds": {
+              "X": 0,
+              "Y": 26,
+              "Width": 119,
+              "Height": 102
+            },
+            "TexCoords": {
+              "X": 0,
+              "Y": 0.203125,
+              "Width": 0.9296875,
+              "Height": 0.796875
+            }
+          },
+          "region-0003": {
+            "Bounds": {
+              "X": 4,
+              "Y": 30,
+              "Width": 31,
+              "Height": 13
+            },
+            "TexCoords": {
+              "X": 0.03125,
+              "Y": 0.234375,
+              "Width": 0.2421875,
+              "Height": 0.1015625
+            }
+          },
+          "region-0004": {
+            "Bounds": {
               "X": 3,
-              "Y": 23,
-              "Width": 122,
-              "Height": 103
+              "Y": 101,
+              "Width": 57,
+              "Height": 15
             },
             "TexCoords": {
               "X": 0.0234375,
-              "Y": 0.1796875,
-              "Width": 0.953125,
-              "Height": 0.8046875
+              "Y": 0.7890625,
+              "Width": 0.4453125,
+              "Height": 0.1171875
             }
           }
         }

@@ -120,6 +120,9 @@ public sealed class Storyline
                 continue;
             }
 
+            foreach (var destination in new[] { scenario.VictoryNode, scenario.DefeatNode, scenario.EscapeNode })
+                if (destination is { } id && !nodes.ContainsKey(id))
+                    throw new InvalidOperationException($"Combat scenario '{node.Id}' references missing outcome node '{id}'.");
             var assignedSlots = new HashSet<FormationSlot>();
             foreach (var placement in scenario.Characters)
             {

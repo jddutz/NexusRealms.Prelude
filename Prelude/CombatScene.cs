@@ -16,11 +16,13 @@ public class CombatScene : Scene
     private readonly SceneBackground _background;
     private readonly CharacterFormation _formation;
     private readonly ulong _worldLayerMask;
-    private readonly TextButton _retreatButton;
+    private readonly TextButton _escapeButton;
     private readonly Vector2D<float> _worldSize;
     private readonly GameState _gameState;
     private readonly ITextStyle _hudTextStyle;
     private readonly IGraphicalUserInterface _gui;
+    private readonly ISceneManager _sceneManager;
+    private bool _outcomeHandled;
     public Combat.CombatSystem Combat { get; }
     public int EncounterSeed { get; }
     public TimelineEventRenderer TimelineRenderer { get; }
@@ -125,7 +127,6 @@ public class CombatScene : Scene
                 q is not null && _selectedQuickSlot == i && q.Id.Value == SelectedActionId ? "ui.item_frame_selected.png" : "ui.item_frame.png"));
             var slotIcon = _quickSlotIcons[i];
             var quickTexture = q is null ? null : Loadout.CommandIcon(q);
-            slotIcon.IsVisible = quickTexture is not null;
             slotIcon.Color = new Color(1f, 1f, 1f, q is not null && Loadout.Available(q) ? 1f : 0.4f);
             slotIcon.SourceRegion = null;
             if (q is not null && quickTexture is { } slotTexture)
@@ -133,6 +134,7 @@ public class CombatScene : Scene
                 slotIcon.Texture = _textures.GetOrCreate(new ContentId(slotTexture));
                 if (q.IconRegion is { } region) slotIcon.SourceRegion = slotIcon.Texture.GetRegion(region).Bounds;
             }
+            slotIcon.IsVisible = quickTexture is not null;
         }
         FocusedCharacter?.SetFocus(true, a is null || !a.RequiresTarget || ValidTarget());
         foreach (var (character, display) in _characterDisplays)
@@ -152,7 +154,8 @@ public class CombatScene : Scene
         Storyline storyline,
         ITextStyleRegistry textStyles,
         GameState gameState,
-        IGraphicalUserInterface gui
+        IGraphicalUserInterface gui,
+        ISceneManager sceneManager
     )
     {
         _textures = textures;
@@ -160,21 +163,22 @@ public class CombatScene : Scene
         _windowService = windowService;
         _gameState = gameState;
         _gui = gui;
+        _sceneManager = sceneManager;
         _hudTextStyle = textStyles.GetOrCreate(BuiltInFonts.Default, 16f);
         TimelineRenderer = new(CreateTimelineElement);
         TimelineRenderer.Changed += RefreshTurnOrder;
 
-        if (!storyline.Nodes.TryGetValue(storyline.StartNodeId, out var startNode))
+        if (!storyline.Nodes.TryGetValue(gameState.CurrentStoryNodeId, out var startNode))
         {
             throw new InvalidOperationException(
-                $"The storyline start node '{storyline.StartNodeId}' is not registered."
+                $"The current story node '{gameState.CurrentStoryNodeId}' is not registered."
             );
         }
 
         _startScenario =
             startNode as CombatScenario
             ?? throw new InvalidOperationException(
-                $"The storyline start node '{storyline.StartNodeId}' is not a combat scenario."
+                $"The current story node '{gameState.CurrentStoryNodeId}' is not a combat scenario."
             );
 
         EncounterSeed = _startScenario.RandomSeed ?? Random.Shared.Next();
@@ -190,11 +194,11 @@ public class CombatScene : Scene
         _worldSize = new(_background.Texture.Width, _background.Texture.Height);
         _formation = new CharacterFormation(_worldSize);
         var buttonTexture = _textures.GetOrCreate(new ContentId("ui.panel_small.png"));
-        _retreatButton = new TextButton
+        _escapeButton = new TextButton
         {
-            Label = "Retreat",
+            Label = "Escape",
             TextColor = UiTheme.TextColor,
-            Action = _ => Combat.End(),
+            Action = _ => Combat.RequestEscape("player"),
             Width = 120f,
             Height = 54f,
             HorizontalAlignment = AlignHorizontal.Right,
@@ -217,7 +221,7 @@ public class CombatScene : Scene
                 HorizontalAlignment = AlignHorizontal.Left,
                 VerticalAlignment = AlignVertical.Center,
                 Margins = new(6f, 0f, 0f, 0f),
-                Color = new Color(0.7f, 0.7f, 0.7f),
+                Color = UiTheme.TextColor,
             },
             Margins = new(0f, 10f, 10f, 0f),
         };
@@ -287,6 +291,16 @@ public class CombatScene : Scene
                 occurrence.IsVisible,
                 occurrence.PresentationKey
             );
+        Combat.IsCombatantAlive = id =>
+        {
+            if (id == "player") return _gameState.Health > 0;
+            if (!id.StartsWith("encounter-", StringComparison.Ordinal)
+                || !int.TryParse(id["encounter-".Length..], out var index)
+                || (uint)index >= _startScenario.Characters.Length) return true;
+            return _formation[_startScenario.Characters[index].Slot] is { Health: > 0 };
+        };
+        Combat.VictoryConditions = _startScenario.BuildVictoryConditions();
+        Combat.DefeatConditions = _startScenario.DefeatConditions.ToArray();
         Combat.Changed += RefreshTurnOrder;
         Combat.Changed += () => { if (Combat.HasEnded) FocusCharacter(null); };
         Combat.Process();
@@ -337,7 +351,7 @@ public class CombatScene : Scene
             ],
         };
 
-        layout.SetCell(0, 2, _retreatButton);
+        layout.SetCell(0, 2, _escapeButton);
         var turnOrder = new TurnOrderStrip(_textures, _hudTextStyle,
             _textures.GetOrCreate(new ContentId("shadow")),
             _textures.GetOrCreate(new ContentId("square_shadow")))
@@ -390,6 +404,7 @@ public class CombatScene : Scene
             frame.InputMap.OnMouseButtonReleased(MouseButtonEnum.Left).Invoke(() => SelectQuickAction(slot));
             var icon = new ImageElement
             {
+                Texture = _textures.GetOrCreate(new ContentId("stats.fist.png")),
                 Width = 36f, Height = 36f, SizingMode = ImageSizingMode.Fit,
                 IsVisible = false,
                 SortOrder = 3,
@@ -473,7 +488,7 @@ public class CombatScene : Scene
             || (_centerHudPanel is { } center && Contains(center.Bounds))
             || (_playerPortrait is { } left && Contains(left.Bounds))
             || (_confirmationPanel is { } right && Contains(right.Bounds))
-            || Contains(_retreatButton.Bounds)
+            || Contains(_escapeButton.Bounds)
             || (_turnOrder is { } order && screenPosition.Y < order.Bounds.Origin.Y + 130f)) return false;
         var viewport = _worldView.ViewComponent.ViewportRegion;
         if (viewport.Size.X <= 0 || viewport.Size.Y <= 0) return false;
@@ -1079,6 +1094,27 @@ public class CombatScene : Scene
         base.Update(deltaTime);
         if (FocusedCharacter is not null && CurrentTarget() is not { Exists: true }) FocusCharacter(null);
         if (Combat.ActiveCombatant is { PlayerControlled: true } actor && actor.Id != "player") SelectedActionId = null;
+        Combat.EvaluateOutcome();
+        if (!Combat.HasEnded && Combat.IsEscaping && Combat.ActiveCombatant is null) Combat.Process();
+        _escapeButton.IsEnabled = !Combat.HasEnded && !Combat.IsEscaping && Combat.ActiveCombatant?.Id == "player";
+        if (!_outcomeHandled && Combat.Outcome is { } outcome)
+        {
+            _outcomeHandled = true;
+            _gameState.LastCombatOutcome = outcome;
+            var destination = outcome switch
+            {
+                NexusRealms.Prelude.Combat.CombatOutcome.Victory => _startScenario.VictoryNode,
+                NexusRealms.Prelude.Combat.CombatOutcome.Defeat => _startScenario.DefeatNode,
+                _ => _startScenario.EscapeNode,
+            };
+            _dialog?.Dispose(); _dialog = null; _pending = null;
+            if (destination is { } nodeId)
+            {
+                _gameState.CurrentStoryNodeId = nodeId;
+                if (_storyline.Nodes[nodeId] is CombatScenario) _sceneManager.LoadScene<CombatScene>();
+                else _sceneManager.LoadScene<OutcomeScene>();
+            }
+        }
         RefreshCommand();
 
         ApplyWorldSize();

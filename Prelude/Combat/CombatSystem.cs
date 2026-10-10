@@ -1,6 +1,7 @@
 namespace NexusRealms.Prelude.Combat;
 
 public enum CombatTeam { PlayerAndAllies, Enemies }
+public enum CombatOutcome { Victory, Defeat, Escape }
 public enum CombatRow { Front, Middle, Back }
 
 public sealed class Combatant(string id, bool playerControlled, float turn = 0f,
@@ -27,6 +28,33 @@ public sealed class CombatSystem
     public CombatTimeline Timeline { get; } = new();
     public Combatant? ActiveCombatant { get; private set; }
     public bool HasEnded { get; private set; }
+    public CombatOutcome? Outcome { get; private set; }
+    public Func<CombatSystem, bool>[] VictoryConditions { get; set; } = [];
+    public Func<CombatSystem, bool>[] DefeatConditions { get; set; } = [];
+    public Func<string, bool>? IsCombatantAlive { get; set; }
+    public bool IsAlive(string id) => Contains(id) && (IsCombatantAlive?.Invoke(id) ?? true);
+    public bool HasLivingEnemies => _combatants.Values.Any(actor => actor.Team == CombatTeam.Enemies && IsAlive(actor.Id));
+    private string? _escapingActor;
+    public bool IsEscaping => _escapingActor is not null && !HasEnded;
+    public event Action<CombatOutcome>? Ended;
+
+    public bool EvaluateOutcome()
+    {
+        if (HasEnded) return true;
+        if (DefeatConditions.Any(condition => condition(this))) End(CombatOutcome.Defeat);
+        else if (VictoryConditions.Length > 0 && VictoryConditions.All(condition => condition(this))) End(CombatOutcome.Victory);
+        else if (IsCombatOver?.Invoke(this) == true) End();
+        return HasEnded;
+    }
+
+    public bool RequestEscape(string actorId)
+    {
+        if (HasEnded || _resolving || IsEscaping || ActiveCombatant is not { PlayerControlled: true } actor
+            || actor.Id != actorId || EvaluateOutcome()) return false;
+        _escapingActor = actorId;
+        SubmitAction(new(1f, (_, _) => { }));
+        return true;
+    }
     public Func<CombatSystem, Combatant, CombatAction>? DecideAction { get; set; }
     public Func<CombatSystem, bool>? IsCombatOver { get; set; }
     public event Action? Changed;
@@ -102,15 +130,18 @@ public sealed class CombatSystem
     public void Process(int maxOccurrences = 1024)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxOccurrences);
+        if (EvaluateOutcome()) return;
         for (var i = 0; i < maxOccurrences && !HasEnded && ActiveCombatant is null; i++)
         {
-            if (IsCombatOver?.Invoke(this) == true) { End(); break; }
+            if (EvaluateOutcome()) break;
             var next = Timeline.Advance();
             if (next is null) break;
             if (next.CombatantId is { } id)
             {
                 _turns.Remove(id);
                 ActiveCombatant = _combatants[id];
+                if (EvaluateOutcome()) break;
+                if (id == _escapingActor) { End(CombatOutcome.Escape); break; }
                 Changed?.Invoke();
                 if (ActiveCombatant.PlayerControlled) break;
                 if (DecideAction is null) break;
@@ -144,7 +175,7 @@ public sealed class CombatSystem
         try { action.Resolve(this, actor); }
         finally { _resolving = false; }
         ActiveCombatant = null;
-        if (IsCombatOver?.Invoke(this) == true) End();
+        EvaluateOutcome();
         if (!HasEnded && _combatants.ContainsKey(actor.Id))
         {
             next = actor.Turn + action.TurnCost;
@@ -156,13 +187,17 @@ public sealed class CombatSystem
         Changed?.Invoke();
     }
 
-    public void End()
+    public void End(CombatOutcome? outcome = null)
     {
+        if (HasEnded) return;
+        Outcome = outcome;
         HasEnded = true;
         ActiveCombatant = null;
         _turns.Clear();
         _effects.Clear();
         Timeline.Clear();
+        Changed?.Invoke();
+        if (outcome is { } result) Ended?.Invoke(result);
     }
 
     private void EnsureRunning()

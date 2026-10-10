@@ -414,3 +414,94 @@ Check((carriedVariant with { IconIndex = 0 }).Icon == "firearm-a");
 Check((carriedVariant with { IconIndex = 0 }).Weapon == carriedVariant.Weapon);
 Check(new CarriedItem("none", "None", "Head").Icon is null);
 Console.WriteLine("Item icon variant checks passed.");
+
+// Outcomes stop the encounter once, with defeat taking priority over victory/escape.
+var victoryCombat = new CombatSystem();
+victoryCombat.Add(new("player", true));
+victoryCombat.Add(new("enemy", false, turn: 0.5f, team: CombatTeam.Enemies));
+victoryCombat.DecideAction = (_, _) => new(0.6f, (_, _) => { });
+var objectiveMet = false;
+victoryCombat.VictoryConditions = [system => !system.Contains("enemy"), _ => objectiveMet];
+var outcomeNotifications = 0;
+victoryCombat.Ended += outcome => { Check(outcome == CombatOutcome.Victory); outcomeNotifications++; };
+victoryCombat.Process();
+victoryCombat.SubmitAction(new(1f, (system, _) => system.Remove("enemy")));
+Check(!victoryCombat.HasEnded); // All victory conditions are required.
+objectiveMet = true;
+Check(victoryCombat.EvaluateOutcome());
+Check(victoryCombat.Outcome == CombatOutcome.Victory && victoryCombat.ActiveCombatant is null);
+Check(victoryCombat.Timeline.TurnOrder.Count == 0);
+victoryCombat.EvaluateOutcome();
+victoryCombat.End(CombatOutcome.Defeat);
+Check(outcomeNotifications == 1 && victoryCombat.Outcome == CombatOutcome.Victory);
+
+var escapeCombat = new CombatSystem();
+escapeCombat.Add(new("player", true));
+escapeCombat.Add(new("enemy", false, turn: 0.2f, team: CombatTeam.Enemies));
+var enemyTurns = 0;
+escapeCombat.DecideAction = (_, _) => new(0.4f, (_, _) => enemyTurns++);
+escapeCombat.Process();
+Check(!escapeCombat.RequestEscape("other"));
+Check(escapeCombat.RequestEscape("player"));
+Check(escapeCombat.Outcome == CombatOutcome.Escape && enemyTurns == 2);
+Check(escapeCombat.Timeline.CurrentTurn == 1f && escapeCombat.ActiveCombatant is null);
+Check(!escapeCombat.RequestEscape("player"));
+
+var interruptedEscape = new CombatSystem();
+interruptedEscape.Add(new("player", true));
+interruptedEscape.DefeatConditions = [system => !system.Contains("player")];
+interruptedEscape.ScheduleEvent(1f, "defeated before fleeing", system => system.Remove("player"));
+interruptedEscape.Process();
+Check(interruptedEscape.RequestEscape("player"));
+Check(interruptedEscape.Outcome == CombatOutcome.Defeat);
+var bothConditions = new CombatSystem();
+bothConditions.VictoryConditions = [_ => true];
+bothConditions.DefeatConditions = [_ => true];
+bothConditions.Process();
+Check(bothConditions.Outcome == CombatOutcome.Defeat);
+Console.WriteLine("Combat outcome and delayed escape checks passed.");
+
+// Every actor's resolved turn checks scenario conditions before the next occurrence.
+var turnOutcome = new CombatSystem();
+turnOutcome.Add(new("player", true));
+turnOutcome.Add(new("enemy", false, turn: 0.25f, team: CombatTeam.Enemies));
+var turnObjective = false;
+turnOutcome.VictoryConditions = [_ => turnObjective];
+turnOutcome.DecideAction = (_, _) => new(0.5f, (_, _) => turnObjective = true);
+turnOutcome.Process();
+turnOutcome.SubmitAction(new(1f, (_, _) => { }));
+Check(turnOutcome.Outcome == CombatOutcome.Victory && turnOutcome.Timeline.CurrentTurn == 0.25f);
+var healthOutcome = new CombatSystem();
+healthOutcome.Add(new("player", true));
+healthOutcome.Add(new("enemy", false, turn: 0.25f, team: CombatTeam.Enemies));
+var playerAlive = true;
+healthOutcome.IsCombatantAlive = id => id != "player" || playerAlive;
+healthOutcome.VictoryConditions = [CombatConditions.AllEnemiesDefeated];
+healthOutcome.DefeatConditions = [CombatConditions.PlayerDefeated];
+healthOutcome.DecideAction = (_, _) => new(0.5f, (_, _) => playerAlive = false);
+healthOutcome.Process();
+healthOutcome.SubmitAction(new(1f, (_, _) => { }));
+Check(healthOutcome.Outcome == CombatOutcome.Defeat);
+Console.WriteLine("Per-turn scenario condition checks passed.");
+
+var leaderCombat = new CombatSystem();
+leaderCombat.Add(new("player", true));
+leaderCombat.Add(new("leader", false, turn: 2f, team: CombatTeam.Enemies));
+leaderCombat.Add(new("guard", false, turn: 2f, team: CombatTeam.Enemies));
+leaderCombat.VictoryConditions = [CombatConditions.CharacterDefeated("leader")];
+leaderCombat.Process();
+leaderCombat.SubmitAction(new(1f, (system, _) => system.Remove("leader")));
+Check(leaderCombat.Outcome == CombatOutcome.Victory && leaderCombat.Contains("guard"));
+Console.WriteLine("Designated character victory checks passed.");
+
+var fistDefaults = CombatLoadout.CreatePlayerLoadout();
+Check(fistDefaults.CommandIcon(fistDefaults.Find(fistDefaults.QuickSlots[1])!) == "stats.fist.png");
+fistDefaults.Inventory.Add(new("blank", "Blank icon", "Left hand", [""]));
+var fistCombat = new CombatSystem();
+fistCombat.Add(new("player", true));
+fistCombat.Process();
+var fistPending = fistDefaults.BeginEquipment();
+fistPending["Left hand"] = "blank";
+Check(fistDefaults.Commit(fistCombat, "player", fistPending));
+Check(fistDefaults.CommandIcon(CombatLoadout.LeftHandStrike) == "stats.fist.png");
+Console.WriteLine("Empty hand fist icon checks passed.");

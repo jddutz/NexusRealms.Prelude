@@ -34,6 +34,11 @@ public sealed record Part1 : StoryGraph
     public static readonly StoryNode Intro = new CombatScenario
     {
         Id = $"{SubgraphId}_{nameof(Intro)}",
+        VictoryNode = $"{SubgraphId}_{nameof(Victory)}",
+        DefeatNode = $"{SubgraphId}_{nameof(Defeat)}",
+        EscapeNode = $"{SubgraphId}_{nameof(Escape)}",
+        VictoryConditions = [],
+        DefeatConditions = [Combat.CombatConditions.PlayerDefeated],
         Background = new("background.harbor_district_dockside_dusk.png"),
         Characters =
         [
@@ -46,6 +51,7 @@ public sealed record Part1 : StoryGraph
             {
                 CharacterId = AlleywayThug2.Id,
                 Slot = FormationSlot.BackLeft,
+                RequiredForVictory = true,
             },
             new CharacterPlacement
             {
@@ -55,6 +61,22 @@ public sealed record Part1 : StoryGraph
         ],
     };
 
+    public static readonly OutcomeNode Victory = new()
+    {
+        Id = $"{SubgraphId}_Victory",
+        Title = "Victory",
+    };
+    public static readonly OutcomeNode Defeat = new()
+    {
+        Id = $"{SubgraphId}_Defeat",
+        Title = "Defeat",
+    };
+    public static readonly OutcomeNode Escape = new()
+    {
+        Id = $"{SubgraphId}_Escape",
+        Title = "Escape",
+    };
+
     /// <summary>
     /// Creates the first part of Chapter 1.
     /// </summary>
@@ -62,7 +84,7 @@ public sealed record Part1 : StoryGraph
     {
         Characters = [AlleywayThug1, AlleywayThug2, AlleywayThug3];
 
-        Nodes = [Intro];
+        Nodes = [Intro, Victory, Defeat, Escape];
 
         Start = Intro.Id;
         End = StoryNodeId.Invalid;

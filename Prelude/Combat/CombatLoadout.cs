@@ -48,8 +48,12 @@ public sealed class CombatLoadout
     };
     public CarriedItem? HeldItem(StrikeHand hand) => Inventory.Find(item => item.Id.Value ==
         Equipment.GetValueOrDefault(hand == StrikeHand.Left ? "Left hand" : "Right hand"));
-    public string? CommandIcon(CommandDefinition action) => action.Hand is { } hand
-        ? HeldItem(hand)?.Icon ?? "stats.fist.png" : action.Icon;
+    public string? CommandIcon(CommandDefinition action)
+    {
+        if (action.Hand is not { } hand) return action.Icon;
+        var heldIcon = HeldItem(hand)?.Icon;
+        return string.IsNullOrWhiteSpace(heldIcon) ? "stats.fist.png" : heldIcon;
+    }
     public static IReadOnlyList<string> EquipmentSlots { get; } =
         ["Head", "Torso", "Feet", "Left hand", "Right hand", "Acc1", "Acc2", "Acc3", "Acc4"];
     public bool CanEquip(CarriedItem item, string slot) => EquipmentSlots.Contains(slot)
