@@ -5,7 +5,8 @@ public enum AmmunitionType { Bullet, Arrow, Bolt, Stone }
 
 public sealed record WeaponData
 {
-    public string ImpactTexture { get; init; } = "effects.impact.png";
+    /// <summary>Content ID of the damage effect selected by a basic attack using this item.</summary>
+    public string ImpactTexture { get; init; } = "effects.impact_01.png";
     public AmmunitionType? Ammunition { get; init; }
     public int Shots { get; init; }
     public float ReloadTime { get; init; }

@@ -22,10 +22,17 @@ public static class WeaponCatalog
         var data = GetCore(type);
         return data with { Weapon = data.Weapon! with { ImpactTexture = type switch
         {
-            WeaponType.Sword or WeaponType.Axe => "effects.slash.png",
-            WeaponType.Knives => "effects.flash.png",
-            WeaponType.Pistol or WeaponType.Bow or WeaponType.Crossbow or WeaponType.Sling => "effects.ranged.png",
-            _ => "effects.impact.png",
+            WeaponType.Sword => "effects.slash_01.png",
+            WeaponType.Axe => "effects.slash_02.png",
+            WeaponType.Knives => "effects.slash_03.png",
+            WeaponType.Clubs => "effects.impact_02.png",
+            WeaponType.Maces => "effects.impact_03.png",
+            WeaponType.Flail => "effects.impact_04.png",
+            WeaponType.Pistol => "effects.ranged_01.png",
+            WeaponType.Bow => "effects.arrow_01.png",
+            WeaponType.Crossbow => "effects.arrow_02.png",
+            WeaponType.Sling => "effects.ranged_02.png",
+            _ => "effects.impact_01.png",
         } } };
     }
     private static ItemData GetCore(WeaponType type) => type switch

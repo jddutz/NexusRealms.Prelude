@@ -155,6 +155,43 @@ Check(!lifecycleCharacter.HitTest(lifecycleCharacter.Position));
 Check(!lifecycleCharacter.Renderer.IsVisible && !lifecycleCharacter.IsShowingFeedback);
 Console.WriteLine("Game loop advances 80 ms damage points, 250 ms overlays, and hides defeated characters.");
 
+// Atlas frames retain character geometry and select only the currently displayed pixels.
+var sheetPath = Path.Combine(Path.GetTempPath(), $"character-animation-{Guid.NewGuid():N}.json");
+try
+{
+    File.WriteAllText(sheetPath, """
+        {"frames": {
+          "actor (Idle) 0.aseprite": {"frame":{"x":0,"y":0,"w":2,"h":2},"rotated":false,"trimmed":false,"duration":100},
+          "actor (Stagger) 0.aseprite": {"frame":{"x":2,"y":0,"w":2,"h":2},"rotated":false,"trimmed":false,"duration":100},
+          "actor (Stagger) 1.aseprite": {"frame":{"x":4,"y":0,"w":2,"h":2},"rotated":false,"trimmed":false,"duration":100}
+        },"meta":{"size":{"w":6,"h":2},"frameTags":[]}}
+        """);
+    var atlas = new Texture(new("atlas"), 6, 2, Enumerable.Range(0, 12)
+        .Select(index => index % 6 < 2 ? new Color(1f, 1f, 1f, 1f) : new Color(0f, 0f, 0f, 0f)).ToArray());
+    var animated = new Character(new CharacterData
+        { Id = "animated", Name = "Animated", Artwork = new("atlas"), Portrait = new("atlas") }, atlas, texture);
+    animated.ConfigureAnimations(AsepriteSpriteSheet.Load(sheetPath));
+    var sprite = animated.Renderer.Instances.Values.Single();
+    Check(animated.VisualWidth == 2 && animated.VisualHeight == 2);
+    Check(animated.HitTest(new(0f, -1f)));
+    NexusRealms.Prelude.Combat.DamageResolver.Apply(animated.DamageReceiver,
+        new(new Dictionary<DamageType, int> { [DamageType.General] = 1 }));
+    Check(sprite.TexCoord.X == 2f / 6f && !animated.HitTest(new(0f, -1f)));
+    animated.Update(0.1d);
+    Check(sprite.TexCoord.X == 4f / 6f && animated.IsShowingFeedback);
+    animated.Update(0.1d);
+    Check(sprite.TexCoord.X == 0f && !animated.IsShowingFeedback && animated.HitTest(new(0f, -1f)));
+    animated.Health = 1;
+    NexusRealms.Prelude.Combat.DamageResolver.Apply(animated.DamageReceiver,
+        new(new Dictionary<DamageType, int> { [DamageType.General] = 1 }));
+    animated.Update(0.1d);
+    Check(animated.Renderer.IsVisible && sprite.Color.A == 1f);
+    animated.Update(0.1d);
+    animated.Update(0.25d);
+    Check(!animated.Renderer.IsVisible && !animated.IsShowingFeedback);
+    Console.WriteLine("Atlas idle, stagger, hit testing and lethal feedback checks passed.");
+}
+finally { File.Delete(sheetPath); }
 sealed class FeedbackTextures(ITexture texture) : ITextureRegistry
 {
     public List<ContentId> Requests { get; } = [];

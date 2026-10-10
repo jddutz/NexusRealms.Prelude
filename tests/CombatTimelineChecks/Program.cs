@@ -985,15 +985,20 @@ Console.WriteLine("Shared damage resolution, mitigation, notifications, overkill
 
 foreach (var (type, effect) in new[]
 {
-    (WeaponType.Sword, "slash"), (WeaponType.Axe, "slash"), (WeaponType.Knives, "flash"),
-    (WeaponType.Clubs, "impact"), (WeaponType.Maces, "impact"), (WeaponType.Flail, "impact"),
+    (WeaponType.Sword, "slash_01"), (WeaponType.Axe, "slash_02"), (WeaponType.Knives, "slash_03"),
+    (WeaponType.Clubs, "impact_02"), (WeaponType.Maces, "impact_03"), (WeaponType.Flail, "impact_04"),
+    (WeaponType.Pistol, "ranged_01"), (WeaponType.Bow, "arrow_01"),
+    (WeaponType.Crossbow, "arrow_02"), (WeaponType.Sling, "ranged_02"),
 })
 {
     var item = WeaponCatalog.Create(type, "overlay-test", "Test", "Right hand");
     Check(AttackImpact.ForStrike(new(StrikeHand.Right, item)).EffectTexture == $"effects.{effect}.png");
     Check(AttackImpact.ForThrow(item).IconTexture == item.Icon);
 }
-Check(AttackImpact.ForStrike(new(StrikeHand.Left, null)).EffectTexture == "effects.impact.png");
+Check(AttackImpact.ForStrike(new(StrikeHand.Left, null)).EffectTexture == "effects.impact_01.png");
+var customEffectWeapon = WeaponCatalog.Create(WeaponType.Pistol, "custom-effect", "Custom", "Right hand");
+customEffectWeapon = customEffectWeapon with { Weapon = customEffectWeapon.Weapon! with { ImpactTexture = "effects.ranged_04.png" } };
+Check(AttackImpact.ForStrike(new(StrikeHand.Right, customEffectWeapon)).EffectTexture == "effects.ranged_04.png");
 var impactReceiver = new DamageReceiver(5);
 var impacts = 0;
 var impactDamageEvents = 0;

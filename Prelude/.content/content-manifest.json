@@ -80,13 +80,16 @@
         "FilePath": "Textures/Background/Market/market_daytime.ktx2"
       },
       "characters.alley_thug_1.png": {
-        "FilePath": "Textures/Characters/alley_thug_1.ktx2"
+        "FilePath": "Textures/Characters/alley_thug_1.ktx2",
+        "AnimationsFilePath": "Textures/Characters/alley_thug_1.json"
       },
       "characters.alley_thug_2.png": {
-        "FilePath": "Textures/Characters/alley_thug_2.ktx2"
+        "FilePath": "Textures/Characters/alley_thug_2.ktx2",
+        "AnimationsFilePath": "Textures/Characters/alley_thug_2.json"
       },
       "characters.alley_thug_3.png": {
-        "FilePath": "Textures/Characters/alley_thug_3.ktx2"
+        "FilePath": "Textures/Characters/alley_thug_3.ktx2",
+        "AnimationsFilePath": "Textures/Characters/alley_thug_3.json"
       },
       "portraits.alley_thug_1.png": {
         "FilePath": "Textures/Characters/Portraits/alley_thug_1.ktx2"
