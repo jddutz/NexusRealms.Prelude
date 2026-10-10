@@ -1,6 +1,15 @@
 {
   "Textures": {
     "Content": {
+      "actions.fist.png": {
+        "FilePath": "Textures/Actions/fist.ktx2"
+      },
+      "actions.throw.png": {
+        "FilePath": "Textures/Actions/throw.ktx2"
+      },
+      "actions.wait.png": {
+        "FilePath": "Textures/Actions/wait.ktx2"
+      },
       "shadow": {
         "FilePath": "Textures/shadow.ktx2"
       },
@@ -184,8 +193,77 @@
       "items.items_basic.png": {
         "FilePath": "Textures/Items/items_basic.ktx2"
       },
-      "equipment.weapons_one_handed.png": {
-        "FilePath": "Textures/Items/Equipment/weapons_one_handed.ktx2"
+      "weapons.axe_01.png": {
+        "FilePath": "Textures/Items/Weapons/axe_01.ktx2"
+      },
+      "weapons.axe_02.png": {
+        "FilePath": "Textures/Items/Weapons/axe_02.ktx2"
+      },
+      "weapons.axe_03.png": {
+        "FilePath": "Textures/Items/Weapons/axe_03.ktx2"
+      },
+      "weapons.axe_04.png": {
+        "FilePath": "Textures/Items/Weapons/axe_04.ktx2"
+      },
+      "weapons.axe_05.png": {
+        "FilePath": "Textures/Items/Weapons/axe_05.ktx2"
+      },
+      "weapons.club_01.png": {
+        "FilePath": "Textures/Items/Weapons/club_01.ktx2"
+      },
+      "weapons.club_02.png": {
+        "FilePath": "Textures/Items/Weapons/club_02.ktx2"
+      },
+      "weapons.flail_01.png": {
+        "FilePath": "Textures/Items/Weapons/flail_01.ktx2"
+      },
+      "weapons.flail_02.png": {
+        "FilePath": "Textures/Items/Weapons/flail_02.ktx2"
+      },
+      "weapons.hammer_01.png": {
+        "FilePath": "Textures/Items/Weapons/hammer_01.ktx2"
+      },
+      "weapons.knife_01.png": {
+        "FilePath": "Textures/Items/Weapons/knife_01.ktx2"
+      },
+      "weapons.knife_02.png": {
+        "FilePath": "Textures/Items/Weapons/knife_02.ktx2"
+      },
+      "weapons.knife_03.png": {
+        "FilePath": "Textures/Items/Weapons/knife_03.ktx2"
+      },
+      "weapons.knife_04.png": {
+        "FilePath": "Textures/Items/Weapons/knife_04.ktx2"
+      },
+      "weapons.knife_05.png": {
+        "FilePath": "Textures/Items/Weapons/knife_05.ktx2"
+      },
+      "weapons.mace_01.png": {
+        "FilePath": "Textures/Items/Weapons/mace_01.ktx2"
+      },
+      "weapons.mace_02.png": {
+        "FilePath": "Textures/Items/Weapons/mace_02.ktx2"
+      },
+      "weapons.sword_01.png": {
+        "FilePath": "Textures/Items/Weapons/sword_01.ktx2"
+      },
+      "weapons.sword_02.png": {
+        "FilePath": "Textures/Items/Weapons/sword_02.ktx2"
+      },
+      "weapons.sword_03.png": {
+        "FilePath": "Textures/Items/Weapons/sword_03.ktx2"
+      },
+      "weapons.sword_04.png": {
+        "FilePath": "Textures/Items/Weapons/sword_04.ktx2"
+      },
+      "weapons.sword_05.png": {
+        "FilePath": "Textures/Items/Weapons/sword_05.ktx2"
+      },
+      "weapons.sword_06.png": {
+        "FilePath": "Textures/Items/Weapons/sword_06.ktx2"
+      },
+      "weapons.sword_07.png": {
+        "FilePath": "Textures/Items/Weapons/sword_07.ktx2"
       },
       "ui.invalid_selection.png": {
         "FilePath": "Textures/UI/invalid_selection.ktx2",
@@ -303,76 +381,90 @@
       "ui.triangle.png": {
         "FilePath": "Textures/UI/Elements/triangle.ktx2"
       },
-      "icons.retreat.png": {
-        "FilePath": "Textures/UI/Icons/retreat.ktx2",
+      "icons.escape.png": {
+        "FilePath": "Textures/UI/Icons/escape.ktx2",
         "Regions": {
           "region-0000": {
             "Bounds": {
-              "X": 3,
-              "Y": 6,
-              "Width": 61,
-              "Height": 14
-            },
-            "TexCoords": {
-              "X": 0.0234375,
-              "Y": 0.046875,
-              "Width": 0.4765625,
-              "Height": 0.109375
-            }
-          },
-          "region-0001": {
-            "Bounds": {
-              "X": 71,
+              "X": 97,
               "Y": 5,
               "Width": 31,
               "Height": 30
             },
             "TexCoords": {
-              "X": 0.5546875,
+              "X": 0.6736111,
               "Y": 0.0390625,
-              "Width": 0.2421875,
+              "Width": 0.21527778,
               "Height": 0.234375
+            }
+          },
+          "region-0001": {
+            "Bounds": {
+              "X": 8,
+              "Y": 9,
+              "Width": 61,
+              "Height": 14
+            },
+            "TexCoords": {
+              "X": 0.055555556,
+              "Y": 0.0703125,
+              "Width": 0.4236111,
+              "Height": 0.109375
             }
           },
           "region-0002": {
             "Bounds": {
-              "X": 0,
+              "X": 24,
               "Y": 26,
-              "Width": 119,
+              "Width": 120,
               "Height": 102
             },
             "TexCoords": {
-              "X": 0,
+              "X": 0.16666667,
               "Y": 0.203125,
-              "Width": 0.9296875,
+              "Width": 0.8333333,
               "Height": 0.796875
             }
           },
           "region-0003": {
             "Bounds": {
-              "X": 4,
-              "Y": 30,
+              "X": 22,
+              "Y": 33,
               "Width": 31,
               "Height": 13
             },
             "TexCoords": {
-              "X": 0.03125,
-              "Y": 0.234375,
-              "Width": 0.2421875,
+              "X": 0.15277778,
+              "Y": 0.2578125,
+              "Width": 0.21527778,
               "Height": 0.1015625
             }
           },
           "region-0004": {
             "Bounds": {
-              "X": 3,
-              "Y": 101,
+              "X": 17,
+              "Y": 51,
+              "Width": 31,
+              "Height": 13
+            },
+            "TexCoords": {
+              "X": 0.11805555,
+              "Y": 0.3984375,
+              "Width": 0.21527778,
+              "Height": 0.1015625
+            }
+          },
+          "region-0005": {
+            "Bounds": {
+              "X": 8,
+              "Y": 104,
               "Width": 57,
               "Height": 15
             },
             "TexCoords": {
-              "X": 0.0234375,
-              "Y": 0.7890625,
-              "Width": 0.4453125,
+              "X": 0.055555556,
+              "Y": 0.8125,
+              "Width": 0.39583334,
               "Height": 0.1171875
             }
           }
@@ -448,9 +540,6 @@
       "stats.fire.png": {
         "FilePath": "Textures/UI/Status/fire.ktx2"
       },
-      "stats.fist.png": {
-        "FilePath": "Textures/UI/Status/fist.ktx2"
-      },
       "stats.focus_bar_segment.png": {
         "FilePath": "Textures/UI/Status/focus_bar_segment.ktx2"
       },
@@ -465,9 +554,6 @@
       },
       "stats.health_icon.png": {
         "FilePath": "Textures/UI/Status/health_icon.ktx2"
-      },
-      "stats.hourglass.png": {
-        "FilePath": "Textures/UI/Status/hourglass.ktx2"
       },
       "stats.leafs.png": {
         "FilePath": "Textures/UI/Status/leafs.ktx2"

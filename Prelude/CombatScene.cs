@@ -43,6 +43,7 @@ public class CombatScene : Scene
     public string? SelectedActionId { get; private set; }
     private int? _selectedQuickSlot;
     private ModalDialog? _dialog;
+    private Combat.ThrowSelection? _throwSelection;
     private bool _closeDialogRequested;
     private string? _inspectedItem;
     private int _inventoryPage;
@@ -52,6 +53,7 @@ public class CombatScene : Scene
     private ImageElement? _actionIcon;
     private string? _renderedIconKey;
     private TextElement? _actionLabel;
+    private string? _commandFeedback;
     private readonly List<ImageElement> _quickSlots = [];
     private readonly List<ImageElement> _quickSlotIcons = [];
     private Combat.CommandTarget? CurrentTarget()
@@ -76,7 +78,13 @@ public class CombatScene : Scene
     public void SelectQuickAction(int slot)
     {
         if (_dialog is not null || (uint)slot >= Loadout.QuickSlots.Length) return;
-        if (!Loadout.CanSelectQuickSlot(slot)) return;
+        if (!Loadout.CanSelectQuickSlot(slot))
+        {
+            if (Loadout.QuickSlots[slot] == "Throw" && _actionLabel is not null)
+                _commandFeedback = Loadout.HasFreeHand ? "No throwable items" : "No accessible throwable items";
+            return;
+        }
+        _commandFeedback = null;
         _selectedQuickSlot = slot;
         SelectedActionId = Loadout.QuickSlots[slot];
         RefreshCommand();
@@ -84,17 +92,65 @@ public class CombatScene : Scene
     public bool ConfirmCombatAction()
     {
         var target = FocusedCharacter;
+        if (_dialog is not null) return false;
+        if (SelectedActionId == NexusRealms.Prelude.Combat.CombatLoadout.Throw.Id.Value)
+        {
+            _throwSelection = Loadout.BeginThrow(Combat, "player", () => FocusedCharacter == target ? CurrentTarget() : null);
+            if (_throwSelection is null) return false;
+            RenderThrowPicker();
+            return true;
+        }
         return _dialog is null && Loadout.Confirm(Combat, "player", Loadout.Find(SelectedActionId), CurrentTarget, () => { }, strike =>
         {
-            if (target is null) return;
-            target.Health = Math.Max(0, target.Health - strike.Damage);
-            if (target.Health != 0) return;
-            var index = Array.FindIndex(_startScenario.Characters.ToArray(), p => _formation[p.Slot] == target);
-            if (index >= 0) Combat.Remove($"encounter-{index}");
-            target.Renderer.IsVisible = false;
-            target.ShadowRenderer.IsVisible = false;
-            FocusCharacter(null);
+            ApplyAttackDamage(target, strike.DamagePoints);
         });
+    }
+    private void ApplyAttackDamage(Character? target, Combat.DamageProfile damage)
+    {
+        if (target is null) return;
+        target.Health = Math.Max(0, target.Health - damage.Total);
+        if (target.Health != 0) return;
+        var index = Array.FindIndex(_startScenario.Characters.ToArray(), p => _formation[p.Slot] == target);
+        if (index >= 0) Combat.Remove($"encounter-{index}");
+        target.Renderer.IsVisible = false;
+        target.ShadowRenderer.IsVisible = false;
+        FocusCharacter(null);
+    }
+    private void RenderThrowPicker(int page = 0)
+    {
+        _dialog?.Dispose();
+        var panel = BeginDialog("Throw — choose an item");
+        var selection = _throwSelection!;
+        var target = FocusedCharacter;
+        const int pageSize = 6;
+        var options = selection.Options.Skip(page * pageSize).Take(pageSize).ToArray();
+        var message = CreateHudLabel("", AlignVertical.Top);
+        message.Width = 840f;
+        Place(panel, message, 24f, 360f);
+        for (var i = 0; i < options.Length; i++)
+        {
+            var option = options[i];
+            var profile = string.Join(", ", option.Item.ThrowDamage!.Typed.Select(point => $"{point.Value} {point.Key}"));
+            var button = DialogButton($"{option.Item.Name} ({option.Source}) — {profile}", () =>
+            {
+                if (_closeDialogRequested || _throwSelection != selection) return;
+                if (selection.Choose(option, damage => ApplyAttackDamage(target, damage))) CloseDialog();
+                else
+                {
+                    foreach (var control in panel.Children.OfType<TextButton>()) control.IsEnabled = false;
+                    message.Text = "Throw is no longer valid. Cancel and select the action again.";
+                    PlaceDialogFooterButton(panel, "Cancel", CloseDialog, 760f, 404f);
+                }
+                RefreshCommand();
+            });
+            button.Width = 840f;
+            Place(panel, button, 24f, 60f + i * 46f);
+        }
+        if (!Loadout.HasFreeHand) message.Text = "Inventory items require a free hand.";
+        if (page > 0) PlaceDialogFooterButton(panel, "Previous", () => RenderThrowPicker(page - 1), 24f, 404f);
+        if ((page + 1) * pageSize < selection.Options.Count)
+            PlaceDialogFooterButton(panel, "Next", () => RenderThrowPicker(page + 1), 150f, 404f);
+        PlaceDialogFooterButton(panel, "Cancel", CloseDialog, 760f, 404f);
     }
     private void RefreshCommand()
     {
@@ -119,7 +175,7 @@ public class CombatScene : Scene
                 if (a.IconRegion is { } region) _actionIcon.SourceRegion = _actionIcon.Texture.GetRegion(region).Bounds;
             }
         }
-        if (_actionLabel is not null) _actionLabel.Text = a?.Name ?? "Select action";
+        if (_actionLabel is not null) _actionLabel.Text = _commandFeedback ?? a?.Name ?? "Select action";
         for (var i = 0; i < _quickSlots.Count; i++)
         {
             var q = Loadout.Find(Loadout.QuickSlots[i]);
@@ -146,7 +202,7 @@ public class CombatScene : Scene
     /// <param name="eventHub">Dispatches the scene's input bindings.</param>
     /// <param name="windowService">Provides the main window closed by the exit bindings.</param>
     /// <param name="storyline">Provides the starting scenario and character definitions.</param>
-    /// <param name="textStyles">Provides the style used by the retreat button.</param>
+    /// <param name="textStyles">Provides the style used by the Escape button.</param>
     public CombatScene(
         ITextureRegistry textures,
         IEventHub eventHub,
@@ -199,7 +255,7 @@ public class CombatScene : Scene
             Label = "Escape",
             TextColor = UiTheme.TextColor,
             Action = _ => Combat.RequestEscape("player"),
-            Width = 120f,
+            Width = 130f,
             Height = 54f,
             HorizontalAlignment = AlignHorizontal.Right,
             VerticalAlignment = AlignVertical.Top,
@@ -211,12 +267,12 @@ public class CombatScene : Scene
             Padding = new(10f, 8f),
             LabelHorizontalAlignment = AlignHorizontal.Left,
             LabelVerticalAlignment = AlignVertical.Center,
-            LabelMargins = new(36f, 0f, 0f, 0f),
+            LabelMargins = new(44f, 0f, 0f, 0f),
             Icon = new ImageElement
             {
-                Texture = _textures.GetOrCreate(new ContentId("icons.retreat.png")),
-                Width = 24f,
-                Height = 24f,
+                Texture = _textures.GetOrCreate(new ContentId("icons.escape.png")),
+                Width = 32f,
+                Height = 28f,
                 SizingMode = ImageSizingMode.Fit,
                 HorizontalAlignment = AlignHorizontal.Left,
                 VerticalAlignment = AlignVertical.Center,
@@ -404,7 +460,7 @@ public class CombatScene : Scene
             frame.InputMap.OnMouseButtonReleased(MouseButtonEnum.Left).Invoke(() => SelectQuickAction(slot));
             var icon = new ImageElement
             {
-                Texture = _textures.GetOrCreate(new ContentId("stats.fist.png")),
+                Texture = _textures.GetOrCreate(new ContentId("actions.fist.png")),
                 Width = 36f, Height = 36f, SizingMode = ImageSizingMode.Fit,
                 IsVisible = false,
                 SortOrder = 3,
@@ -427,7 +483,7 @@ public class CombatScene : Scene
         var bottomRight = CreatePanelElement("ui.panel_square.png", square: true);
         _confirmationPanel = bottomRight;
         bottomRight.InputMap.OnMouseButtonReleased(MouseButtonEnum.Left).Invoke(() => ConfirmCombatAction());
-        _actionIcon = CreateHudImage("equipment.weapons_one_handed.png", new(0, 0, 405, 334), 0.3f);
+        _actionIcon = CreateHudImage("actions.fist.png", 0.3f);
         bottomRight.Children.Add(_actionIcon);
         bottomRight.Children.Add(CreateHudLabel("Confirm", AlignVertical.Top));
         _actionLabel = CreateHudLabel("Select action", AlignVertical.Bottom);
@@ -449,7 +505,11 @@ public class CombatScene : Scene
         Children.Add(uiView);
         Children.Add(_background);
         Children.Add(_formation);
-        foreach (var (_, display) in _characterDisplays) Children.Add(display);
+        foreach (var (_, display) in _characterDisplays)
+        {
+            display.View = _worldView;
+            Children.Add(display);
+        }
         ApplyWorldSize();
     }
 
@@ -582,6 +642,7 @@ public class CombatScene : Scene
     }
     private void CloseDialog()
     {
+        _throwSelection?.Cancel(); _throwSelection = null;
         // Keep the scope alive through the current event dispatch, including Escape/Back.
         _pending = null; _closeDialogRequested = true;
     }
@@ -627,7 +688,8 @@ public class CombatScene : Scene
     private const float ItemCellSize = 56f;
     private const float InventoryCellGap = 4f;
     private Element ItemCell(Combat.CarriedItem? item, string? placeholder, Action action,
-        IReadOnlyDictionary<string, Element>? equipmentTargets = null, string? handSlot = null)
+        IReadOnlyDictionary<string, Element>? equipmentTargets = null, string? handSlot = null,
+        Combat.CommandDefinition? command = null)
     {
         // Scale the complete frame uniformly as a single image, rather than slicing its corners.
         var frame = new ImageElement
@@ -639,8 +701,9 @@ public class CombatScene : Scene
             VerticalAlignment = AlignVertical.Top,
             RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
         };
-        var handAction = NexusRealms.Prelude.Combat.CombatLoadout.HandAction(handSlot);
-        if ((item is null && handAction is null) || equipmentTargets is null)
+        var handAction = command ?? NexusRealms.Prelude.Combat.CombatLoadout.HandAction(handSlot);
+        var canDrag = command is not null || equipmentTargets is not null && (item is not null || handAction is not null);
+        if (!canDrag)
             frame.InputMap.OnMouseButtonReleased(MouseButtonEnum.Left).Invoke(action);
         var icon = item?.Icon ?? placeholder;
         if (icon is null && item is not null)
@@ -658,10 +721,10 @@ public class CombatScene : Scene
             {
                 Texture = _textures.GetOrCreate(new ContentId(icon)),
                 Width = 42f, Height = 42f, SizingMode = ImageSizingMode.Fit,
-                Color = item is null ? new Color(1f, 1f, 1f, 0.6f) : Colors.White,
+                Color = item is null && command is null ? new Color(1f, 1f, 1f, 0.6f) : Colors.White,
                 RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
             });
-        if ((item is null && handAction is null) || equipmentTargets is null) return frame;
+        if (!canDrag) return frame;
         var dialog = _dialog!;
         ImageElement? dragIcon = null;
         void MoveDragIcon(Vector2D<float> position)
@@ -697,7 +760,7 @@ public class CombatScene : Scene
                     RefreshCommand();
                     return;
                 }
-            if (item is null) return;
+            if (item is null || equipmentTargets is null) return;
             foreach (var (slot, target) in equipmentTargets)
             {
                 var bounds = target.Bounds;
@@ -887,20 +950,41 @@ public class CombatScene : Scene
             }
             footerY = actions.Length > 0 ? assignmentY + 48f : contextY + 76f;
         }
-        _dialog!.Content.Height = footerY + 56f;
+        _dialog!.Content.Height = footerY + ItemCellSize + 24f;
+        Combat.CommandDefinition[] basicActions =
+            [NexusRealms.Prelude.Combat.CombatLoadout.Throw, NexusRealms.Prelude.Combat.CombatLoadout.Wait];
+        for (var index = 0; index < basicActions.Length; index++)
+        {
+            var basicAction = basicActions[index];
+            Place(panel, ItemCell(null, basicAction.Icon, () => { }, command: basicAction),
+                24f + index * (ItemCellSize + InventoryCellGap), footerY);
+        }
         var message = CreateHudLabel("", AlignVertical.Top);
-        Place(panel, message, 200f, footerY + 8f);
-        Place(panel, CreateHudLabel($"Turn +{Loadout.Cost(pending):0.##}", AlignVertical.Top), 24f, footerY + 8f);
+        Place(panel, message, 280f, footerY + 8f);
+        var equipmentCost = new Element { Width = equipmentWidth, Height = 20f };
+        var costLabel = CreateHudLabel($"Turn +{Loadout.Cost(pending):0.##}", AlignVertical.Top);
+        costLabel.Margins = new(0f);
+        equipmentCost.Children.Add(costLabel);
+        Place(panel, equipmentCost, equipmentLeft, 348f);
+        void FooterButton(string label, Action action, float rightMargin)
+        {
+            var button = DialogButton(label, action);
+            button.Width = 110f;
+            button.HorizontalAlignment = AlignHorizontal.Right;
+            button.VerticalAlignment = AlignVertical.Bottom;
+            button.Margins = new(Left: 0f, Right: rightMargin, Top: 0f, Bottom: 24f);
+            panel.Children.Add(button);
+        }
         if (Loadout.ChangedEquipmentSlots(pending).Count == 0)
-            PlaceDialogFooterButton(panel, "Close", CloseDialog, 760f, footerY);
+            FooterButton("Close", CloseDialog, 24f);
         else
         {
-            PlaceDialogFooterButton(panel, "Cancel", CloseDialog, 638f, footerY);
-            PlaceDialogFooterButton(panel, "Confirm", () =>
+            FooterButton("Cancel", CloseDialog, 146f);
+            FooterButton("Confirm", () =>
             {
                 if (Loadout.Commit(Combat, "player", pending)) CloseDialog();
                 else message.Text = "Cannot commit equipment now";
-            }, 760f, footerY);
+            }, 24f);
         }
     }
     public void OpenZodiacDialog()
@@ -1049,11 +1133,10 @@ public class CombatScene : Scene
         return image;
     }
 
-    private ImageElement CreateHudImage(string contentId, Rectangle<int> sourceRegion, float scale = 0.6f) =>
+    private ImageElement CreateHudImage(string contentId, float scale = 0.6f) =>
         new()
         {
             Texture = _textures.GetOrCreate(new ContentId(contentId)),
-            SourceRegion = sourceRegion,
             Width = 210f * scale,
             Height = 180f * scale,
             Margins = new(0f, 0f, 24f * scale, 24f * scale),
@@ -1144,15 +1227,15 @@ public class CombatScene : Scene
                     var pixelsPerWorldX = viewport.Size.X / _worldSize.X;
                     var pixelsPerWorldY = viewport.Size.Y / _worldSize.Y;
                     character.SetIndicatorScreenScale(1f / pixelsPerWorldX, 1f / pixelsPerWorldY);
-                    var headX = viewport.Origin.X + character.Position.X * pixelsPerWorldX;
-                    var headY = viewport.Origin.Y + (character.Position.Y
-                        - (character.Texture.Height + character.Elevation) * character.Scale.Y) * pixelsPerWorldY;
                     var symbolWidth = character.FocusRenderer.Instances.Values.First().Size.X
                         * character.Scale.X * pixelsPerWorldX;
                     var symbolHeight = character.FocusRenderer.Instances.Values.First().Size.Y
                         * character.Scale.Y * pixelsPerWorldY;
-                    display.Arrange(new(headX + symbolWidth * 0.5f + 8f,
-                        headY - 8f - symbolHeight * 0.5f - 22f, 132f, 66f));
+                    display.LeftOffset = symbolWidth * 0.5f + 8f;
+                    display.RightOffset = display.LeftOffset + 132f;
+                    display.TopOffset = -(character.Texture.Height + character.Elevation)
+                        * character.Scale.Y * pixelsPerWorldY - 8f - symbolHeight * 0.5f - 22f;
+                    display.BottomOffset = display.TopOffset + 66f;
                 }
             }
         }

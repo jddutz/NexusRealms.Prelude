@@ -7,7 +7,7 @@ public sealed record CommandDefinition(AbilityId Id, string Name, float TurnCost
     ItemId? RequiredItem = null, string? RequiredSlot = null, bool Learned = true,
     bool Passive = false, bool RequiresTarget = true, int FocusCost = 0, Action<CombatSystem, Combatant>? Resolve = null, Func<CommandTarget, bool>? TargetRule = null, string? Icon = null, string? IconRegion = null, StrikeHand? Hand = null);
 public enum StrikeHand { Left, Right }
-/// <summary>One hit: an untyped base point plus the held weapon's typed bonus points.</summary>
+/// <summary>One hit using the held weapon's damage, or one General point when unarmed.</summary>
 public sealed record HandStrike(StrikeHand Hand, CarriedItem? Item)
 {
     public DamageProfile DamagePoints { get; } = DamageProfile.ForStrike(Item?.Weapon);
@@ -17,6 +17,8 @@ public sealed record CommandTarget(bool Exists, bool Alive, CombatTeam Team, Com
     bool FrontOccupied = true, bool MiddleOccupied = true);
 public sealed record CarriedItem(ItemId Id, string Name, string Slot, string[]? Icons = null, WeaponData? Weapon = null)
 {
+    public DamageProfile? ThrowDamage { get; init; }
+    public int Quantity { get; init; } = 1;
     public int IconIndex { get; init; }
     public string? Icon => ItemIconVariants.Select(Icons, IconIndex);
 }
@@ -28,20 +30,25 @@ public sealed class CombatLoadout
     public static CombatLoadout CreatePlayerLoadout()
     {
         var loadout = new CombatLoadout { Focus = 2 };
-        var sword = new CarriedItem("starting-sword", "Sword", "Right hand", ["stats.swords_crossed.png"],
-            new WeaponData { BonusDamage = new Dictionary<DamageType, int> { [DamageType.Slashing] = 1 } });
+        var sword = WeaponCatalog.Create(WeaponType.Sword, "starting-sword", "Sword", "Right hand");
         loadout.Inventory.Add(sword);
         loadout._equipment["Right hand"] = sword.Id.Value;
-        loadout.Abilities.Add(new("wait", "Wait", 0.6f, RequiresTarget: false, Icon: "stats.hourglass.png"));
         loadout.Assign(0, RightHandStrike.Id.Value);
         loadout.Assign(1, LeftHandStrike.Id.Value);
+        loadout.Assign(2, Throw.Id.Value);
+        loadout.Assign(9, Wait.Id.Value);
         return loadout;
     }
 
     public static readonly CommandDefinition LeftHandStrike = new("LeftHandStrike", "Left Hand Strike", 1f,
-        Icon: "stats.fist.png", Hand: StrikeHand.Left);
+        Icon: "actions.fist.png", Hand: StrikeHand.Left);
     public static readonly CommandDefinition RightHandStrike = new("RightHandStrike", "Right Hand Strike", 1f,
-        Icon: "stats.fist.png", Hand: StrikeHand.Right);
+        Icon: "actions.fist.png", Hand: StrikeHand.Right);
+    public static readonly CommandDefinition Throw = new("Throw", "Throw", RightHandStrike.TurnCost,
+        Icon: "actions.throw.png", TargetRule: target => target.Team == CombatTeam.Enemies && Enum.IsDefined(target.Row));
+    // TurnCost is unused for Wait: its actual cost is calculated from the live timeline at confirmation.
+    public static readonly CommandDefinition Wait = new("wait", "Wait", 0.01f,
+        RequiresTarget: false, Icon: "actions.wait.png");
     public static CommandDefinition? HandAction(string? slot) => slot switch
     {
         "Left hand" => LeftHandStrike, "Right hand" => RightHandStrike, _ => null,
@@ -52,12 +59,13 @@ public sealed class CombatLoadout
     {
         if (action.Hand is not { } hand) return action.Icon;
         var heldIcon = HeldItem(hand)?.Icon;
-        return string.IsNullOrWhiteSpace(heldIcon) ? "stats.fist.png" : heldIcon;
+        return string.IsNullOrWhiteSpace(heldIcon) ? "actions.fist.png" : heldIcon;
     }
     public static IReadOnlyList<string> EquipmentSlots { get; } =
         ["Head", "Torso", "Feet", "Left hand", "Right hand", "Acc1", "Acc2", "Acc3", "Acc4"];
     public bool CanEquip(CarriedItem item, string slot) => EquipmentSlots.Contains(slot)
-        && (item.Slot == slot || item.Slot == "Accessory" && slot is "Acc1" or "Acc2" or "Acc3" or "Acc4");
+        && (item.Slot == slot || item.Weapon is { TwoHanded: true } && slot is "Left hand" or "Right hand"
+            || item.Slot == "Accessory" && slot is "Acc1" or "Acc2" or "Acc3" or "Acc4");
     public List<CarriedItem> Inventory { get; } = [];
     public List<CommandDefinition> Abilities { get; } = [];
     private Dictionary<string, string> _equipment = [];
@@ -70,6 +78,8 @@ public sealed class CombatLoadout
     public CommandDefinition? Find(string? id) => id switch
     {
         "LeftHandStrike" => LeftHandStrike, "RightHandStrike" => RightHandStrike,
+        "Throw" => Throw,
+        "wait" => Wait,
         _ => Abilities.Find(a => a.Id.Value == id),
     };
     public bool ValidTarget(CommandDefinition? action, CommandTarget? target)
@@ -93,7 +103,8 @@ public sealed class CombatLoadout
         }
         return action.TargetRule?.Invoke(target) ?? target is { Team: CombatTeam.Enemies, Row: CombatRow.Front };
     }
-    public bool Available(CommandDefinition a) => (Abilities.Contains(a) || ReferenceEquals(a, LeftHandStrike) || ReferenceEquals(a, RightHandStrike)) && a.Learned && !a.Passive
+    public bool Available(CommandDefinition a) => (Abilities.Contains(a) || ReferenceEquals(a, LeftHandStrike) || ReferenceEquals(a, RightHandStrike) || ReferenceEquals(a, Throw) || ReferenceEquals(a, Wait)) && a.Learned && !a.Passive
+        && (a != Throw || ThrowOptions().Count > 0)
         && float.IsFinite(a.TurnCost) && a.TurnCost > 0 && a.FocusCost >= 0 && Focus >= a.FocusCost && (a.RequiredItem is null ||
             (a.RequiredSlot is not null && Equipment.GetValueOrDefault(a.RequiredSlot) == a.RequiredItem.Value.Value));
     public bool CanSelectQuickSlot(int slot) => (uint)slot < QuickSlots.Length
@@ -109,17 +120,20 @@ public sealed class CombatLoadout
     }
     public bool CanConfirm(CombatSystem combat, string actorId, CommandDefinition? a, bool validTarget) =>
         !_resolving && !combat.IsResolving && !combat.HasEnded && combat.ActiveCombatant?.Id == actorId
+        && combat.IsAlive(actorId)
         && combat.ActiveCombatant.PlayerControlled && a is not null && Available(a)
+        && (a != Wait || combat.WaitCost(actorId) is not null)
         && (!a.RequiresTarget || validTarget);
     public bool Confirm(CombatSystem combat, string actorId, CommandDefinition? a,
         Func<CommandTarget?> target, Action resolve, Action<HandStrike>? strike = null)
     {
         if (!CanConfirm(combat, actorId, a, ValidTarget(a, target()))) return false;
+        if (a == Throw) return false; // Throw must commit through its item-selection session.
         if (a!.Hand is not null && strike is null) return false;
         _resolving = true;
         try
         {
-            combat.SubmitAction(new(a.TurnCost, (_, _) =>
+            combat.SubmitAction(new(a == Wait ? combat.WaitCost(actorId)!.Value : a.TurnCost, (_, _) =>
             {
                 Focus -= a.FocusCost;
                 if (a.Hand is { } hand) strike!(new(hand, HeldItem(hand)));
@@ -131,11 +145,51 @@ public sealed class CombatLoadout
         finally { _resolving = false; }
     }
     public Dictionary<string, string> BeginEquipment() => new(Equipment);
+    public bool HasFreeHand => !Equipment.ContainsKey("Left hand") || !Equipment.ContainsKey("Right hand");
+    public IReadOnlyList<ThrowOption> ThrowOptions() => Inventory.Where(item => item.Quantity > 0 && item.ThrowDamage is not null)
+        .Select(item => new ThrowOption(item, Equipment.Where(pair => pair.Value == item.Id.Value).Select(pair => pair.Key).ToArray()))
+        .Where(option => option.Slots.Length == 0 ? HasFreeHand
+            : option.Item.Weapon is { IsMelee: true }
+                && option.Slots.All(slot => slot is "Left hand" or "Right hand")).ToArray();
+    public List<CarriedItem> ThrownItems { get; } = [];
+    public ThrowSelection? BeginThrow(CombatSystem combat, string actorId, Func<CommandTarget?> target) =>
+        CanConfirm(combat, actorId, Throw, ValidTarget(Throw, target())) ? new(this, combat, actorId, target, ThrowOptions()) : null;
+    internal bool CommitThrow(ThrowSelection selection, ThrowOption option, Action<DamageProfile> damage)
+    {
+        if (!CanConfirm(selection.Combat, selection.ActorId, Throw, ValidTarget(Throw, selection.Target()))
+            || !Inventory.Any(item => ReferenceEquals(item, option.Item))
+            || !ThrowOptions().Any(current => ReferenceEquals(current.Item, option.Item) && current.Slots.Order().SequenceEqual(option.Slots.Order()))) return false;
+        _resolving = true;
+        try
+        {
+            selection.Combat.SubmitAction(new(Throw.TurnCost, (_, _) =>
+            {
+                Focus -= Throw.FocusCost;
+                foreach (var slot in option.Slots) _equipment.Remove(slot);
+                var index = Inventory.IndexOf(option.Item);
+                if (option.Item.Quantity == 1) Inventory.RemoveAt(index);
+                else Inventory[index] = option.Item with { Quantity = option.Item.Quantity - 1 };
+                ThrownItems.Add(option.Item with { Quantity = 1 });
+                damage(option.Item.ThrowDamage!);
+            }));
+            return true;
+        }
+        finally { _resolving = false; }
+    }
     /// <summary>Moves an owned item into a compatible pending slot, swapping equipped items when necessary.</summary>
     public bool TryEquip(Dictionary<string, string> pending, string itemId, string destination)
     {
         var item = Inventory.Find(i => i.Id.Value == itemId);
         if (item is null || !CanEquip(item, destination)) return false;
+        if (item.Weapon is { TwoHanded: true } && destination is "Left hand" or "Right hand")
+        {
+            pending["Left hand"] = itemId;
+            pending["Right hand"] = itemId;
+            return true;
+        }
+        if (pending.TryGetValue(destination, out var previous)
+            && Inventory.Find(i => i.Id.Value == previous)?.Weapon is { TwoHanded: true })
+            foreach (var slot in pending.Where(pair => pair.Value == previous).Select(pair => pair.Key).ToArray()) pending.Remove(slot);
         var source = pending.FirstOrDefault(pair => pair.Value == itemId).Key;
         if (source == destination) return true;
         var displacedId = pending.GetValueOrDefault(destination);
@@ -160,7 +214,10 @@ public sealed class CombatLoadout
     public bool Commit(CombatSystem combat, string actorId, Dictionary<string, string> pending)
     {
         if (_resolving || combat.IsResolving || pending.Any(p => !Inventory.Any(i => i.Id.Value == p.Value && CanEquip(i, p.Key)))
-            || pending.Values.Distinct().Count() != pending.Count) return false;
+            || pending.GroupBy(pair => pair.Value).Any(group =>
+                Inventory.Find(item => item.Id.Value == group.Key)?.Weapon is { TwoHanded: true }
+                    ? group.Count() != 2 || !group.Any(pair => pair.Key == "Left hand") || !group.Any(pair => pair.Key == "Right hand")
+                    : group.Count() != 1)) return false;
         var cost = Cost(pending);
         if (ChangedEquipmentSlots(pending).Count == 0) return true;
         if (!float.IsFinite(cost) || cost <= 0f) return false;

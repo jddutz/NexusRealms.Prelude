@@ -1,7 +1,7 @@
 namespace NexusRealms.Prelude;
 
 /// <summary>Compact resource bars beside a character's overhead selection symbol.</summary>
-public sealed class CharacterStatusDisplay : Element
+public sealed class CharacterStatusDisplay : ViewAnnotation
 {
     private readonly Character _character;
     private readonly ResourceRow _health;
@@ -13,6 +13,7 @@ public sealed class CharacterStatusDisplay : Element
     public CharacterStatusDisplay(Character character, ITextureRegistry textures, ITextStyle style)
     {
         _character = character;
+        TargetGameObject = character;
         _eligibility = new TextElement("", style) { Color = UiTheme.TextColor, Height = 20f, RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI };
         Children.Add(_eligibility);
         _health = new ResourceRow(textures.GetOrCreate(new ContentId("stats.health_bar_segment.png")));

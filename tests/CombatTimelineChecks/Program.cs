@@ -290,16 +290,16 @@ Check(lastStrike is { Hand: StrikeHand.Right, Item.Name: "Apple", Damage: 1 });
 handPending.Clear();
 Check(hands.Commit(handCombat, "player", handPending));
 Check(hands.QuickSlots[1] == "RightHandStrike" && hands.CanSelectQuickSlot(1));
-Check(hands.CommandIcon(CombatLoadout.RightHandStrike) == "stats.fist.png");
+Check(hands.CommandIcon(CombatLoadout.RightHandStrike) == "actions.fist.png");
 Check(hands.Confirm(handCombat, "player", CombatLoadout.RightHandStrike, () => handTarget, () => { }, Strike));
 Check(lastStrike is { Hand: StrikeHand.Right, Item: null } && handHits == 3);
 Check(hands.Assign(9, "RightHandStrike") && hands.QuickSlots[1] is null);
 Console.WriteLine("Intrinsic hand strike checks passed.");
 
-// Each damage point has one type; the basic point remains untyped.
-Check(lastStrike!.DamagePoints.Untyped == 1 && lastStrike.DamagePoints.Typed.Count == 0);
-var scimitarBonus = new Dictionary<DamageType, int> { [DamageType.Slashing] = 1 };
-var scimitar = new WeaponData { BonusDamage = scimitarBonus };
+// Each damage point has one type; the basic point remains General.
+Check(lastStrike!.DamagePoints.Typed.GetValueOrDefault(DamageType.General) == 1 && lastStrike.DamagePoints.Typed.Count == 1);
+var scimitarBonus = new Dictionary<DamageType, int> { [DamageType.General] = 1, [DamageType.Slashing] = 2 };
+var scimitar = new WeaponData { Damage = scimitarBonus };
 Check(new ItemData { Weapon = scimitar }.Weapon == scimitar && new ItemData().Weapon is null);
 hands.Inventory.Add(new("scimitar", "Scimitar", "Left hand", Weapon: scimitar));
 handPending = hands.BeginEquipment();
@@ -313,34 +313,61 @@ Check(hands.Confirm(handCombat, "player", CombatLoadout.LeftHandStrike, () => ha
     typedHits++;
     typedDamage += strike.Damage;
 }));
-Check(typedHits == 1 && typedDamage == 2);
-Check(lastStrike!.DamagePoints.Untyped == 1 && lastStrike.DamagePoints.Typed[DamageType.Slashing] == 1);
+Check(typedHits == 1 && typedDamage == 3);
+Check(lastStrike!.DamagePoints.Typed.GetValueOrDefault(DamageType.General) == 1 && lastStrike.DamagePoints.Typed[DamageType.Slashing] == 2);
 scimitarBonus[DamageType.Slashing] = 9;
-Check(lastStrike.Damage == 2); // Resolved points are a snapshot.
-scimitarBonus[DamageType.Slashing] = 1;
+Check(lastStrike.Damage == 3); // Resolved points are a snapshot.
+scimitarBonus[DamageType.Slashing] = 2;
 var sharp = new HandStrike(StrikeHand.Left, new("sharp", "Sharp scimitar", "Left hand", Weapon: scimitar with { Sharp = true }));
-Check(sharp.Damage == 3 && sharp.DamagePoints.Typed[DamageType.Slashing] == 2);
+Check(sharp.Damage == 4 && sharp.DamagePoints.Typed[DamageType.Slashing] == 3);
 Check(sharp.DamagePoints.Negate(DamageType.Slashing).Total == 1);
-Check(sharp.DamagePoints.Reduce(DamageType.Slashing, 1).Total == 2);
+Check(sharp.DamagePoints.Reduce(DamageType.Slashing, 1).Total == 3);
 Check(sharp.DamagePoints.Reduce(DamageType.Slashing, 99).Total == 1);
 Check(lastStrike.DamagePoints.Negate(DamageType.Slashing).Total == 1);
 var mace = new HandStrike(StrikeHand.Right, new("mace", "Spiked mace", "Right hand", Weapon: new()
 {
-    BonusDamage = new Dictionary<DamageType, int> { [DamageType.Crushing] = 1, [DamageType.Piercing] = 1 },
+    Damage = new Dictionary<DamageType, int> { [DamageType.General] = 1, [DamageType.Crushing] = 1, [DamageType.Piercing] = 1 },
 }));
-Check(mace.Damage == 3 && mace.DamagePoints.Untyped == 1);
+Check(mace.Damage == 3 && mace.DamagePoints.Typed.GetValueOrDefault(DamageType.General) == 1);
 Check(mace.DamagePoints.Negate(DamageType.Crushing).Total == 2);
 Check(mace.DamagePoints.Negate(DamageType.Crushing).Negate(DamageType.Piercing).Total == 1);
 var appleStrike = new HandStrike(StrikeHand.Right, hands.Inventory.Find(i => i.Id.Value == "apple"));
-Check(appleStrike.Damage == 1 && appleStrike.DamagePoints.Typed.Count == 0);
+Check(appleStrike.Damage == 1 && appleStrike.DamagePoints.Typed.Count == 1);
 Check(DamageProfile.ForStrike(new WeaponData()).Total == 1);
-try { _ = new DamageProfile(1, new Dictionary<DamageType, int> { [DamageType.Slashing] = -1 }); throw new Exception("Accepted negative damage"); }
+try { _ = new DamageProfile(new Dictionary<DamageType, int> { [DamageType.Slashing] = -1 }); throw new Exception("Accepted negative damage"); }
 catch (ArgumentOutOfRangeException) { }
 Console.WriteLine("Atomic damage point checks passed.");
+var weaponExpectations = new[]
+{
+    (WeaponType.Sword, 2, 0, 0, 7),
+    (WeaponType.Axe, 1, 1, 0, 5),
+    (WeaponType.Knives, 1, 0, 1, 5),
+    (WeaponType.Clubs, 0, 2, 0, 3),
+    (WeaponType.Maces, 0, 1, 1, 2),
+    (WeaponType.Flail, 0, 1, 1, 2),
+};
+foreach (var (type, slashing, crushing, piercing, iconCount) in weaponExpectations)
+{
+    var data = WeaponCatalog.Get(type);
+    Check(data.Icons.Length == iconCount);
+    for (var index = 0; index < iconCount; index++)
+    {
+        var item = WeaponCatalog.Create(type, "catalog-weapon", type.ToString(), "Left hand", index);
+        var strike = new HandStrike(StrikeHand.Left, item);
+        Check(item.Icon == data.Icons[index]);
+        Check(strike.Damage == 3 && strike.DamagePoints.Typed.GetValueOrDefault(DamageType.General) == 1);
+        Check(strike.DamagePoints.Typed.GetValueOrDefault(DamageType.Slashing) == slashing);
+        Check(strike.DamagePoints.Typed.GetValueOrDefault(DamageType.Crushing) == crushing);
+        Check(strike.DamagePoints.Typed.GetValueOrDefault(DamageType.Piercing) == piercing);
+        Check(DamageProfile.ForStrike(item.Weapon! with { Sharp = true }).Total == (slashing > 0 ? 4 : 3));
+    }
+}
+Check(new HandStrike(StrikeHand.Right, CombatLoadout.CreatePlayerLoadout().HeldItem(StrikeHand.Right)).Damage == 3);
+Console.WriteLine("Weapon catalog and variant damage checks passed.");
 
-foreach (var type in Enum.GetValues<DamageType>()) Check(type.GetCategory() == DamageCategory.Physical);
+foreach (var type in Enum.GetValues<DamageType>()) Check(type.GetCategory() == (type == DamageType.General ? null : DamageCategory.Physical));
 Check(mace.DamagePoints.AmountIn(DamageCategory.Physical) == 2);
-Check(mace.DamagePoints.Total == 3); // The untyped point belongs to no category.
+Check(mace.DamagePoints.Total == 3); // The General point belongs to no category.
 foreach (var category in new[] { DamageCategory.Elemental, DamageCategory.Spiritual, DamageCategory.Mental, DamageCategory.Magical })
     Check(mace.DamagePoints.AmountIn(category) == 0);
 Check(appleStrike.DamagePoints.AmountIn(DamageCategory.Physical) == 0);
@@ -351,7 +378,8 @@ Check(startingLoadout.HeldItem(StrikeHand.Right) is { Name: "Sword", Weapon: not
 Check(startingLoadout.HeldItem(StrikeHand.Left) is null);
 Check(startingLoadout.Equipment.Count == 1);
 Check(startingLoadout.QuickSlots[0] == "RightHandStrike" && startingLoadout.QuickSlots[1] == "LeftHandStrike");
-Check(startingLoadout.QuickSlots.Skip(2).All(slot => slot is null));
+Check(startingLoadout.QuickSlots[2] == "Throw" && startingLoadout.QuickSlots.Skip(3).Take(6).All(slot => slot is null));
+Check(startingLoadout.QuickSlots[9] == "wait");
 Check(startingLoadout.CanSelectQuickSlot(0) && startingLoadout.CanSelectQuickSlot(1));
 Check(startingLoadout.Cost(startingLoadout.BeginEquipment()) == 0f);
 var otherStartingLoadout = CombatLoadout.CreatePlayerLoadout();
@@ -495,7 +523,7 @@ Check(leaderCombat.Outcome == CombatOutcome.Victory && leaderCombat.Contains("gu
 Console.WriteLine("Designated character victory checks passed.");
 
 var fistDefaults = CombatLoadout.CreatePlayerLoadout();
-Check(fistDefaults.CommandIcon(fistDefaults.Find(fistDefaults.QuickSlots[1])!) == "stats.fist.png");
+Check(fistDefaults.CommandIcon(fistDefaults.Find(fistDefaults.QuickSlots[1])!) == "actions.fist.png");
 fistDefaults.Inventory.Add(new("blank", "Blank icon", "Left hand", [""]));
 var fistCombat = new CombatSystem();
 fistCombat.Add(new("player", true));
@@ -503,5 +531,142 @@ fistCombat.Process();
 var fistPending = fistDefaults.BeginEquipment();
 fistPending["Left hand"] = "blank";
 Check(fistDefaults.Commit(fistCombat, "player", fistPending));
-Check(fistDefaults.CommandIcon(CombatLoadout.LeftHandStrike) == "stats.fist.png");
+Check(fistDefaults.CommandIcon(CombatLoadout.LeftHandStrike) == "actions.fist.png");
 Console.WriteLine("Empty hand fist icon checks passed.");
+
+var pistolItem = WeaponCatalog.Create(WeaponType.Pistol, "pistol", "Pistol", "Right hand");
+var pistolStrike = new HandStrike(StrikeHand.Right, pistolItem);
+Check(pistolItem.Weapon!.Range == WeaponRange.Long);
+Check(pistolStrike.Damage == 3 && pistolStrike.DamagePoints.Typed.Count == 1);
+Check(pistolStrike.DamagePoints.Typed[DamageType.Piercing] == 3);
+Check(pistolStrike.DamagePoints.Negate(DamageType.Piercing).Total == 0);
+Check(pistolStrike.DamagePoints.Reduce(DamageType.Piercing, 1).Total == 2);
+Check(DamageProfile.ForStrike(null).Negate(DamageType.General).Total == 0);
+Check(DamageProfile.ForStrike(null).Reduce(DamageType.General, 1).Total == 0);
+var pistolLoadout = new CombatLoadout();
+pistolLoadout.Inventory.Add(pistolItem);
+var pistolPending = pistolLoadout.BeginEquipment();
+Check(pistolLoadout.TryEquip(pistolPending, "pistol", "Right hand"));
+var pistolCombat = new CombatSystem();
+pistolCombat.Add(new("player", true));
+pistolCombat.Process();
+Check(pistolLoadout.Commit(pistolCombat, "player", pistolPending));
+Check(pistolLoadout.ValidTarget(CombatLoadout.RightHandStrike, new(true, true, CombatTeam.Enemies, CombatRow.Back, true, true)));
+Console.WriteLine("General damage and Pistol checks passed.");
+// Throw selection is read-only until a valid, single-use commit.
+CombatSystem ThrowCombat()
+{
+    var system = new CombatSystem();
+    system.Add(new("player", true));
+    system.Process();
+    return system;
+}
+var throwTarget = new CommandTarget(true, true, CombatTeam.Enemies, CombatRow.Back);
+var throws = new CombatLoadout();
+var throwingSword = WeaponCatalog.Create(WeaponType.Sword, "throw-sword", "Sword", "Right hand");
+throws.Inventory.Add(throwingSword);
+var throwCombat = ThrowCombat();
+var throwEquip = throws.BeginEquipment();
+throwEquip["Right hand"] = "throw-sword";
+Check(throws.Commit(throwCombat, "player", throwEquip));
+Check(!throws.ValidTarget(CombatLoadout.RightHandStrike, throwTarget));
+Check(throws.ValidTarget(CombatLoadout.Throw, throwTarget));
+var beforeThrow = throwCombat.Timeline.CurrentTurn;
+var cancelledThrow = throws.BeginThrow(throwCombat, "player", () => throwTarget)!;
+Check(cancelledThrow.Options.Count == 1 && throws.Inventory.Count == 1);
+cancelledThrow.Cancel();
+Check(!cancelledThrow.Choose(cancelledThrow.Options[0], _ => throw new Exception()));
+Check(throwCombat.Timeline.CurrentTurn == beforeThrow && throws.Equipment.ContainsKey("Right hand"));
+var throwSession = throws.BeginThrow(throwCombat, "player", () => throwTarget)!;
+var throwDamage = 0;
+Check(throwSession.Choose(throwSession.Options[0], profile => throwDamage += profile.Total));
+Check(throwDamage == 1 && DamageProfile.ForStrike(throwingSword.Weapon).Total != throwDamage);
+Check(!throwSession.Choose(throwSession.Options[0], _ => throwDamage++));
+Check(throws.Inventory.Count == 0 && throws.Equipment.Count == 0 && throws.ThrownItems.Single().Id == throwingSword.Id);
+Check(throwCombat.Timeline.CurrentTurn == beforeThrow + CombatLoadout.Throw.TurnCost);
+Check(!throws.Available(CombatLoadout.Throw));
+
+var stack = new CarriedItem("stones", "Stones", "Accessory")
+    { Quantity = 3, ThrowDamage = new(new Dictionary<DamageType, int> { [DamageType.General] = 1 }) };
+throws.Inventory.Add(stack);
+var stackSession = throws.BeginThrow(throwCombat, "player", () => throwTarget)!;
+Check(stackSession.Choose(stackSession.Options.Single(), profile => Check(profile.Total == 1)));
+Check(throws.Inventory.Single().Quantity == 2 && throws.Equipment.Count == 0);
+
+var twoHanded = throwingSword with { Id = "two-hand", Weapon = throwingSword.Weapon! with { TwoHanded = true } };
+throws.Inventory.Add(twoHanded);
+var bothHands = throws.BeginEquipment();
+Check(throws.TryEquip(bothHands, "two-hand", "Right hand"));
+Check(throws.Commit(throwCombat, "player", bothHands));
+Check(!throws.HasFreeHand && throws.ThrowOptions().Single().Item == twoHanded);
+var twoHandSession = throws.BeginThrow(throwCombat, "player", () => throwTarget)!;
+Check(twoHandSession.Choose(twoHandSession.Options.Single(), _ => { }));
+Check(throws.Equipment.Count == 0);
+
+var staleHands = throws.BeginThrow(throwCombat, "player", () => throwTarget)!;
+throws.Inventory.Add(new("shield-left", "Shield", "Left hand"));
+throws.Inventory.Add(new("shield-right", "Shield", "Right hand"));
+var shields = throws.BeginEquipment();
+shields["Left hand"] = "shield-left"; shields["Right hand"] = "shield-right";
+Check(throws.Commit(throwCombat, "player", shields));
+var staleTurn = throwCombat.Timeline.CurrentTurn;
+Check(!staleHands.Choose(staleHands.Options.Single(), _ => throw new Exception()));
+Check(throws.Inventory.First().Quantity == 2 && throwCombat.Timeline.CurrentTurn == staleTurn);
+Check(!throws.Available(CombatLoadout.Throw));
+Check(throws.Commit(throwCombat, "player", []));
+var currentThrowTarget = throwTarget;
+var invalidTargetSession = throws.BeginThrow(throwCombat, "player", () => currentThrowTarget)!;
+currentThrowTarget = throwTarget with { Alive = false };
+Check(!invalidTargetSession.Choose(invalidTargetSession.Options.Single(), _ => throw new Exception()));
+var ownershipSession = throws.BeginThrow(throwCombat, "player", () => throwTarget)!;
+throws.Inventory.RemoveAt(0);
+Check(!ownershipSession.Choose(ownershipSession.Options.Single(), _ => throw new Exception()));
+Console.WriteLine("Throw targeting, cancellation, stacks, hands, stale state and single submission checks passed.");
+
+// Wait yields to the next living character, rather than a fixed duration or an effect.
+var waiting = CombatLoadout.CreatePlayerLoadout();
+Check(waiting.CommandIcon(CombatLoadout.Wait) == "actions.wait.png");
+foreach (var nextTurn in new[] { 0f, 0.2f, 4f })
+{
+    var system = new CombatSystem();
+    system.Add(new("player", true, initiative: 100));
+    system.Add(new("next", false, turn: nextTurn, team: CombatTeam.Enemies));
+    system.Add(new("later", false, turn: nextTurn + 2f, team: CombatTeam.Enemies));
+    var acted = false;
+    var effect = false;
+    system.DecideAction = (_, actor) => new(1f, (_, _) => { Check(actor.Id == "next"); acted = true; });
+    system.ScheduleEvent(nextTurn / 2f, "Earlier effect", _ => effect = true);
+    system.Process();
+    Check(waiting.Confirm(system, "player", CombatLoadout.Wait, () => null, () => { }));
+    Check(acted && effect && system.ActiveCombatant?.Id == "player");
+    Check(Math.Abs(system.ActiveCombatant!.Turn - (nextTurn + 0.01f)) < 0.00001f);
+}
+var waitLive = new CombatSystem();
+waitLive.Add(new("player", true));
+waitLive.Add(new("dead", false, turn: 0.1f));
+waitLive.Add(new("ally", false, turn: 2f));
+waitLive.IsCombatantAlive = id => id != "dead";
+waitLive.Process();
+Check(Math.Abs(waitLive.WaitCost("player")!.Value - 2.01f) < 0.00001f);
+waitLive.AdjustTurn("ally", 3f);
+Check(Math.Abs(waitLive.WaitCost("player")!.Value - 5.01f) < 0.00001f);
+waitLive.Remove("ally");
+Check(waitLive.WaitCost("player") is null);
+Check(!waiting.CanConfirm(waitLive, "player", CombatLoadout.Wait, true));
+Check(!waiting.Confirm(waitLive, "player", CombatLoadout.Wait, () => null, () => throw new Exception()));
+Check(waitLive.ActiveCombatant?.Id == "player" && waitLive.Timeline.CurrentTurn == 0f);
+Console.WriteLine("Wait dynamic timing, character-only selection, live updates and unavailable-wait checks passed.");
+
+// Wait never bypasses normal ordering when several characters share the next Turn.
+var tiedWait = new CombatSystem();
+tiedWait.Add(new("player", true, initiative: 100));
+tiedWait.Add(new("tied-low", false, turn: 1f, initiative: 1, team: CombatTeam.Enemies));
+tiedWait.Add(new("tied-high", false, turn: 1f, initiative: 5, team: CombatTeam.Enemies));
+tiedWait.Add(new("nearby", false, turn: 1.005f, team: CombatTeam.Enemies));
+var waitedActors = new List<string>();
+tiedWait.DecideAction = (_, actor) => new(2f, (_, _) => waitedActors.Add(actor.Id));
+tiedWait.Process();
+Check(waiting.Confirm(tiedWait, "player", CombatLoadout.Wait, () => null, () => { }));
+Check(waitedActors.SequenceEqual(new[] { "tied-high", "tied-low", "nearby" }));
+Check(tiedWait.ActiveCombatant?.Id == "player" && Math.Abs(tiedWait.ActiveCombatant.Turn - 1.01f) < 0.00001f);
+Console.WriteLine("Wait preserves normal ordering across tied and nearby character Turns.");

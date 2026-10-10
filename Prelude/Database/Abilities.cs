@@ -11,7 +11,7 @@ public static class Abilities
     public static readonly AbilityData Push = new()
     {
         Id = "push", Name = "Push", Description = "Shove an opponent away.",
-        Icon = new("stats.fist.png"),
+        Icon = new("actions.fist.png"),
     };
     public static readonly AbilityData Parry = new()
     {

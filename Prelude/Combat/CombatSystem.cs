@@ -61,6 +61,17 @@ public sealed class CombatSystem
 
     private bool _resolving;
     public bool IsResolving => _resolving;
+    /// <summary>Yields until just after the next living character, skipping non-character events.</summary>
+    public float? WaitCost(string actorId)
+    {
+        if (HasEnded || ActiveCombatant is not { } actor || actor.Id != actorId || !IsAlive(actorId)) return null;
+        var next = Timeline.TurnOrder.FirstOrDefault(entry => entry.CombatantId is { } id
+            && id != actorId && IsAlive(id));
+        if (next is null) return null;
+        var destination = next.Turn + 0.01f;
+        var cost = destination - actor.Turn;
+        return float.IsFinite(destination) && destination > next.Turn && cost > 0f && float.IsFinite(cost) ? cost : null;
+    }
     private uint _randomState;
     public CombatSystem(uint seed = 1)
     {
