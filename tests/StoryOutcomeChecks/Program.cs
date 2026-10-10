@@ -28,3 +28,34 @@ state.CurrentStoryNodeId = scenario.VictoryNode!.Value;
 Check(((OutcomeNode)story.Nodes[state.CurrentStoryNodeId]).Title == "Victory");
 Check(state.LastCombatOutcome == CombatOutcome.Victory);
 Console.WriteLine("Story outcome route checks passed.");
+
+// Spent HUD segments retain their positions, brighten, fade, and recover independently.
+var barTexture = new Nexus.Graphics.Textures.Texture(new("bar-test"), 1, 1,
+    [new Nexus.Graphics.Color(0.5f, 0.1f, 0.1f, 0.75f)]);
+var resourceRow = new NexusRealms.Prelude.ResourceRow(barTexture, animateLoss: true);
+resourceRow.SetPoints(5, 14f, -2f);
+Check(!resourceRow.IsShowingLoss && resourceRow.Children.Count == 5);
+resourceRow.SetPoints(3, 14f, -2f);
+Check(resourceRow.IsShowingLoss && resourceRow.Children.Count == 5);
+var spentSegment = (Nexus.GUI.Elements.ImageElement)resourceRow.Children[4];
+Check(spentSegment.Texture != barTexture && spentSegment.Color.A == 1f);
+var flashPixels = new byte[4];
+spentSegment.Texture!.WriteTo(0, 1, Nexus.Graphics.ColorFormatEnum.RGBA8UNorm, flashPixels);
+Check(flashPixels[0] > 225 && flashPixels[0] == flashPixels[1] && flashPixels[1] == flashPixels[2]);
+Check(Math.Abs(flashPixels[3] - 191) <= 1);
+resourceRow.Update(0.08d);
+Check(spentSegment.Color.A == 1f);
+resourceRow.Update(0.16d);
+Check(Math.Abs(spentSegment.Color.A - 0.5f) < 0.001f);
+resourceRow.SetPoints(2, 14f, -2f);
+Check(((Nexus.GUI.Elements.ImageElement)resourceRow.Children[2]).Color.A == 1f);
+resourceRow.Update(0.16d);
+Check(resourceRow.Children.Count == 3 && resourceRow.IsShowingLoss);
+resourceRow.SetPoints(3, 14f, -2f);
+Check(!resourceRow.IsShowingLoss && resourceRow.Children.Count == 3);
+Check(((Nexus.GUI.Elements.ImageElement)resourceRow.Children[2]).Texture == barTexture);
+resourceRow.AnimationSpeed = 2d;
+resourceRow.SetPoints(0, 14f, -2f);
+resourceRow.Update(0.2d);
+Check(!resourceRow.IsShowingLoss && resourceRow.Children.Count == 0);
+Console.WriteLine("Player resource flash, fade, repeated loss, recovery, and game speed checks passed.");

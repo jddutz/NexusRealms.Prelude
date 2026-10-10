@@ -173,6 +173,15 @@ public sealed class CombatSystem
         Process();
     }
 
+    public void SubmitAutomaticAction(CombatAction action)
+    {
+        EnsureRunning();
+        if (_resolving || ActiveCombatant is not { PlayerControlled: false })
+            throw new InvalidOperationException("No automatic action is pending.");
+        ResolveAction(action);
+        Process();
+    }
+
     private void ResolveAction(CombatAction action)
     {
         ArgumentNullException.ThrowIfNull(action);

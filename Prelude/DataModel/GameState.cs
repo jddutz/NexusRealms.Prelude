@@ -10,6 +10,17 @@ public record GameState
     public Combat.CombatLoadout Loadout { get; } = Combat.CombatLoadout.CreatePlayerLoadout();
     /// <summary>Active status effect identifiers shared by the HUD and Character dialog.</summary>
     public StatusEffectId[] StatusEffects { get; init; } = ["guarded", "inspired", "focused"];
+    private double _gameSpeed = 1d;
+    /// <summary>Combat playback multiplier; 2 means twice as fast.</summary>
+    public double GameSpeed
+    {
+        get => _gameSpeed;
+        set
+        {
+            if (!double.IsFinite(value) || value < 0.1d || value > 10d) throw new ArgumentOutOfRangeException(nameof(value));
+            _gameSpeed = value;
+        }
+    }
     public int Health { get; set; } = 5;
     public int Focus { get => Loadout.Focus; init => Loadout.Focus = value; }
 }

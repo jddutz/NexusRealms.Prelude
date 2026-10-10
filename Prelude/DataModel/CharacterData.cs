@@ -16,6 +16,7 @@ public sealed record CharacterData
     public required string Name { get; init; }
     public StatusEffectId[] StatusEffects { get; init; } = [];
     public int Health { get; init; } = 5;
+    public EnemyAttackData[] Attacks { get; init; } = [new()];
     public int Focus { get; init; } = 2;
 
     /// <summary>
@@ -27,3 +28,11 @@ public sealed record CharacterData
     public required ContentId Portrait { get; init; }
 }
 
+
+public sealed record EnemyAttackData
+{
+    public string Animation { get; init; } = "Attack";
+    public float TurnCost { get; init; } = 0.6f;
+    public Combat.DamageProfile Damage { get; init; } = new(new Dictionary<DamageType, int> { [DamageType.General] = 1 });
+    public float ImpactFraction { get; init; } = 0.6f;
+}

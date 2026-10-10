@@ -23,6 +23,15 @@ public class CombatScene : Scene
     private readonly ITextStyle _confirmationTextStyle;
     private readonly IGraphicalUserInterface _gui;
     private readonly ISceneManager _sceneManager;
+    private readonly ImageElement _playerFlash = new() { SortOrder = -50, IsVisible = false, SizingMode = ImageSizingMode.Stretch, RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI };
+    private readonly Queue<Color> _flashColors = new();
+    private double _flashRemaining;
+    private readonly Random _enemyRandom;
+    private EnemyAttackData? _enemyAttack;
+    private Character? _enemyActor;
+    private double _enemyElapsed;
+    private double _enemyDuration;
+    private bool _enemyHit;
     private bool _outcomeHandled;
     public Combat.CombatSystem Combat { get; }
     public int EncounterSeed { get; }
@@ -37,6 +46,7 @@ public class CombatScene : Scene
     public event Action<Character?>? FocusChanged;
     private readonly Dictionary<string, ContentId> _turnPortraits = [];
     private PlayerHudPortrait? _playerPortrait;
+    private PlayerStatusBars? _playerStatusBars;
     private PanelElement? _confirmationPanel;
 
     /// <summary>The player's committed loadout and free quick-slot customization.</summary>
@@ -222,6 +232,7 @@ public class CombatScene : Scene
         EncounterSeed = _startScenario.RandomSeed ?? Random.Shared.Next();
         Combat = new(unchecked((uint)EncounterSeed));
         var startingStats = new Random(EncounterSeed);
+        _enemyRandom = new Random(EncounterSeed);
 
         MainCamera = new StaticCamera();
         _worldLayerMask = 1UL << RenderLayers.Create("World", RenderPasses.Main).Index;
@@ -320,8 +331,8 @@ public class CombatScene : Scene
                 )
             );
         }
-        // Until authored abilities/AI are available, opponents pass with a standard cost.
-        Combat.DecideAction = (_, _) => new Combat.CombatAction(0.6f, (_, _) => { });
+
+        // Automatic turns yield to scene playback.
         foreach (var occurrence in _startScenario.Events)
             Combat.ScheduleEvent(
                 occurrence.Turn,
@@ -461,7 +472,7 @@ public class CombatScene : Scene
         }
         bottomCenter.Children.Add(actionSlots);
         bottomCenter.Children.Add(
-            new PlayerStatusBars(
+            _playerStatusBars = new PlayerStatusBars(
                 _gameState,
                 _textures
             )
@@ -480,6 +491,8 @@ public class CombatScene : Scene
         RefreshCommand();
         layout.SetCell(2, 2, bottomRight);
 
+        _playerFlash.Texture = _textures.GetOrCreate(new ContentId("uniform"));
+        Children.Add(_playerFlash);
         Children.Add(worldView);
         Children.Add(layout);
         var uiView = new View
@@ -1170,13 +1183,17 @@ public class CombatScene : Scene
         {
             _closeDialogRequested = false; var dialog = _dialog; _dialog = null; dialog?.Dispose();
         }
+        foreach (var entry in _characterDisplays) entry.Character.AnimationSpeed = _gameState.GameSpeed;
         base.Update(deltaTime);
+        AdvanceEnemyPlayback(deltaTime * _gameState.GameSpeed);
         if (FocusedCharacter is not null && CurrentTarget() is not { Exists: true }) FocusCharacter(null);
         if (Combat.ActiveCombatant is { PlayerControlled: true } actor && actor.Id != "player") SelectedActionId = null;
         Combat.EvaluateOutcome();
         if (!Combat.HasEnded && Combat.IsEscaping && Combat.ActiveCombatant is null) Combat.Process();
         _escapeButton.IsEnabled = !Combat.HasEnded && !Combat.IsEscaping && Combat.ActiveCombatant?.Id == "player";
         if (!_outcomeHandled && Combat.Outcome is { } outcome
+            && _playerStatusBars?.IsShowingLoss != true
+            && _enemyAttack is null && !_playerFlash.IsVisible && _flashColors.Count == 0
             && !_characterDisplays.Any(entry => entry.Character.IsShowingFeedback))
         {
             _outcomeHandled = true;
@@ -1199,6 +1216,61 @@ public class CombatScene : Scene
         RefreshCommand();
 
         ApplyWorldSize();
+    }
+
+    private void AdvanceEnemyPlayback(double elapsed)
+    {
+        _flashRemaining -= elapsed;
+        if (_flashRemaining <= 0d)
+        {
+            _playerFlash.IsVisible = _flashColors.TryDequeue(out var color);
+            if (_playerFlash.IsVisible)
+            {
+                _playerFlash.Color = color.WithTransparency(0.3f);
+                _flashRemaining = 0.08d;
+            }
+        }
+        if (Combat.HasEnded) { _enemyAttack = null; return; }
+        if (_enemyAttack is null)
+        {
+            if (_characterDisplays.Any(entry => entry.Character.IsShowingFeedback)) return;
+            if (Combat.ActiveCombatant is not { PlayerControlled: false } actor) return;
+            var index = int.Parse(actor.Id["encounter-".Length..]);
+            _enemyActor = _formation[_startScenario.Characters[index].Slot]!;
+            var attacks = _enemyActor.Definition.Attacks;
+            _enemyAttack = attacks.Length == 0 ? new EnemyAttackData() : attacks[_enemyRandom.Next(attacks.Length)];
+            if (!float.IsFinite(_enemyAttack.TurnCost) || _enemyAttack.TurnCost <= 0f
+                || !float.IsFinite(_enemyAttack.ImpactFraction) || _enemyAttack.ImpactFraction < 0f || _enemyAttack.ImpactFraction > 1f)
+                throw new InvalidOperationException("Enemy attack timing is invalid.");
+            _enemyElapsed = 0d; _enemyDuration = 0d; _enemyHit = false;
+            return;
+        }
+        var previous = _enemyElapsed;
+        _enemyElapsed += elapsed;
+        const double anticipation = 0.3d;
+        if (previous <= anticipation && _enemyElapsed > anticipation && _enemyDuration == 0d)
+        {
+            _enemyDuration = _enemyActor!.PlayAttack(_enemyAttack.Animation);
+            _enemyElapsed = anticipation;
+        }
+        if (_enemyDuration == 0d) return;
+        if (!_enemyHit && _enemyElapsed >= anticipation + _enemyDuration * _enemyAttack.ImpactFraction)
+        {
+            _enemyHit = true;
+            if (_enemyActor!.Health > 0 && _startScenario.Characters.Any(p => _formation[p.Slot] == _enemyActor
+                && p.Team == NexusRealms.Prelude.Combat.CombatTeam.Enemies))
+            {
+                var receiver = new NexusRealms.Prelude.Combat.DamageReceiver(_gameState.Health);
+                var result = NexusRealms.Prelude.Combat.DamageResolver.Apply(receiver, _enemyAttack.Damage);
+                _gameState.Health = receiver.Health;
+                foreach (var (type, amount) in result.Damage.Typed)
+                    for (var i = 0; i < amount; i++) _flashColors.Enqueue(Character.DamageColor(type));
+            }
+        }
+        if (_enemyElapsed < anticipation + _enemyDuration + 0.4d || _flashColors.Count > 0 || _playerFlash.IsVisible) return;
+        var completed = _enemyAttack;
+        _enemyAttack = null;
+        Combat.SubmitAutomaticAction(new(completed.TurnCost, (_, _) => { }));
     }
 
     /// <summary>Updates the fixed-size world camera and world-space content.</summary>

@@ -39,6 +39,26 @@ public sealed class Character : GameObject2D
     private SpriteAnimationPlayer? _animationPlayer;
     private AsepriteSpriteSheet? _spriteSheet;
     private bool _staggering;
+    public double AnimationSpeed { get; set; } = 1d;
+    private bool _attacking;
+    public double PlayAttack(string name)
+    {
+        if (_spriteSheet is null) return 0.5d;
+        SpriteAnimation animation;
+        try { animation = _spriteSheet.GetAnimation(name); }
+        catch (KeyNotFoundException) { return 0.5d; }
+        PlayAnimation(animation);
+        _attacking = true;
+        return animation.Duration.TotalSeconds;
+    }
+    public static Color DamageColor(DamageType type) => type switch
+    {
+        DamageType.Fire => new Color(1f, 0.45f, 0.1f, 1f),
+        DamageType.Ice => new Color(0.25f, 0.65f, 1f, 1f),
+        DamageType.Lightning => new Color(1f, 0.9f, 0.15f, 1f),
+        DamageType.Poison => new Color(0.25f, 1f, 0.25f, 1f),
+        _ => new Color(1f, 0.2f, 0.2f, 1f),
+    };
     public float VisualWidth => _sprite.Size.X;
     public float VisualHeight => _sprite.Size.Y;
     private float _elevation;
@@ -133,14 +153,7 @@ public sealed class Character : GameObject2D
         var frames = new List<AnimationFrame<Color>>();
         foreach (var (type, amount) in damage.Typed)
         {
-            var color = type switch
-            {
-                DamageType.Fire => new Color(1f, 0.45f, 0.1f, 1f),
-                DamageType.Ice => new Color(0.25f, 0.65f, 1f, 1f),
-                DamageType.Lightning => new Color(1f, 0.9f, 0.15f, 1f),
-                DamageType.Poison => new Color(0.25f, 1f, 0.25f, 1f),
-                _ => new Color(1f, 0.2f, 0.2f, 1f),
-            };
+            var color = DamageColor(type);
             for (var point = 0; point < amount; point++) frames.Add(new(color, DamageFlashDuration));
         }
         _defeatPending |= result.IsLethal;
@@ -347,7 +360,7 @@ public sealed class Character : GameObject2D
         if (!double.IsFinite(deltaTime) || deltaTime < 0d)
             throw new ArgumentOutOfRangeException(nameof(deltaTime));
 
-        var elapsed = TimeSpan.FromSeconds(deltaTime);
+        var elapsed = TimeSpan.FromSeconds(deltaTime * AnimationSpeed);
         _defeatPlayer.Advance(elapsed);
         _damagePlayer.Advance(elapsed);
         // Split at effect boundaries so a new stagger consumes only time after its cue,
@@ -358,9 +371,9 @@ public sealed class Character : GameObject2D
             var step = _impactPlayer.IsCompleted ? remaining
                 : (remaining < _impactPhaseRemaining ? remaining : _impactPhaseRemaining);
             _animationPlayer?.Advance(step);
-            if (_staggering && _animationPlayer is { IsCompleted: true })
+            if ((_staggering || _attacking) && _animationPlayer is { IsCompleted: true })
             {
-                _staggering = false;
+                _staggering = false; _attacking = false;
                 ShowIdle();
             }
             if (!_impactPlayer.IsCompleted) _impactPhaseRemaining -= step;

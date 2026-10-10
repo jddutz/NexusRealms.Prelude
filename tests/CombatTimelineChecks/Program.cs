@@ -1019,3 +1019,28 @@ impactReceiver.Health = 0;
 DamageResolver.Apply(impactReceiver, mixedHit, impact: attackImpact);
 Check(impacts == 2 && impactDamageEvents == 1);
 Console.WriteLine("Attack artwork mapping and impact feedback independent of damage passed.");
+
+// Presentation owns automatic turns until it explicitly completes them.
+var presentedCombat = new CombatSystem();
+presentedCombat.Add(new Combatant("enemy", false, team: CombatTeam.Enemies));
+presentedCombat.Add(new Combatant("player", true, 0.2f));
+presentedCombat.Process();
+Check(presentedCombat.ActiveCombatant?.Id == "enemy");
+var automaticResolutions = 0;
+presentedCombat.Process();
+Check(presentedCombat.ActiveCombatant?.Id == "enemy");
+presentedCombat.SubmitAutomaticAction(new(0.6f, (_, actor) =>
+{
+    Check(actor.Id == "enemy");
+    automaticResolutions++;
+}));
+Check(automaticResolutions == 1 && presentedCombat.ActiveCombatant?.Id == "player");
+Check(presentedCombat.Timeline.TurnOrder.Single(entry => entry.CombatantId == "enemy").Turn == 0.6f);
+try
+{
+    presentedCombat.SubmitAutomaticAction(new(1f, (_, _) => automaticResolutions++));
+    throw new Exception("Automatic submission accepted a player turn.");
+}
+catch (InvalidOperationException) { }
+Check(automaticResolutions == 1);
+Console.WriteLine("Presented automatic turns yield, resolve once, and preserve timeline costs.");

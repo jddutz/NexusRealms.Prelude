@@ -45,9 +45,20 @@ public sealed class PlayerStatusBars : Element
             RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI, SortOrder = 1,
         };
         Children.Add(icon);
-        var segments = new ResourceRow(segmentTexture) { SortOrder = 3 };
+        var segments = new ResourceRow(segmentTexture, animateLoss: true) { SortOrder = 3 };
         Children.Add(segments);
         return new Row(icon, segments);
+    }
+
+    public bool IsShowingLoss => _health.Segments.IsShowingLoss || _focus.Segments.IsShowingLoss;
+
+    public override void Update(double deltaTime)
+    {
+        _health.Segments.AnimationSpeed = _state.GameSpeed;
+        _focus.Segments.AnimationSpeed = _state.GameSpeed;
+        _health.Segments.SetPoints(_state.Health, BlockWidth, BlockGap);
+        _focus.Segments.SetPoints(_state.Loadout.Focus, BlockWidth, BlockGap);
+        base.Update(deltaTime);
     }
 
     public override void Arrange(Rectangle<float> bounds)
@@ -80,9 +91,10 @@ public sealed class PlayerStatusBars : Element
         row.Icon.IsVisible = iconSize > 0f;
         row.Icon.Arrange(new(Bounds.Origin.X, y - iconSize * 0.5f, iconSize, iconSize));
         var height = MathF.Min(BlockHeight, rowHeight);
-        var count = Math.Max(0, points);
+        row.Segments.SetPoints(points, BlockWidth, BlockGap);
+        var count = row.Segments.DisplayPoints;
         var width = count > 0 ? count * (BlockWidth + BlockGap) - BlockGap : 0f;
         row.Segments.Arrange(new(Bounds.Origin.X + IconSize + 4f, y - height * 0.5f, width, height));
-        row.Segments.SetPoints(count, BlockWidth, BlockGap);
+
     }
 }
