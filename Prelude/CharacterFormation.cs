@@ -163,7 +163,7 @@ public sealed class CharacterFormation : GameObject2D
         );
         var targetHeight =
             Math.Min(WorldSize.Y * CharacterHeightFraction, _maximumCharacterHeight) * slot.Scale * CharacterScale;
-        var scale = targetHeight / character.Texture.Height;
+        var scale = targetHeight / character.VisualHeight;
         character.Scale = new(scale, scale);
         character.Renderer.DrawOrder = slot.SortOrder;
         character.ShadowRenderer.DrawOrder = slot.SortOrder - 1;
@@ -195,4 +195,5 @@ public sealed class CharacterFormation : GameObject2D
         public float Scale { get; } = scale;
     }
 }
+
 

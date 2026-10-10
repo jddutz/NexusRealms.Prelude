@@ -111,7 +111,7 @@ var loadout = new CombatLoadout { Focus = 2 };
 var commandExecutions = 0;
 var slash = new CommandDefinition("slash", "Slash", 0.6f, "sword", "Right hand", FocusCost: 1,
     Resolve: (_, _) => commandExecutions++);
-loadout.Inventory.Add(new("sword", "Sword", "Right hand"));
+loadout.Items.Add(new("sword", "Sword", "Right hand"));
 loadout.Abilities.Add(slash);
 loadout.Abilities.Add(new("locked", "Locked", 1f, Learned: false));
 loadout.Abilities.Add(new("passive", "Passive", 1f, Passive: true));
@@ -170,7 +170,7 @@ Check(loadout.Equipment.Count == 0);
 // Accessory artwork does not impose a ring/belt/neck equipment type.
 var accessoryLoadout = new CombatLoadout();
 var charm = new CarriedItem("charm", "Charm", "Accessory");
-accessoryLoadout.Inventory.Add(charm);
+accessoryLoadout.Items.Add(charm);
 foreach (var slot in new[] { "Acc1", "Acc2", "Acc3", "Acc4" }) Check(accessoryLoadout.CanEquip(charm, slot));
 Check(!accessoryLoadout.CanEquip(charm, "Head"));
 Check(!accessoryLoadout.CanEquip(charm, "Ring"));
@@ -202,7 +202,7 @@ Check(accessoryLoadout.ChangedEquipmentSlots(unchanged).Count == 0);
 var beforeUnchanged = accessoryCombat.ActiveCombatant!.Turn;
 Check(accessoryLoadout.Commit(accessoryCombat, "player", unchanged));
 Check(accessoryCombat.ActiveCombatant!.Turn == beforeUnchanged);
-accessoryLoadout.Inventory.Add(new("other-charm", "Other charm", "Accessory"));
+accessoryLoadout.Items.Add(new("other-charm", "Other charm", "Accessory"));
 unchanged["Acc1"] = "other-charm";
 Check(accessoryLoadout.ChangedEquipmentSlots(unchanged).Count == 1);
 Check(accessoryLoadout.Cost(unchanged) == 0.6f);
@@ -235,7 +235,7 @@ Console.WriteLine("Unique action assignment checks passed.");
 
 // Equipment drops edit the pending layout, and exchange items across compatible slots.
 var dragLoadout = new CombatLoadout();
-dragLoadout.Inventory.AddRange([
+dragLoadout.Items.AddRange([
     new("charm-a", "Charm A", "Accessory"),
     new("charm-b", "Charm B", "Accessory"),
     new("charm-c", "Charm C", "Accessory"),
@@ -247,7 +247,7 @@ Check(dragLoadout.TryEquip(dragPending, "charm-a", "Acc2"));
 Check(dragPending["Acc1"] == "charm-b" && dragPending["Acc2"] == "charm-a");
 Check(dragLoadout.TryEquip(dragPending, "charm-c", "Acc2"));
 Check(dragPending["Acc2"] == "charm-c" && !dragPending.Values.Contains("charm-a"));
-Check(dragLoadout.Inventory.Any(i => i.Id.Value == "charm-a"));
+Check(dragLoadout.Items.Any(i => i.Id.Value == "charm-a"));
 var beforeInvalidDrop = new Dictionary<string, string>(dragPending);
 Check(!dragLoadout.TryEquip(dragPending, "hat", "Acc1"));
 Check(!dragLoadout.TryEquip(dragPending, "missing", "Head"));
@@ -279,7 +279,7 @@ Check(handHits == 0 && handCombat.ActiveCombatant!.Turn == handTurn);
 Check(hands.Confirm(handCombat, "player", CombatLoadout.LeftHandStrike, () => handTarget, () => { }, Strike));
 Check(lastStrike is { Hand: StrikeHand.Left, Item: null, Damage: 1 });
 Check(handCombat.ActiveCombatant!.Turn == handTurn + 1f && hands.Focus == 0);
-hands.Inventory.Add(new("apple", "Apple", "Right hand", ["apple-icon"]));
+hands.Items.Add(new("apple", "Apple", "Right hand", ["apple-icon"]));
 var handPending = hands.BeginEquipment();
 Check(hands.TryEquip(handPending, "apple", "Right hand"));
 Check(hands.Commit(handCombat, "player", handPending));
@@ -301,7 +301,7 @@ Check(lastStrike!.DamagePoints.Typed.GetValueOrDefault(DamageType.General) == 1 
 var scimitarBonus = new Dictionary<DamageType, int> { [DamageType.General] = 1, [DamageType.Slashing] = 2 };
 var scimitar = new WeaponData { Damage = scimitarBonus };
 Check(new ItemData { Weapon = scimitar }.Weapon == scimitar && new ItemData().Weapon is null);
-hands.Inventory.Add(new("scimitar", "Scimitar", "Left hand", Weapon: scimitar));
+hands.Items.Add(new("scimitar", "Scimitar", "Left hand", Weapon: scimitar));
 handPending = hands.BeginEquipment();
 Check(hands.TryEquip(handPending, "scimitar", "Left hand"));
 Check(hands.Commit(handCombat, "player", handPending));
@@ -331,7 +331,7 @@ var mace = new HandStrike(StrikeHand.Right, new("mace", "Spiked mace", "Right ha
 Check(mace.Damage == 3 && mace.DamagePoints.Typed.GetValueOrDefault(DamageType.General) == 1);
 Check(mace.DamagePoints.Negate(DamageType.Crushing).Total == 2);
 Check(mace.DamagePoints.Negate(DamageType.Crushing).Negate(DamageType.Piercing).Total == 1);
-var appleStrike = new HandStrike(StrikeHand.Right, hands.Inventory.Find(i => i.Id.Value == "apple"));
+var appleStrike = new HandStrike(StrikeHand.Right, hands.Items.Find(i => i.Id.Value == "apple"));
 Check(appleStrike.Damage == 1 && appleStrike.DamagePoints.Typed.Count == 1);
 Check(DamageProfile.ForStrike(new WeaponData()).Total == 1);
 try { _ = new DamageProfile(new Dictionary<DamageType, int> { [DamageType.Slashing] = -1 }); throw new Exception("Accepted negative damage"); }
@@ -365,7 +365,11 @@ foreach (var (type, slashing, crushing, piercing, iconCount) in weaponExpectatio
 Check(new HandStrike(StrikeHand.Right, CombatLoadout.CreatePlayerLoadout().HeldItem(StrikeHand.Right)).Damage == 3);
 Console.WriteLine("Weapon catalog and variant damage checks passed.");
 
-foreach (var type in Enum.GetValues<DamageType>()) Check(type.GetCategory() == (type == DamageType.General ? null : DamageCategory.Physical));
+foreach (var type in new[] { DamageType.Slashing, DamageType.Piercing, DamageType.Crushing, DamageType.Poison })
+    Check(type.GetCategory() == DamageCategory.Physical);
+foreach (var type in new[] { DamageType.Fire, DamageType.Ice, DamageType.Lightning })
+    Check(type.GetCategory() == DamageCategory.Elemental);
+Check(DamageType.General.GetCategory() is null);
 Check(mace.DamagePoints.AmountIn(DamageCategory.Physical) == 2);
 Check(mace.DamagePoints.Total == 3); // The General point belongs to no category.
 foreach (var category in new[] { DamageCategory.Elemental, DamageCategory.Spiritual, DamageCategory.Mental, DamageCategory.Magical })
@@ -378,20 +382,20 @@ Check(startingLoadout.HeldItem(StrikeHand.Right) is { Name: "Sword", Weapon: not
 Check(startingLoadout.HeldItem(StrikeHand.Left) is null);
 Check(startingLoadout.Equipment.Count == 1);
 Check(startingLoadout.QuickSlots[0] == "RightHandStrike" && startingLoadout.QuickSlots[1] == "LeftHandStrike");
-Check(startingLoadout.QuickSlots[2] == "Throw" && startingLoadout.QuickSlots.Skip(3).Take(6).All(slot => slot is null));
+Check(startingLoadout.QuickSlots.Skip(2).Take(7).All(slot => slot is null));
 Check(startingLoadout.QuickSlots[9] == "wait");
 Check(startingLoadout.CanSelectQuickSlot(0) && startingLoadout.CanSelectQuickSlot(1));
 Check(startingLoadout.Cost(startingLoadout.BeginEquipment()) == 0f);
 var otherStartingLoadout = CombatLoadout.CreatePlayerLoadout();
-startingLoadout.Inventory.Clear();
-Check(otherStartingLoadout.Inventory.Count == 1 && otherStartingLoadout.Equipment.Count == 1);
+startingLoadout.Items.Clear();
+Check(otherStartingLoadout.Items.Count == 1 && otherStartingLoadout.Equipment.Count == 1);
 Console.WriteLine("Starting player loadout checks passed.");
 
 // Range checks cover every nonempty combination of occupied enemy rows.
 foreach (var range in Enum.GetValues<WeaponRange>())
 {
     var ranged = new CombatLoadout();
-    ranged.Inventory.Add(new("ranged", "Ranged", "Right hand", Weapon: new() { Range = range }));
+    ranged.Items.Add(new("ranged", "Ranged", "Right hand", Weapon: new() { Range = range }));
     var rangedCombat = new CombatSystem();
     rangedCombat.Add(new("player", true));
     rangedCombat.Process();
@@ -429,7 +433,7 @@ Check((variantItem with { IconIndex = -1 }).Icon == "firearm-b");
 Check(new ItemData().Icon is null);
 var carriedVariant = new CarriedItem("firearm", "Firearm", "Right hand", variantItem.Icons, variantWeapon) { IconIndex = 1 };
 var variants = new CombatLoadout();
-variants.Inventory.Add(carriedVariant);
+variants.Items.Add(carriedVariant);
 var variantCombat = new CombatSystem();
 variantCombat.Add(new("player", true));
 variantCombat.Process();
@@ -524,7 +528,7 @@ Console.WriteLine("Designated character victory checks passed.");
 
 var fistDefaults = CombatLoadout.CreatePlayerLoadout();
 Check(fistDefaults.CommandIcon(fistDefaults.Find(fistDefaults.QuickSlots[1])!) == "actions.fist.png");
-fistDefaults.Inventory.Add(new("blank", "Blank icon", "Left hand", [""]));
+fistDefaults.Items.Add(new("blank", "Blank icon", "Left hand", [""]));
 var fistCombat = new CombatSystem();
 fistCombat.Add(new("player", true));
 fistCombat.Process();
@@ -544,7 +548,7 @@ Check(pistolStrike.DamagePoints.Reduce(DamageType.Piercing, 1).Total == 2);
 Check(DamageProfile.ForStrike(null).Negate(DamageType.General).Total == 0);
 Check(DamageProfile.ForStrike(null).Reduce(DamageType.General, 1).Total == 0);
 var pistolLoadout = new CombatLoadout();
-pistolLoadout.Inventory.Add(pistolItem);
+pistolLoadout.Items.Add(pistolItem);
 var pistolPending = pistolLoadout.BeginEquipment();
 Check(pistolLoadout.TryEquip(pistolPending, "pistol", "Right hand"));
 var pistolCombat = new CombatSystem();
@@ -564,7 +568,7 @@ CombatSystem ThrowCombat()
 var throwTarget = new CommandTarget(true, true, CombatTeam.Enemies, CombatRow.Back);
 var throws = new CombatLoadout();
 var throwingSword = WeaponCatalog.Create(WeaponType.Sword, "throw-sword", "Sword", "Right hand");
-throws.Inventory.Add(throwingSword);
+throws.Items.Add(throwingSword);
 var throwCombat = ThrowCombat();
 var throwEquip = throws.BeginEquipment();
 throwEquip["Right hand"] = "throw-sword";
@@ -573,7 +577,7 @@ Check(!throws.ValidTarget(CombatLoadout.RightHandStrike, throwTarget));
 Check(throws.ValidTarget(CombatLoadout.Throw, throwTarget));
 var beforeThrow = throwCombat.Timeline.CurrentTurn;
 var cancelledThrow = throws.BeginThrow(throwCombat, "player", () => throwTarget)!;
-Check(cancelledThrow.Options.Count == 1 && throws.Inventory.Count == 1);
+Check(cancelledThrow.Options.Count == 1 && throws.Items.Count == 1);
 cancelledThrow.Cancel();
 Check(!cancelledThrow.Choose(cancelledThrow.Options[0], _ => throw new Exception()));
 Check(throwCombat.Timeline.CurrentTurn == beforeThrow && throws.Equipment.ContainsKey("Right hand"));
@@ -582,19 +586,19 @@ var throwDamage = 0;
 Check(throwSession.Choose(throwSession.Options[0], profile => throwDamage += profile.Total));
 Check(throwDamage == 1 && DamageProfile.ForStrike(throwingSword.Weapon).Total != throwDamage);
 Check(!throwSession.Choose(throwSession.Options[0], _ => throwDamage++));
-Check(throws.Inventory.Count == 0 && throws.Equipment.Count == 0 && throws.ThrownItems.Single().Id == throwingSword.Id);
+Check(throws.Items.Count == 0 && throws.Equipment.Count == 0 && throws.ThrownItems.Single().Id == throwingSword.Id);
 Check(throwCombat.Timeline.CurrentTurn == beforeThrow + CombatLoadout.Throw.TurnCost);
 Check(!throws.Available(CombatLoadout.Throw));
 
 var stack = new CarriedItem("stones", "Stones", "Accessory")
     { Quantity = 3, ThrowDamage = new(new Dictionary<DamageType, int> { [DamageType.General] = 1 }) };
-throws.Inventory.Add(stack);
+throws.Items.Add(stack);
 var stackSession = throws.BeginThrow(throwCombat, "player", () => throwTarget)!;
 Check(stackSession.Choose(stackSession.Options.Single(), profile => Check(profile.Total == 1)));
-Check(throws.Inventory.Single().Quantity == 2 && throws.Equipment.Count == 0);
+Check(throws.Items.Single().Quantity == 2 && throws.Equipment.Count == 0);
 
 var twoHanded = throwingSword with { Id = "two-hand", Weapon = throwingSword.Weapon! with { TwoHanded = true } };
-throws.Inventory.Add(twoHanded);
+throws.Items.Add(twoHanded);
 var bothHands = throws.BeginEquipment();
 Check(throws.TryEquip(bothHands, "two-hand", "Right hand"));
 Check(throws.Commit(throwCombat, "player", bothHands));
@@ -604,14 +608,14 @@ Check(twoHandSession.Choose(twoHandSession.Options.Single(), _ => { }));
 Check(throws.Equipment.Count == 0);
 
 var staleHands = throws.BeginThrow(throwCombat, "player", () => throwTarget)!;
-throws.Inventory.Add(new("shield-left", "Shield", "Left hand"));
-throws.Inventory.Add(new("shield-right", "Shield", "Right hand"));
+throws.Items.Add(new("shield-left", "Shield", "Left hand"));
+throws.Items.Add(new("shield-right", "Shield", "Right hand"));
 var shields = throws.BeginEquipment();
 shields["Left hand"] = "shield-left"; shields["Right hand"] = "shield-right";
 Check(throws.Commit(throwCombat, "player", shields));
 var staleTurn = throwCombat.Timeline.CurrentTurn;
 Check(!staleHands.Choose(staleHands.Options.Single(), _ => throw new Exception()));
-Check(throws.Inventory.First().Quantity == 2 && throwCombat.Timeline.CurrentTurn == staleTurn);
+Check(throws.Items.First().Quantity == 2 && throwCombat.Timeline.CurrentTurn == staleTurn);
 Check(!throws.Available(CombatLoadout.Throw));
 Check(throws.Commit(throwCombat, "player", []));
 var currentThrowTarget = throwTarget;
@@ -619,7 +623,7 @@ var invalidTargetSession = throws.BeginThrow(throwCombat, "player", () => curren
 currentThrowTarget = throwTarget with { Alive = false };
 Check(!invalidTargetSession.Choose(invalidTargetSession.Options.Single(), _ => throw new Exception()));
 var ownershipSession = throws.BeginThrow(throwCombat, "player", () => throwTarget)!;
-throws.Inventory.RemoveAt(0);
+throws.Items.RemoveAt(0);
 Check(!ownershipSession.Choose(ownershipSession.Options.Single(), _ => throw new Exception()));
 Console.WriteLine("Throw targeting, cancellation, stacks, hands, stale state and single submission checks passed.");
 
@@ -670,3 +674,343 @@ Check(waiting.Confirm(tiedWait, "player", CombatLoadout.Wait, () => null, () => 
 Check(waitedActors.SequenceEqual(new[] { "tied-high", "tied-low", "nearby" }));
 Check(tiedWait.ActiveCombatant?.Id == "player" && Math.Abs(tiedWait.ActiveCombatant.Turn - 1.01f) < 0.00001f);
 Console.WriteLine("Wait preserves normal ordering across tied and nearby character Turns.");
+
+var pinnedActions = CombatLoadout.CreatePlayerLoadout();
+var originalPinnedSlots = pinnedActions.QuickSlots.ToArray();
+foreach (var pinnedSlot in new[] { 0, 1, 9 })
+{
+    Check(pinnedActions.IsQuickSlotPinned(pinnedSlot));
+    Check(!pinnedActions.Assign(pinnedSlot, "Throw"));
+    Check(pinnedActions.QuickSlots.SequenceEqual(originalPinnedSlots));
+    Check(pinnedActions.Assign(pinnedSlot, originalPinnedSlots[pinnedSlot]!));
+    Check(!pinnedActions.Assign(4, originalPinnedSlots[pinnedSlot]!));
+    Check(pinnedActions.QuickSlots.SequenceEqual(originalPinnedSlots));
+}
+Check(!pinnedActions.IsQuickSlotPinned(2) && !pinnedActions.IsQuickSlotPinned(8));
+Check(!pinnedActions.Assign(8, "Throw") && pinnedActions.QuickSlots[2] is null);
+pinnedActions.Abilities.Add(new("extra", "Extra action", 1f));
+Check(pinnedActions.Assign(8, "extra"));
+Check(pinnedActions.QuickSlots[0] == "RightHandStrike" && pinnedActions.QuickSlots[1] == "LeftHandStrike" && pinnedActions.QuickSlots[9] == "wait");
+Console.WriteLine("Pinned player hand attacks and Wait resist replacement and relocation; other slots remain editable.");
+
+// Ranged weapons have independent shoot/reload actions, costs, and per-item ammunition.
+foreach (var (type, damage, reloadTime, attackTime, requiresBothHands, icons) in new[]
+{
+    (WeaponType.Pistol, 3, 1.4f, 0.1f, false, 3),
+    (WeaponType.Bow, 3, 0.8f, 0.4f, true, 3),
+    (WeaponType.Crossbow, 3, 2.1f, 0.2f, true, 1),
+    (WeaponType.Sling, 2, 0.8f, 0.6f, false, 1),
+})
+foreach (var hand in new[] { StrikeHand.Left, StrikeHand.Right })
+{
+    var ranged = new CombatLoadout();
+    var slot = hand == StrikeHand.Left ? "Left hand" : "Right hand";
+    var otherSlot = hand == StrikeHand.Left ? "Right hand" : "Left hand";
+    var shoot = hand == StrikeHand.Left ? CombatLoadout.LeftHandStrike : CombatLoadout.RightHandStrike;
+    var ammo = WeaponCatalog.CreateAmmunition(weaponTypeAmmo(type), "ammunition", 2);
+    var weapon = WeaponCatalog.Create(type, "ranged", type.ToString(), slot);
+    ranged.Items.Add(weapon);
+    ranged.Items.Add(ammo);
+    var system = new CombatSystem();
+    var actor = new Combatant("player", true);
+    system.Add(actor);
+    system.Process();
+    var pendingRanged = ranged.BeginEquipment();
+    Check(ranged.TryEquip(pendingRanged, weapon.Id.Value, slot));
+    Check(pendingRanged.Count == (requiresBothHands ? 2 : 1));
+    Check(ranged.Commit(system, "player", pendingRanged));
+    Check(weapon.Icons!.Length == icons && weapon.Weapon!.TwoHanded == requiresBothHands);
+    Check(ranged.ShotsRemaining(weapon) == 1 && !ranged.CanReload(pendingRanged, weapon.Id.Value, ammo.Id.Value));
+    Check(ranged.CommandCost(shoot) == attackTime && weapon.Weapon!.ReloadTime == reloadTime);
+    var startTurn = actor.Turn;
+    var hits = 0;
+    var rangedTarget = new CommandTarget(true, true, CombatTeam.Enemies, CombatRow.Back);
+    Check(!ranged.Confirm(system, "player", shoot, () => rangedTarget, () => { }));
+    Check(ranged.ShotsRemaining(weapon) == 1);
+    Check(ranged.Confirm(system, "player", shoot, () => rangedTarget, () => { }, hit =>
+    {
+        hits++;
+        Check(hit.Damage == damage && hit.DamagePoints.Typed[DamageType.Piercing] == damage);
+        Check(hit.Ammunition?.Ammunition == weaponTypeAmmo(type));
+    }));
+    Check(Math.Abs(actor.Turn - startTurn - attackTime) < 0.0001f);
+    Check(hits == 1 && ranged.ShotsRemaining(weapon) == 0 && !ranged.Available(shoot));
+    Check(!ranged.Confirm(system, "player", shoot, () => rangedTarget, () => { }, _ => hits++));
+    // Equipment changes must not refill the weapon.
+    Check(ranged.Commit(system, "player", new()));
+    pendingRanged = ranged.BeginEquipment();
+    Check(ranged.TryEquip(pendingRanged, weapon.Id.Value, slot));
+    Check(ranged.Commit(system, "player", pendingRanged));
+    Check(ranged.ShotsRemaining(weapon) == 0);
+    if (!requiresBothHands)
+    {
+        ranged.Items.Add(new("blocker", "Occupied hand", otherSlot));
+        pendingRanged = ranged.BeginEquipment();
+        pendingRanged[otherSlot] = "blocker";
+        Check(ranged.Commit(system, "player", pendingRanged));
+        // Reload succeeds with the other hand occupied.
+    }
+    pendingRanged = ranged.BeginEquipment();
+    startTurn = actor.Turn;
+    Check(ranged.CanReload(pendingRanged, weapon.Id.Value, ammo.Id.Value));
+    var queued = new Dictionary<string, string> { [weapon.Id.Value] = ammo.Id.Value };
+    Check(Math.Abs(ranged.Cost(pendingRanged, queued) - reloadTime) < 0.0001f);
+    Check(ranged.ShotsRemaining(weapon) == 0 && ranged.Items.Find(item => item.Id == ammo.Id)!.Quantity == 2);
+    Check(ranged.Commit(system, "player", pendingRanged, queued));
+    Check(Math.Abs(actor.Turn - startTurn - reloadTime) < 0.0001f);
+    Check(hits == 1 && ranged.ShotsRemaining(weapon) == 1 && ranged.Available(shoot));
+    Check(ranged.Items.Find(item => item.Id == ammo.Id)!.Quantity == 1);
+    Check(!ranged.Commit(system, "player", pendingRanged, queued));
+    Check(ranged.Confirm(system, "player", shoot, () => rangedTarget, () => { }, hit =>
+    {
+        Check(hit.Ammunition?.Id == ammo.Id && hit.Ammunition.Quantity == 1);
+        Check(AttackImpact.ForStrike(hit).IconTexture == ammo.Icon);
+    }));
+    if (requiresBothHands)
+    {
+        pendingRanged = ranged.BeginEquipment();
+        pendingRanged.Remove(otherSlot);
+        Check(!ranged.Commit(system, "player", pendingRanged));
+    }
+}
+Console.WriteLine("Ranged damage, timing, ammunition consumption, persistence, and reload with occupied hands checks passed.");
+AmmunitionType weaponTypeAmmo(WeaponType type) => type switch
+{
+    WeaponType.Pistol => AmmunitionType.Bullet,
+    WeaponType.Bow => AmmunitionType.Arrow,
+    WeaponType.Crossbow => AmmunitionType.Bolt,
+    WeaponType.Sling => AmmunitionType.Stone,
+    _ => throw new ArgumentOutOfRangeException(nameof(type)),
+};
+
+// Preparing a specific throw is free and independent of targeting.
+var prepared = CombatLoadout.CreatePlayerLoadout();
+var preparedCombat = ThrowCombat();
+var preparedTurn = preparedCombat.ActiveCombatant!.Turn;
+Check(prepared.PrepareThrow("starting-sword") && prepared.CanThrowPreparedItem);
+Check(prepared.CommandIcon(CombatLoadout.Throw) == prepared.Items.Single().Icon);
+Check(preparedCombat.ActiveCombatant.Turn == preparedTurn && prepared.Items.Count == 1);
+Check(!prepared.ConfirmPreparedThrow(preparedCombat, "player", () => null, _ => throw new Exception()));
+Check(prepared.PreparedThrowItemId == "starting-sword" && prepared.Items.Count == 1);
+var preparedHits = 0;
+Check(prepared.ConfirmPreparedThrow(preparedCombat, "player", () => throwTarget, _ => preparedHits++));
+Check(preparedHits == 1 && prepared.PreparedThrowItemId is null && prepared.Items.Count == 0);
+Check(preparedCombat.ActiveCombatant!.Turn == preparedTurn + CombatLoadout.Throw.TurnCost);
+Check(!prepared.ConfirmPreparedThrow(preparedCombat, "player", () => throwTarget, _ => preparedHits++));
+Console.WriteLine("Prepared Throw is free until valid targeting and single-use confirmation.");
+
+// Invalid or overcommitted ammunition cannot partially change equipment or spend Turn.
+var reloadLoadout = new CombatLoadout();
+var reloadCombat = ThrowCombat();
+var firstPistol = WeaponCatalog.Create(WeaponType.Pistol, "pistol-a", "Pistol A", "Left hand");
+var secondPistol = WeaponCatalog.Create(WeaponType.Pistol, "pistol-b", "Pistol B", "Right hand");
+var oneBullet = WeaponCatalog.CreateAmmunition(AmmunitionType.Bullet, "one-bullet");
+var wrongAmmo = WeaponCatalog.CreateAmmunition(AmmunitionType.Arrow, "arrow");
+reloadLoadout.Items.AddRange([firstPistol, secondPistol, oneBullet, wrongAmmo]);
+var reloadPending = reloadLoadout.BeginEquipment();
+Check(reloadLoadout.TryEquip(reloadPending, firstPistol.Id.Value, "Left hand"));
+Check(reloadLoadout.TryEquip(reloadPending, secondPistol.Id.Value, "Right hand"));
+Check(reloadLoadout.Commit(reloadCombat, "player", reloadPending));
+Check(reloadLoadout.Confirm(reloadCombat, "player", CombatLoadout.LeftHandStrike, () => throwTarget, () => { }, _ => { }));
+Check(reloadLoadout.Confirm(reloadCombat, "player", CombatLoadout.RightHandStrike, () => throwTarget, () => { }, _ => { }));
+Check(!reloadLoadout.CanReload(reloadPending, firstPistol.Id.Value, wrongAmmo.Id.Value));
+var reloadStart = reloadCombat.ActiveCombatant!.Turn;
+var excessiveReloads = new Dictionary<string, string> { ["pistol-a"] = "one-bullet", ["pistol-b"] = "one-bullet" };
+Check(!reloadLoadout.Commit(reloadCombat, "player", reloadPending, excessiveReloads));
+Check(reloadCombat.ActiveCombatant.Turn == reloadStart && reloadLoadout.ShotsRemaining(firstPistol) == 0
+    && reloadLoadout.ShotsRemaining(secondPistol) == 0 && reloadLoadout.Items.Contains(oneBullet));
+excessiveReloads.Remove("pistol-b");
+Check(reloadLoadout.Commit(reloadCombat, "player", reloadPending, excessiveReloads));
+Check(reloadLoadout.ShotsRemaining(firstPistol) == 1 && reloadLoadout.ShotsRemaining(secondPistol) == 0);
+Check(!reloadLoadout.Items.Contains(oneBullet));
+Console.WriteLine("Reload validates matching stacks atomically and tracks each equipped weapon independently.");
+
+// Fixed inventory locations and shared movement rules for the Character dialog.
+string Bag(int index) => CombatLoadout.InventorySlot(index);
+bool SameLayout(IReadOnlyDictionary<string, string> a, IReadOnlyDictionary<string, string> b) =>
+    a.Count == b.Count && a.All(pair => b.GetValueOrDefault(pair.Key) == pair.Value);
+var locations = CombatLoadout.CreatePlayerLoadout();
+var locationCombat = ThrowCombat();
+Check(locations.Inventory.Count == 20 && locations.Inventory.All(item => item is null));
+Check(CombatLoadout.EquipmentSlots.Count == 9);
+var layout = locations.BeginItemLayout();
+Check(locations.TryMoveItem(layout, "Right hand", "Left hand"));
+Check(layout.GetValueOrDefault("Left hand") == "starting-sword" && !layout.ContainsKey("Right hand"));
+Check(Math.Abs(locations.ItemLayoutCost(layout) - 1.2f) < 0.0001f);
+Check(locations.Equipment.ContainsKey("Right hand")); // Preview does not mutate committed equipment.
+Check(locations.TryMoveItem(layout, "Left hand", "Right hand"));
+Check(locations.ItemLayoutCost(layout) == 0f);
+Check(locations.TryMoveItem(layout, "Right hand", Bag(19)));
+Check(layout[Bag(19)] == "starting-sword" && !layout.ContainsKey("Right hand"));
+var locationStart = locationCombat.ActiveCombatant!.Turn;
+Check(locations.CommitItemLayout(locationCombat, "player", layout));
+Check(Math.Abs(locationCombat.ActiveCombatant.Turn - locationStart - 1.2f) < 0.0001f);
+Check(locations.Inventory[19]?.Id.Value == "starting-sword" && locations.Inventory.Take(19).All(item => item is null));
+layout = locations.BeginItemLayout();
+Check(locations.TryMoveItem(layout, Bag(19), "Left hand"));
+Check(locations.CommitItemLayout(locationCombat, "player", layout));
+Check(locations.Inventory.All(item => item is null) && locations.Equipment["Left hand"] == "starting-sword");
+Check(locations.TryAddItem(WeaponCatalog.Create(WeaponType.Knives, "knife", "Knife", "Right hand")));
+Check(locations.TryAddItem(new("hat-layout", "Hat", "Head")));
+Check(locations.TryAddItem(WeaponCatalog.CreateAmmunition(AmmunitionType.Bullet, "stack-layout", 7)));
+layout = locations.BeginItemLayout();
+Check(locations.TryMoveItem(layout, Bag(0), "Right hand"));
+Check(locations.TryMoveItem(layout, "Left hand", "Right hand"));
+Check(layout["Left hand"] == "knife" && layout["Right hand"] == "starting-sword");
+Check(locations.TryMoveItem(layout, "Right hand", Bag(5)));
+Check(locations.TryMoveItem(layout, Bag(5), Bag(2))); // Sword and ammunition stack exchange cells.
+Check(layout[Bag(5)] == "stack-layout" && layout[Bag(2)] == "starting-sword");
+Check(locations.Items.Find(item => item.Id.Value == "stack-layout")!.Quantity == 7);
+var beforeBadMove = new Dictionary<string, string>(layout);
+Check(!locations.TryMoveItem(layout, Bag(1), "Left hand")); // Hat cannot equip in a hand.
+Check(!locations.TryMoveItem(layout, "Left hand", Bag(1))); // Swap cannot put a hat in the source hand.
+Check(!locations.TryMoveItem(layout, Bag(2), "Inventory:20"));
+Check(SameLayout(layout, beforeBadMove));
+var cancelledLayout = locations.BeginItemLayout();
+Check(cancelledLayout["Left hand"] == "starting-sword" && cancelledLayout[Bag(0)] == "knife");
+Check(locations.CommitItemLayout(locationCombat, "player", layout));
+Check(locations.Inventory[5]?.Quantity == 7 && locations.Inventory[2]?.Id.Value == "starting-sword");
+Check(locations.Inventory[0] is null); // Empty cells do not collapse.
+var duplicateLayout = locations.BeginItemLayout();
+duplicateLayout[Bag(18)] = "starting-sword";
+locationStart = locationCombat.ActiveCombatant!.Turn;
+Check(!locations.CommitItemLayout(locationCombat, "player", duplicateLayout));
+Check(locationCombat.ActiveCombatant.Turn == locationStart);
+Console.WriteLine("Twenty inventory cells: hand transfers, unequipping, swaps, stack relocation, cancellation, costs and invalid drops passed.");
+
+// Full inventory must neither lose displaced items nor silently create a twenty-first cell.
+var crowded = new CombatLoadout();
+Check(crowded.TryAddItem(WeaponCatalog.Create(WeaponType.Bow, "crowded-bow", "Bow", "Right hand")));
+for (var index = 1; index < 20; index++)
+    Check(crowded.TryAddItem(new($"filler-{index}", "Filler", "Inventory")));
+Check(!crowded.TryAddItem(new("overflow", "Overflow", "Inventory")));
+crowded.Items.Add(WeaponCatalog.Create(WeaponType.Pistol, "crowded-left", "Pistol", "Left hand"));
+crowded.Items.Add(WeaponCatalog.Create(WeaponType.Pistol, "crowded-right", "Pistol", "Right hand"));
+var crowdedCombat = ThrowCombat();
+var crowdedEquipment = new Dictionary<string, string> { ["Left hand"] = "crowded-left", ["Right hand"] = "crowded-right" };
+Check(crowded.Commit(crowdedCombat, "player", crowdedEquipment));
+var crowdedLayout = crowded.BeginItemLayout();
+var beforeCrowded = new Dictionary<string, string>(crowdedLayout);
+Check(!crowded.TryMoveItem(crowdedLayout, Bag(0), "Right hand"));
+Check(SameLayout(crowdedLayout, beforeCrowded) && crowded.Inventory.Count == 20);
+Check(!crowded.TryMoveItem(crowdedLayout, "Left hand", Bag(1))); // Incompatible displaced filler.
+crowded.Items.RemoveAll(item => item.Id.Value == "filler-19");
+crowdedLayout = crowded.BeginItemLayout();
+Check(crowded.TryMoveItem(crowdedLayout, Bag(0), "Right hand"));
+Check(crowdedLayout["Left hand"] == "crowded-bow" && crowdedLayout["Right hand"] == "crowded-bow");
+Check(crowdedLayout[Bag(0)] == "crowded-left" && crowdedLayout[Bag(19)] == "crowded-right");
+Check(crowded.CommitItemLayout(crowdedCombat, "player", crowdedLayout));
+Check(crowded.TryMoveItem(crowdedLayout, "Left hand", Bag(0)));
+Check(crowdedLayout[Bag(0)] == "crowded-bow" && crowdedLayout["Left hand"] == "crowded-left" && !crowdedLayout.ContainsKey("Right hand"));
+Check(crowded.CommitItemLayout(crowdedCombat, "player", crowdedLayout));
+Check(crowded.Items.Count == 21 && crowded.Inventory.Count(item => item is not null) == 20);
+Console.WriteLine("Full inventory, two-handed displacement, capacity failure and atomic exchanges passed.");
+
+// A reload consumes its located stack without moving neighboring inventory items.
+var locatedAmmo = new CombatLoadout();
+Check(locatedAmmo.TryAddItem(WeaponCatalog.Create(WeaponType.Pistol, "located-pistol", "Pistol", "Right hand")));
+Check(locatedAmmo.TryAddItem(WeaponCatalog.CreateAmmunition(AmmunitionType.Bullet, "located-bullet")));
+Check(locatedAmmo.TryAddItem(new("neighbor", "Neighbor", "Inventory")));
+var locatedAmmoCombat = ThrowCombat();
+var locatedAmmoLayout = locatedAmmo.BeginItemLayout();
+Check(locatedAmmo.TryMoveItem(locatedAmmoLayout, Bag(0), "Left hand"));
+Check(locatedAmmo.CommitItemLayout(locatedAmmoCombat, "player", locatedAmmoLayout));
+Check(locatedAmmo.Confirm(locatedAmmoCombat, "player", CombatLoadout.LeftHandStrike, () => throwTarget, () => { }, _ => { }));
+locatedAmmoLayout = locatedAmmo.BeginItemLayout();
+Check(locatedAmmo.CommitItemLayout(locatedAmmoCombat, "player", locatedAmmoLayout,
+    new Dictionary<string, string> { ["located-pistol"] = "located-bullet" }));
+Check(locatedAmmo.Inventory[1] is null && locatedAmmo.Inventory[2]?.Id.Value == "neighbor");
+Check(locatedAmmo.ShotsRemaining(locatedAmmo.Items.Find(item => item.Id.Value == "located-pistol")!) == 1);
+Console.WriteLine("Reload preserves inventory cell positions and consumes ammunition only on commit.");
+
+// Throwing one unit of an equipped stack retains the remainder in its equipment cell.
+var equippedStackLoadout = new CombatLoadout();
+var equippedStack = WeaponCatalog.Create(WeaponType.Knives, "equipped-stack", "Knives", "Right hand") with { Quantity = 3 };
+Check(equippedStackLoadout.TryAddItem(equippedStack));
+var equippedStackCombat = ThrowCombat();
+var equippedStackLayout = equippedStackLoadout.BeginItemLayout();
+Check(equippedStackLoadout.TryMoveItem(equippedStackLayout, Bag(0), "Left hand"));
+Check(equippedStackLoadout.CommitItemLayout(equippedStackCombat, "player", equippedStackLayout));
+Check(equippedStackLoadout.PrepareThrow("equipped-stack"));
+Check(equippedStackLoadout.ConfirmPreparedThrow(equippedStackCombat, "player", () => throwTarget, _ => { }));
+Check(equippedStackLoadout.Equipment["Left hand"] == "equipped-stack");
+Check(equippedStackLoadout.HeldItem(StrikeHand.Left)!.Quantity == 2);
+Check(equippedStackLoadout.Inventory.All(item => item is null));
+Console.WriteLine("Throwing an equipped stack keeps its remainder in the same location.");
+
+// A prepared inventory stack remains selected until that exact stack is depleted.
+var persistentThrow = new CombatLoadout();
+Check(persistentThrow.TryAddItem(WeaponCatalog.Create(WeaponType.Knives, "throw-stack-a", "Knives A", "Right hand") with { Quantity = 2 }));
+Check(persistentThrow.TryAddItem(WeaponCatalog.Create(WeaponType.Knives, "throw-stack-b", "Knives B", "Right hand") with { Quantity = 3 }));
+var persistentCombat = ThrowCombat();
+persistentThrow.BeginItemLayout();
+Check(persistentThrow.PrepareThrow("throw-stack-a"));
+Check(persistentThrow.ConfirmPreparedThrow(persistentCombat, "player", () => throwTarget, _ => { }));
+Check(persistentThrow.PreparedThrowItemId == "throw-stack-a" && persistentThrow.Inventory[0]?.Quantity == 1);
+Check(persistentThrow.ConfirmPreparedThrow(persistentCombat, "player", () => throwTarget, _ => { }));
+Check(persistentThrow.PreparedThrowItemId is null && persistentThrow.Inventory[0] is null);
+Check(persistentThrow.Inventory[1]?.Id.Value == "throw-stack-b" && persistentThrow.Inventory[1]?.Quantity == 3);
+Check(!persistentThrow.ConfirmPreparedThrow(persistentCombat, "player", () => throwTarget, _ => throw new Exception()));
+Console.WriteLine("Prepared Throw persists for the source stack and clears on exhaustion without selecting another stack.");
+
+// Any damage source uses the same receiver and reports the post-mitigation profile.
+var damageReceiver = new DamageReceiver(5);
+var damageEvents = new List<DamageTaken>();
+var healthNotifications = 0;
+damageReceiver.HealthChanged += () => healthNotifications++;
+damageReceiver.DamageTaken += hit =>
+{
+    Check(damageReceiver.Health == hit.HealthAfter);
+    damageEvents.Add(hit);
+};
+var mixedHit = new DamageProfile(new Dictionary<DamageType, int>
+{
+    [DamageType.Slashing] = 2, [DamageType.Fire] = 2,
+});
+var mitigatedHit = DamageResolver.Apply(damageReceiver, mixedHit, hit => hit.Reduce(DamageType.Slashing, 1));
+Check(damageReceiver.Health == 2 && mitigatedHit.HealthLost == 3 && !mitigatedHit.IsLethal);
+Check(damageEvents.Count == 1 && damageEvents[0].Damage.Typed[DamageType.Slashing] == 1);
+Check(damageEvents[0].Damage.Typed[DamageType.Fire] == 2 && mixedHit.Total == 4);
+DamageResolver.Apply(damageReceiver, mixedHit, _ => new DamageProfile());
+DamageResolver.Apply(damageReceiver, new DamageProfile());
+Check(damageReceiver.Health == 2 && damageEvents.Count == 1 && healthNotifications == 1);
+var lethalHit = DamageResolver.Apply(damageReceiver, mixedHit);
+Check(lethalHit.IsLethal && lethalHit.HealthLost == 2 && lethalHit.Damage.Total == 4);
+Check(damageReceiver.Health == 0 && damageEvents.Count == 2 && healthNotifications == 2);
+DamageResolver.Apply(damageReceiver, mixedHit);
+Check(damageEvents.Count == 2 && healthNotifications == 2);
+damageReceiver.Health = 5;
+Check(damageEvents.Count == 2 && healthNotifications == 3);
+Console.WriteLine("Shared damage resolution, mitigation, notifications, overkill and defeated targets passed.");
+
+foreach (var (type, effect) in new[]
+{
+    (WeaponType.Sword, "slash"), (WeaponType.Axe, "slash"), (WeaponType.Knives, "flash"),
+    (WeaponType.Clubs, "impact"), (WeaponType.Maces, "impact"), (WeaponType.Flail, "impact"),
+})
+{
+    var item = WeaponCatalog.Create(type, "overlay-test", "Test", "Right hand");
+    Check(AttackImpact.ForStrike(new(StrikeHand.Right, item)).EffectTexture == $"effects.{effect}.png");
+    Check(AttackImpact.ForThrow(item).IconTexture == item.Icon);
+}
+Check(AttackImpact.ForStrike(new(StrikeHand.Left, null)).EffectTexture == "effects.impact.png");
+var impactReceiver = new DamageReceiver(5);
+var impacts = 0;
+var impactDamageEvents = 0;
+var attackImpact = new AttackImpact("effects.slash.png");
+impactReceiver.ImpactOccurred += impact =>
+{
+    Check(impact == AttackImpact.Blocked && impact.IconTexture is null);
+    impacts++;
+};
+impactReceiver.DamageTaken += _ => impactDamageEvents++;
+DamageResolver.Apply(impactReceiver, mixedHit, _ => new DamageProfile(), attackImpact);
+Check(impacts == 1 && impactDamageEvents == 0 && impactReceiver.Health == 5);
+DamageResolver.Apply(impactReceiver, new DamageProfile(), impact: new AttackImpact(IconTexture: "thrown-icon"));
+Check(impacts == 2 && impactDamageEvents == 0 && impactReceiver.Health == 5);
+DamageResolver.Apply(impactReceiver, mixedHit);
+Check(impacts == 2 && impactDamageEvents == 1);
+impactReceiver.Health = 0;
+DamageResolver.Apply(impactReceiver, mixedHit, impact: attackImpact);
+Check(impacts == 2 && impactDamageEvents == 1);
+Console.WriteLine("Attack artwork mapping and impact feedback independent of damage passed.");

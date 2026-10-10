@@ -1,6 +1,51 @@
 {
   "Textures": {
     "Content": {
+      "effects.arrow_01.png": {
+        "FilePath": "Textures/Effects/arrow_01.ktx2"
+      },
+      "effects.arrow_02.png": {
+        "FilePath": "Textures/Effects/arrow_02.ktx2"
+      },
+      "effects.blocked.png": {
+        "FilePath": "Textures/Effects/blocked.ktx2"
+      },
+      "effects.impact_01.png": {
+        "FilePath": "Textures/Effects/impact_01.ktx2"
+      },
+      "effects.impact_02.png": {
+        "FilePath": "Textures/Effects/impact_02.ktx2"
+      },
+      "effects.impact_03.png": {
+        "FilePath": "Textures/Effects/impact_03.ktx2"
+      },
+      "effects.impact_04.png": {
+        "FilePath": "Textures/Effects/impact_04.ktx2"
+      },
+      "effects.ranged_01.png": {
+        "FilePath": "Textures/Effects/ranged_01.ktx2"
+      },
+      "effects.ranged_02.png": {
+        "FilePath": "Textures/Effects/ranged_02.ktx2"
+      },
+      "effects.ranged_03.png": {
+        "FilePath": "Textures/Effects/ranged_03.ktx2"
+      },
+      "effects.ranged_04.png": {
+        "FilePath": "Textures/Effects/ranged_04.ktx2"
+      },
+      "effects.slash_01.png": {
+        "FilePath": "Textures/Effects/slash_01.ktx2"
+      },
+      "effects.slash_02.png": {
+        "FilePath": "Textures/Effects/slash_02.ktx2"
+      },
+      "effects.slash_03.png": {
+        "FilePath": "Textures/Effects/slash_03.ktx2"
+      },
+      "effects.slash_04.png": {
+        "FilePath": "Textures/Effects/slash_04.ktx2"
+      },
       "actions.fist.png": {
         "FilePath": "Textures/Actions/fist.ktx2"
       },
@@ -208,11 +253,23 @@
       "weapons.axe_05.png": {
         "FilePath": "Textures/Items/Weapons/axe_05.ktx2"
       },
+      "weapons.bow_01.png": {
+        "FilePath": "Textures/Items/Weapons/bow_01.ktx2"
+      },
+      "weapons.bow_02.png": {
+        "FilePath": "Textures/Items/Weapons/bow_02.ktx2"
+      },
+      "weapons.bow_03.png": {
+        "FilePath": "Textures/Items/Weapons/bow_03.ktx2"
+      },
       "weapons.club_01.png": {
         "FilePath": "Textures/Items/Weapons/club_01.ktx2"
       },
       "weapons.club_02.png": {
         "FilePath": "Textures/Items/Weapons/club_02.ktx2"
+      },
+      "weapons.crossbow_01.png": {
+        "FilePath": "Textures/Items/Weapons/crossbow_01.ktx2"
       },
       "weapons.flail_01.png": {
         "FilePath": "Textures/Items/Weapons/flail_01.ktx2"
@@ -243,6 +300,18 @@
       },
       "weapons.mace_02.png": {
         "FilePath": "Textures/Items/Weapons/mace_02.ktx2"
+      },
+      "weapons.pistol_01.png": {
+        "FilePath": "Textures/Items/Weapons/pistol_01.ktx2"
+      },
+      "weapons.pistol_02.png": {
+        "FilePath": "Textures/Items/Weapons/pistol_02.ktx2"
+      },
+      "weapons.pistol_03.png": {
+        "FilePath": "Textures/Items/Weapons/pistol_03.ktx2"
+      },
+      "weapons.sling_01.png": {
+        "FilePath": "Textures/Items/Weapons/sling_01.ktx2"
       },
       "weapons.sword_01.png": {
         "FilePath": "Textures/Items/Weapons/sword_01.ktx2"
@@ -400,13 +469,13 @@
           },
           "region-0001": {
             "Bounds": {
-              "X": 8,
+              "X": 18,
               "Y": 9,
               "Width": 61,
               "Height": 14
             },
             "TexCoords": {
-              "X": 0.055555556,
+              "X": 0.125,
               "Y": 0.0703125,
               "Width": 0.4236111,
               "Height": 0.109375
@@ -428,33 +497,19 @@
           },
           "region-0003": {
             "Bounds": {
-              "X": 22,
-              "Y": 33,
+              "X": 6,
+              "Y": 47,
               "Width": 31,
               "Height": 13
             },
             "TexCoords": {
-              "X": 0.15277778,
-              "Y": 0.2578125,
+              "X": 0.041666668,
+              "Y": 0.3671875,
               "Width": 0.21527778,
               "Height": 0.1015625
             }
           },
           "region-0004": {
-            "Bounds": {
-              "X": 17,
-              "Y": 51,
-              "Width": 31,
-              "Height": 13
-            },
-            "TexCoords": {
-              "X": 0.11805555,
-              "Y": 0.3984375,
-              "Width": 0.21527778,
-              "Height": 0.1015625
-            }
-          },
-          "region-0005": {
             "Bounds": {
               "X": 8,
               "Y": 104,

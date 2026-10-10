@@ -3,5 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="../../../Nexus/src/GUI/Nexus.GUI.csproj" />
     <Compile Include="../../Prelude/AbilityDragCell.cs" Link="AbilityDragCell.cs" />
+    <Compile Include="../../Prelude/ItemSlot.cs" Link="ItemSlot.cs" />
+    <Compile Include="../../Prelude/DragItem.cs" Link="DragItem.cs" />
   </ItemGroup>
 </Project>

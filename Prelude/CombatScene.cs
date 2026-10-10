@@ -20,6 +20,7 @@ public class CombatScene : Scene
     private readonly Vector2D<float> _worldSize;
     private readonly GameState _gameState;
     private readonly ITextStyle _hudTextStyle;
+    private readonly ITextStyle _confirmationTextStyle;
     private readonly IGraphicalUserInterface _gui;
     private readonly ISceneManager _sceneManager;
     private bool _outcomeHandled;
@@ -43,19 +44,20 @@ public class CombatScene : Scene
     public string? SelectedActionId { get; private set; }
     private int? _selectedQuickSlot;
     private ModalDialog? _dialog;
-    private Combat.ThrowSelection? _throwSelection;
+    private string? _pendingThrowItem;
+    private string? _actionBeforeCharacterDialog;
+    private int? _quickSlotBeforeCharacterDialog;
+    private readonly Dictionary<string, string> _pendingReloads = [];
     private bool _closeDialogRequested;
-    private string? _inspectedItem;
-    private int _inventoryPage;
+    private DragItem? _dragPreview;
     private AbilityId? _selectedZodiacAbility;
-    private Element? _assignmentChoices;
     private Dictionary<string, string>? _pending;
     private ImageElement? _actionIcon;
     private string? _renderedIconKey;
-    private TextElement? _actionLabel;
     private string? _commandFeedback;
     private readonly List<ImageElement> _quickSlots = [];
     private readonly List<ImageElement> _quickSlotIcons = [];
+    private TextElement? _actionLabel;
     private Combat.CommandTarget? CurrentTarget()
     {
         var index = Array.FindIndex(_startScenario.Characters.ToArray(), p => _formation[p.Slot] == FocusedCharacter);
@@ -80,7 +82,7 @@ public class CombatScene : Scene
         if (_dialog is not null || (uint)slot >= Loadout.QuickSlots.Length) return;
         if (!Loadout.CanSelectQuickSlot(slot))
         {
-            if (Loadout.QuickSlots[slot] == "Throw" && _actionLabel is not null)
+            if (Loadout.QuickSlots[slot] == "Throw")
                 _commandFeedback = Loadout.HasFreeHand ? "No throwable items" : "No accessible throwable items";
             return;
         }
@@ -95,62 +97,33 @@ public class CombatScene : Scene
         if (_dialog is not null) return false;
         if (SelectedActionId == NexusRealms.Prelude.Combat.CombatLoadout.Throw.Id.Value)
         {
-            _throwSelection = Loadout.BeginThrow(Combat, "player", () => FocusedCharacter == target ? CurrentTarget() : null);
-            if (_throwSelection is null) return false;
-            RenderThrowPicker();
-            return true;
+            var thrownItem = Loadout.Items.Find(item => item.Id.Value == Loadout.PreparedThrowItemId);
+            var confirmed = Loadout.ConfirmPreparedThrow(Combat, "player", CurrentTarget, damage =>
+            {
+                if (target is not null)
+                    NexusRealms.Prelude.Combat.DamageResolver.Apply(target.DamageReceiver, damage,
+                        impact: thrownItem is null ? null : NexusRealms.Prelude.Combat.AttackImpact.ForThrow(thrownItem));
+            });
+            if (confirmed && Loadout.PreparedThrowItemId is null)
+            {
+                SelectedActionId = null;
+                _selectedQuickSlot = null;
+            }
+            RefreshCommand();
+            return confirmed;
         }
-        return _dialog is null && Loadout.Confirm(Combat, "player", Loadout.Find(SelectedActionId), CurrentTarget, () => { }, strike =>
+        return _dialog is null && Loadout.Confirm(Combat, "player", Loadout.Find(SelectedActionId), CurrentTarget, () => { }, attack =>
         {
-            ApplyAttackDamage(target, strike.DamagePoints);
+            if (target is not null) NexusRealms.Prelude.Combat.DamageResolver.Apply(target.DamageReceiver, attack.DamagePoints,
+                impact: NexusRealms.Prelude.Combat.AttackImpact.ForStrike(attack));
         });
     }
-    private void ApplyAttackDamage(Character? target, Combat.DamageProfile damage)
+    private void OnDamageTaken(Character target, Combat.DamageTaken result)
     {
-        if (target is null) return;
-        target.Health = Math.Max(0, target.Health - damage.Total);
-        if (target.Health != 0) return;
+        if (!result.IsLethal) return;
         var index = Array.FindIndex(_startScenario.Characters.ToArray(), p => _formation[p.Slot] == target);
         if (index >= 0) Combat.Remove($"encounter-{index}");
-        target.Renderer.IsVisible = false;
-        target.ShadowRenderer.IsVisible = false;
-        FocusCharacter(null);
-    }
-    private void RenderThrowPicker(int page = 0)
-    {
-        _dialog?.Dispose();
-        var panel = BeginDialog("Throw — choose an item");
-        var selection = _throwSelection!;
-        var target = FocusedCharacter;
-        const int pageSize = 6;
-        var options = selection.Options.Skip(page * pageSize).Take(pageSize).ToArray();
-        var message = CreateHudLabel("", AlignVertical.Top);
-        message.Width = 840f;
-        Place(panel, message, 24f, 360f);
-        for (var i = 0; i < options.Length; i++)
-        {
-            var option = options[i];
-            var profile = string.Join(", ", option.Item.ThrowDamage!.Typed.Select(point => $"{point.Value} {point.Key}"));
-            var button = DialogButton($"{option.Item.Name} ({option.Source}) — {profile}", () =>
-            {
-                if (_closeDialogRequested || _throwSelection != selection) return;
-                if (selection.Choose(option, damage => ApplyAttackDamage(target, damage))) CloseDialog();
-                else
-                {
-                    foreach (var control in panel.Children.OfType<TextButton>()) control.IsEnabled = false;
-                    message.Text = "Throw is no longer valid. Cancel and select the action again.";
-                    PlaceDialogFooterButton(panel, "Cancel", CloseDialog, 760f, 404f);
-                }
-                RefreshCommand();
-            });
-            button.Width = 840f;
-            Place(panel, button, 24f, 60f + i * 46f);
-        }
-        if (!Loadout.HasFreeHand) message.Text = "Inventory items require a free hand.";
-        if (page > 0) PlaceDialogFooterButton(panel, "Previous", () => RenderThrowPicker(page - 1), 24f, 404f);
-        if ((page + 1) * pageSize < selection.Options.Count)
-            PlaceDialogFooterButton(panel, "Next", () => RenderThrowPicker(page + 1), 150f, 404f);
-        PlaceDialogFooterButton(panel, "Cancel", CloseDialog, 760f, 404f);
+        if (FocusedCharacter == target) FocusCharacter(null);
     }
     private void RefreshCommand()
     {
@@ -161,8 +134,16 @@ public class CombatScene : Scene
             SelectedActionId = null;
         }
         var a = Loadout.Find(SelectedActionId);
-        var actionTexture = a is null ? null : Loadout.CommandIcon(a);
-        var valid = Loadout.CanConfirm(Combat, "player", a, ValidTarget());
+        if (_actionLabel is not null)
+            _actionLabel.Text = a is { RequiresTarget: true } && FocusedCharacter is null ? "Select a Target"
+                : a is { RequiresTarget: true } && !ValidTarget() ? "Invalid Target"
+                : a?.Hand is { } hand ? Loadout.HeldItem(hand)?.Weapon is { Shots: > 0 } ? "Shoot" : "Attack"
+                : a?.Name ?? "Choose an Action";
+        var actionTexture = a == NexusRealms.Prelude.Combat.CombatLoadout.Throw && _pendingThrowItem is { } pendingItem
+            ? Loadout.Items.Find(item => item.Id.Value == pendingItem)?.Icon ?? a.Icon
+            : a is null ? null : Loadout.CommandIcon(a);
+        var valid = Loadout.CanConfirm(Combat, "player", a, ValidTarget())
+            && (a != NexusRealms.Prelude.Combat.CombatLoadout.Throw || Loadout.CanThrowPreparedItem);
         if (_actionIcon is not null)
         {
             _actionIcon.IsVisible = actionTexture is not null;
@@ -175,7 +156,6 @@ public class CombatScene : Scene
                 if (a.IconRegion is { } region) _actionIcon.SourceRegion = _actionIcon.Texture.GetRegion(region).Bounds;
             }
         }
-        if (_actionLabel is not null) _actionLabel.Text = _commandFeedback ?? a?.Name ?? "Select action";
         for (var i = 0; i < _quickSlots.Count; i++)
         {
             var q = Loadout.Find(Loadout.QuickSlots[i]);
@@ -194,7 +174,7 @@ public class CombatScene : Scene
         }
         FocusedCharacter?.SetFocus(true, a is null || !a.RequiresTarget || ValidTarget());
         foreach (var (character, display) in _characterDisplays)
-            display.Eligibility = a is null || !a.RequiresTarget ? "" : ValidTarget() ? "Valid target" : "Invalid target";
+            display.Eligibility = _commandFeedback ?? "";
     }
 
     /// <summary>Creates the opening combat scene and its input bindings.</summary>
@@ -211,7 +191,8 @@ public class CombatScene : Scene
         ITextStyleRegistry textStyles,
         GameState gameState,
         IGraphicalUserInterface gui,
-        ISceneManager sceneManager
+        ISceneManager sceneManager,
+        IContentManifest? contentManifest = null
     )
     {
         _textures = textures;
@@ -221,6 +202,7 @@ public class CombatScene : Scene
         _gui = gui;
         _sceneManager = sceneManager;
         _hudTextStyle = textStyles.GetOrCreate(BuiltInFonts.Default, 16f);
+        _confirmationTextStyle = textStyles.GetOrCreate(BuiltInFonts.Default, 12f);
         TimelineRenderer = new(CreateTimelineElement);
         TimelineRenderer.Changed += RefreshTurnOrder;
 
@@ -295,6 +277,8 @@ public class CombatScene : Scene
                 _textures.GetOrCreate(character.Artwork),
                 _textures.GetOrCreate(new ContentId("shadow"))
             );
+            combatCharacter.ConfigureAnimations(contentManifest?.GetSpriteSheet(character.Artwork));
+            combatCharacter.ConfigureAttackFeedback(_textures, _worldLayerMask);
             combatCharacter.Renderer.RenderLayerMask = _worldLayerMask;
             combatCharacter.ShadowRenderer.RenderLayerMask = _worldLayerMask;
             combatCharacter.ConfigureFocusIndicator(
@@ -309,6 +293,7 @@ public class CombatScene : Scene
                 IsVisible = false,
             };
             _characterDisplays.Add((combatCharacter, display));
+            combatCharacter.DamageReceiver.DamageTaken += result => OnDamageTaken(combatCharacter, result);
         }
 
         _turnPortraits.Add("player", _gameState.Portrait);
@@ -408,9 +393,8 @@ public class CombatScene : Scene
         };
 
         layout.SetCell(0, 2, _escapeButton);
-        var turnOrder = new TurnOrderStrip(_textures, _hudTextStyle,
-            _textures.GetOrCreate(new ContentId("shadow")),
-            _textures.GetOrCreate(new ContentId("square_shadow")))
+        var turnOrder = new TurnOrderStrip(_textures,
+            _textures.GetOrCreate(new ContentId("shadow")))
         {
             Width =
                 (1 + _startScenario.Characters.Length) * 80f
@@ -483,11 +467,12 @@ public class CombatScene : Scene
         var bottomRight = CreatePanelElement("ui.panel_square.png", square: true);
         _confirmationPanel = bottomRight;
         bottomRight.InputMap.OnMouseButtonReleased(MouseButtonEnum.Left).Invoke(() => ConfirmCombatAction());
-        _actionIcon = CreateHudImage("actions.fist.png", 0.3f);
+        _actionIcon = CreateHudImage("actions.fist.png", 0.375f);
         bottomRight.Children.Add(_actionIcon);
-        bottomRight.Children.Add(CreateHudLabel("Confirm", AlignVertical.Top));
-        _actionLabel = CreateHudLabel("Select action", AlignVertical.Bottom);
-        bottomRight.Children.Add(_actionLabel);
+        var confirmationLabel = CreateHudLabel("Click to Confirm", AlignVertical.Bottom);
+        confirmationLabel.Style = _confirmationTextStyle;
+        _actionLabel = confirmationLabel;
+        bottomRight.Children.Add(confirmationLabel);
         RefreshCommand();
         layout.SetCell(2, 2, bottomRight);
 
@@ -640,9 +625,24 @@ public class CombatScene : Scene
         control.HorizontalAlignment = AlignHorizontal.Left; control.VerticalAlignment = AlignVertical.Top;
         control.Margins = new(Left: x, Right: 0f, Top: y, Bottom: 0f); panel.Children.Add(control);
     }
-    private void CloseDialog()
+    private void CloseDialog() => CloseCharacterDialog(true);
+    private void CloseCharacterDialog(bool activateThrow)
     {
-        _throwSelection?.Cancel(); _throwSelection = null;
+        EndDragPreview();
+        if (activateThrow && _pendingThrowItem is { } itemId && Loadout.PrepareThrow(itemId))
+        {
+            _selectedQuickSlot = null;
+            SelectedActionId = NexusRealms.Prelude.Combat.CombatLoadout.Throw.Id.Value;
+            RefreshCommand();
+        }
+        if (!activateThrow && _pendingThrowItem is not null)
+        {
+            SelectedActionId = _actionBeforeCharacterDialog;
+            _selectedQuickSlot = _quickSlotBeforeCharacterDialog;
+        }
+        _pendingThrowItem = null;
+        _pendingReloads.Clear();
+        RefreshCommand();
         // Keep the scope alive through the current event dispatch, including Escape/Back.
         _pending = null; _closeDialogRequested = true;
     }
@@ -665,31 +665,31 @@ public class CombatScene : Scene
         button.Width = 110f;
         Place(panel, button, x, y);
     }
-    private void AssignControls(Element panel, Combat.CommandDefinition a, float y, float destinationY = 350f)
-    {
-        Place(panel, DialogButton($"Assign {a.Name}", () =>
-        {
-            if (_assignmentChoices is not null) panel.Children.Remove(_assignmentChoices);
-            _assignmentChoices = new Element { Height = 36f, VerticalAlignment = AlignVertical.Top, Margins = new(Left: 0f, Right: 0f, Top: destinationY, Bottom: 0f) };
-            panel.Children.Add(_assignmentChoices);
-            for (var i = 0; i < Loadout.QuickSlots.Length; i++)
-            {
-                var slot = i;
-                var button = DialogButton($"Slot {i + 1}", () => { Loadout.Assign(slot, a.Id.Value); RefreshCommand(); });
-                button.Width = 80f;
-                Place(_assignmentChoices, button, 24f + i * 86f, 0f);
-            }
-        }), 24f, y);
-    }
     public void OpenCharacterDialog()
     {
-        if (_dialog is not null) return; _pending = Loadout.BeginEquipment(); RenderCharacterDialog();
+        if (_dialog is not null) return;
+        _actionBeforeCharacterDialog = SelectedActionId; _quickSlotBeforeCharacterDialog = _selectedQuickSlot;
+        _pending = Loadout.BeginItemLayout(); _pendingThrowItem = null; _pendingReloads.Clear(); RenderCharacterDialog();
+    }
+    private void StartDragPreview(ITexture texture, float size, IMouseInputDevice? mouse)
+    {
+        EndDragPreview();
+        if (mouse is null) return;
+        _dragPreview = new DragItem(texture, size, mouse);
+        Children.Add(_dragPreview);
+    }
+    private void MoveDragPreview(Vector2D<float> _) => _dragPreview?.FollowMouse();
+    private void EndDragPreview()
+    {
+        if (_dragPreview is not null) Children.Remove(_dragPreview);
+        _dragPreview = null;
     }
     private const float ItemCellSize = 56f;
     private const float InventoryCellGap = 4f;
     private Element ItemCell(Combat.CarriedItem? item, string? placeholder, Action action,
-        IReadOnlyDictionary<string, Element>? equipmentTargets = null, string? handSlot = null,
-        Combat.CommandDefinition? command = null)
+        IReadOnlyDictionary<string, Element>? itemTargets = null, string? sourceSlot = null,
+        Func<Combat.CarriedItem, Vector2D<float>, bool>? dropItem = null,
+        List<Action>? refreshers = null, Action? refreshDialog = null)
     {
         // Scale the complete frame uniformly as a single image, rather than slicing its corners.
         var frame = new ImageElement
@@ -701,55 +701,46 @@ public class CombatScene : Scene
             VerticalAlignment = AlignVertical.Top,
             RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
         };
-        var handAction = command ?? NexusRealms.Prelude.Combat.CombatLoadout.HandAction(handSlot);
-        var canDrag = command is not null || equipmentTargets is not null && (item is not null || handAction is not null);
-        if (!canDrag)
-            frame.InputMap.OnMouseButtonReleased(MouseButtonEnum.Left).Invoke(action);
-        var icon = item?.Icon ?? placeholder;
-        if (icon is null && item is not null)
+        var handAction = NexusRealms.Prelude.Combat.CombatLoadout.HandAction(sourceSlot);
+        string? icon = null;
+        var visual = new ItemSlot();
+        frame.Children.Add(visual);
+        var count = CreateHudLabel("", AlignVertical.Bottom);
+        count.HorizontalAlignment = AlignHorizontal.Right;
+        count.Margins = new(Left: 0f, Right: 3f, Top: 0f, Bottom: 2f);
+        frame.Children.Add(count);
+        void RefreshSlot()
         {
-            var kind = item.Slot switch
+            if (sourceSlot is not null && _pending is not null)
+                item = Loadout.Items.Find(candidate => candidate.Id.Value == _pending.GetValueOrDefault(sourceSlot));
+            else if (sourceSlot is null && placeholder == "actions.throw.png")
+                item = Loadout.Items.Find(candidate => candidate.Id.Value == _pendingThrowItem);
+            icon = item?.Icon ?? placeholder;
+            if (icon is null && item is not null)
             {
-                "Head" => "head", "Torso" => "torso", "Feet" => "feet",
-                "Left hand" => "hand_left", "Right hand" => "hand_right",
-                _ => "acc_pouch",
-            };
-            icon = $"ui.item_placeholder_{kind}.png";
+                var kind = item.Slot switch
+                {
+                    "Head" => "head", "Torso" => "torso", "Feet" => "feet",
+                    "Left hand" => "hand_left", "Right hand" => "hand_right", _ => "acc_pouch",
+                };
+                icon = $"ui.item_placeholder_{kind}.png";
+            }
+            visual.SetIcon(icon is null ? null : _textures.GetOrCreate(new ContentId(icon)), item is null);
+            count.Text = item is { Quantity: > 1 } ? item.Quantity.ToString() : "";
         }
-        if (icon is not null)
-            frame.Children.Add(new ImageElement
-            {
-                Texture = _textures.GetOrCreate(new ContentId(icon)),
-                Width = 42f, Height = 42f, SizingMode = ImageSizingMode.Fit,
-                Color = item is null && command is null ? new Color(1f, 1f, 1f, 0.6f) : Colors.White,
-                RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
-            });
-        if (!canDrag) return frame;
+        RefreshSlot();
+        refreshers?.Add(RefreshSlot);
+        bool CanDrag() => itemTargets is not null && (item is not null || handAction is not null);
         var dialog = _dialog!;
-        ImageElement? dragIcon = null;
-        void MoveDragIcon(Vector2D<float> position)
+        AbilityDragCell? cell = null;
+        cell = new AbilityDragCell(position =>
         {
-            if (dragIcon is not null)
-                dragIcon.Margins = new(Left: Math.Max(0f, position.X - 21f), Right: 0f,
-                    Top: Math.Max(0f, position.Y - 21f), Bottom: 0f);
-        }
-        var cell = new AbilityDragCell(position =>
+            if (!CanDrag() || _dialog != dialog || _closeDialogRequested) return;
+            StartDragPreview(_textures.GetOrCreate(new ContentId(icon!)), 42f, cell!.CapturedMouse);
+        }, MoveDragPreview, position =>
         {
-            if (_dialog != dialog || _closeDialogRequested) return;
-            dragIcon = new ImageElement
-            {
-                Texture = _textures.GetOrCreate(new ContentId(icon!)),
-                Width = 42f, Height = 42f, SizingMode = ImageSizingMode.Fit,
-                HorizontalAlignment = AlignHorizontal.Left, VerticalAlignment = AlignVertical.Top,
-                SortOrder = 20000, RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
-            };
-            dialog.Children.Add(dragIcon);
-            MoveDragIcon(position);
-        }, MoveDragIcon, position =>
-        {
-            if (dragIcon is not null) dialog.Children.Remove(dragIcon);
-            dragIcon = null;
-            if (_dialog != dialog || _closeDialogRequested || _pending is null) return;
+            EndDragPreview();
+            if (!CanDrag() || _dialog != dialog || _closeDialogRequested || _pending is null) return;
             if (handAction is not null)
                 for (var slotIndex = 0; slotIndex < _quickSlots.Count; slotIndex++)
                 {
@@ -760,16 +751,17 @@ public class CombatScene : Scene
                     RefreshCommand();
                     return;
                 }
-            if (item is null || equipmentTargets is null) return;
-            foreach (var (slot, target) in equipmentTargets)
+            if (item is null) return;
+            if (dropItem?.Invoke(item, position) == true) return;
+            if (itemTargets is null) return;
+            foreach (var (slot, target) in itemTargets)
             {
                 var bounds = target.Bounds;
                 if (position.X < bounds.Origin.X || position.X >= bounds.Max.X
                     || position.Y < bounds.Origin.Y || position.Y >= bounds.Max.Y) continue;
-                if (Loadout.TryEquip(_pending, item.Id.Value, slot))
+                if (sourceSlot is not null && Loadout.TryMoveItem(_pending, sourceSlot, slot))
                 {
-                    _inspectedItem = item.Id.Value;
-                    RenderCharacterDialog();
+                    refreshDialog?.Invoke();
                 }
                 break;
             }
@@ -780,14 +772,6 @@ public class CombatScene : Scene
         };
         cell.Children.Add(frame);
         return cell;
-    }
-    private void EditEquipmentSlot(string slot)
-    {
-        var item = Loadout.Inventory.Find(i => i.Id.Value == _inspectedItem);
-        var pending = _pending!;
-        if (item is null || !Loadout.TryEquip(pending, item.Id.Value, slot))
-            _inspectedItem = pending.GetValueOrDefault(slot);
-        RenderCharacterDialog();
     }
     private void RenderCharacterDialog()
     {
@@ -811,9 +795,55 @@ public class CombatScene : Scene
                 RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
             }, x, 20f);
 
-        var equipmentTargets = new Dictionary<string, Element>();
-        const int pageSize = 20;
-        _inventoryPage = Math.Clamp(_inventoryPage, 0, Math.Max(0, (Loadout.Inventory.Count - 1) / pageSize));
+        var itemTargets = new Dictionary<string, Element>();
+        var refreshers = new List<Action>();
+        void RefreshItems()
+        {
+            foreach (var weaponId in _pendingReloads.Keys.ToArray())
+                if (!Loadout.CanReload(pending, weaponId, _pendingReloads[weaponId])) _pendingReloads.Remove(weaponId);
+            foreach (var refresh in refreshers) refresh();
+        }
+        var throwItem = Loadout.Items.Find(item => item.Id.Value == _pendingThrowItem);
+        var throwFrame = ItemCell(throwItem, "actions.throw.png", () =>
+        {
+            _pendingThrowItem = null;
+            SelectedActionId = _actionBeforeCharacterDialog;
+            _selectedQuickSlot = _quickSlotBeforeCharacterDialog;
+            RefreshItems();
+            RefreshCommand();
+        }, refreshers: refreshers);
+        bool DropItem(Combat.CarriedItem item, Vector2D<float> position)
+        {
+            static bool Contains(Element element, Vector2D<float> point) =>
+                point.X >= element.Bounds.Origin.X && point.X < element.Bounds.Max.X
+                && point.Y >= element.Bounds.Origin.Y && point.Y < element.Bounds.Max.Y;
+            if (Contains(throwFrame, position))
+            {
+                if (Loadout.ThrowOptions(pending).Any(option => option.Item.Id == item.Id))
+                {
+                    _pendingThrowItem = item.Id.Value;
+                    _selectedQuickSlot = null;
+                    SelectedActionId = NexusRealms.Prelude.Combat.CombatLoadout.Throw.Id.Value;
+                    RefreshItems();
+                    RefreshCommand();
+                }
+                return true;
+            }
+            if (item.Ammunition is null) return false;
+            foreach (var (slot, target) in itemTargets)
+                if (NexusRealms.Prelude.Combat.CombatLoadout.EquipmentSlots.Contains(slot) && Contains(target, position))
+                {
+                    var weaponId = pending.GetValueOrDefault(slot);
+                    if (weaponId is not null && Loadout.CanReload(pending, weaponId, item.Id.Value))
+                    {
+                        _pendingReloads[weaponId] = item.Id.Value;
+                        RefreshItems();
+                    }
+                    return true;
+                }
+            return false;
+        }
+        const int pageSize = NexusRealms.Prelude.Combat.CombatLoadout.InventoryCapacity;
         var grid = new GridLayout
         {
             Width = inventoryWidth, Height = 5f * ItemCellSize + 4f * InventoryCellGap,
@@ -824,25 +854,13 @@ public class CombatScene : Scene
         };
         for (var index = 0; index < pageSize; index++)
         {
-            var inventoryIndex = _inventoryPage * pageSize + index;
-            var item = inventoryIndex < Loadout.Inventory.Count ? Loadout.Inventory[inventoryIndex] : null;
-            var cell = ItemCell(item, null, () =>
-            {
-                _inspectedItem = item?.Id.Value;
-                RenderCharacterDialog();
-            }, equipmentTargets);
+            var inventorySlot = NexusRealms.Prelude.Combat.CombatLoadout.InventorySlot(index);
+            var item = Loadout.Items.Find(item => item.Id.Value == pending.GetValueOrDefault(inventorySlot));
+            var cell = ItemCell(item, null, () => { }, itemTargets, inventorySlot, dropItem: DropItem, refreshers: refreshers, refreshDialog: RefreshItems);
+            itemTargets.Add(inventorySlot, cell);
             grid.SetCell(index / 4, index % 4, cell);
         }
         Place(panel, grid, inventoryLeft, 24f);
-        if (Loadout.Inventory.Count > pageSize)
-        {
-            var previous = DialogButton("Previous", () => { _inventoryPage--; RenderCharacterDialog(); });
-            previous.Width = 110f; previous.Height = 28f; previous.IsEnabled = _inventoryPage > 0;
-            Place(panel, previous, 24f, 328f);
-            var next = DialogButton("Next", () => { _inventoryPage++; RenderCharacterDialog(); });
-            next.Width = 110f; next.Height = 28f; next.IsEnabled = (_inventoryPage + 1) * pageSize < Loadout.Inventory.Count;
-            Place(panel, next, 154f, 328f);
-        }
         (string Slot, string Icon, float X, float Y)[] slots =
         [
             ("Head", "head", equipmentCenter, 24f),
@@ -857,9 +875,9 @@ public class CombatScene : Scene
         ];
         foreach (var slot in slots)
         {
-            var item = Loadout.Inventory.Find(i => i.Id.Value == pending.GetValueOrDefault(slot.Slot));
-            var cell = ItemCell(item, $"ui.item_placeholder_{slot.Icon}.png", () => EditEquipmentSlot(slot.Slot), equipmentTargets, slot.Slot);
-            equipmentTargets.Add(slot.Slot, cell);
+            var item = Loadout.Items.Find(i => i.Id.Value == pending.GetValueOrDefault(slot.Slot));
+            var cell = ItemCell(item, $"ui.item_placeholder_{slot.Icon}.png", () => { }, itemTargets, slot.Slot, dropItem: DropItem, refreshers: refreshers, refreshDialog: RefreshItems);
+            itemTargets.Add(slot.Slot, cell);
             Place(panel, cell, slot.X, slot.Y);
         }
         (string Icon, string Segment, int Value)[] stats =
@@ -921,52 +939,35 @@ public class CombatScene : Scene
         }
         if (_gameState.StatusEffects.Length == 0)
             Place(panel, CreateHudLabel("No status effects", AlignVertical.Top), statsLeft, statusY);
-        var footerY = Math.Max(Loadout.Inventory.Count > pageSize ? 356f : 340f, statusY) + 16f;
-        var selectedItem = Loadout.Inventory.Find(i => i.Id.Value == _inspectedItem);
-        if (selectedItem is not null)
-        {
-            var contextY = footerY;
-            Place(panel, CreateHudLabel(selectedItem.Name, AlignVertical.Top), 24f, contextY);
-            Place(panel, DialogButton("Move to top", () =>
-            {
-                Loadout.Inventory.Remove(selectedItem); Loadout.Inventory.Insert(0, selectedItem);
-                _inventoryPage = 0; RenderCharacterDialog();
-            }), 24f, contextY + 24f);
-            var unequip = DialogButton("Unequip", () =>
-            {
-                foreach (var slot in pending.Where(p => p.Value == selectedItem.Id.Value).Select(p => p.Key).ToArray()) pending.Remove(slot);
-                RenderCharacterDialog();
-            });
-            unequip.IsEnabled = pending.Values.Contains(selectedItem.Id.Value);
-            Place(panel, unequip, 230f, contextY + 24f);
-            var actions = Loadout.Abilities.Where(a => a.RequiredItem == selectedItem.Id).ToArray();
-            var y = contextY + 66f;
-            var assignmentY = y + actions.Length * 40f;
-            foreach (var action in actions)
-            {
-                Place(panel, CreateHudLabel($"{action.Name} / Cost {action.TurnCost} / Focus {action.FocusCost}", AlignVertical.Top), 250f, y);
-                if (action.Learned && !action.Passive) AssignControls(panel, action, y, destinationY: assignmentY);
-                y += 40f;
-            }
-            footerY = actions.Length > 0 ? assignmentY + 48f : contextY + 76f;
-        }
-        _dialog!.Content.Height = footerY + ItemCellSize + 24f;
-        Combat.CommandDefinition[] basicActions =
-            [NexusRealms.Prelude.Combat.CombatLoadout.Throw, NexusRealms.Prelude.Combat.CombatLoadout.Wait];
-        for (var index = 0; index < basicActions.Length; index++)
-        {
-            var basicAction = basicActions[index];
-            Place(panel, ItemCell(null, basicAction.Icon, () => { }, command: basicAction),
-                24f + index * (ItemCellSize + InventoryCellGap), footerY);
-        }
+        var footerY = Math.Max(340f, statusY) + 16f;
+        foreach (var weaponId in _pendingReloads.Keys.ToArray())
+            if (!Loadout.CanReload(pending, weaponId, _pendingReloads[weaponId])) _pendingReloads.Remove(weaponId);
+        _dialog!.Content.Height = footerY + ItemCellSize + 88f;
+        throwFrame.HorizontalAlignment = AlignHorizontal.Left;
+        throwFrame.VerticalAlignment = AlignVertical.Bottom;
+        throwFrame.Margins = new(Left: 24f, Right: 0f, Top: 0f, Bottom: 24f);
+        panel.Children.Add(throwFrame);
+        var throwLabel = CreateHudLabel("Throw", AlignVertical.Bottom);
+        throwLabel.Width = ItemCellSize;
+        throwLabel.HorizontalAlignment = AlignHorizontal.Left;
+        throwLabel.Margins = new(Left: 24f, Right: 0f, Top: 0f, Bottom: 24f + ItemCellSize + 4f);
+        panel.Children.Add(throwLabel);
+        var reloadLabel = CreateHudLabel("", AlignVertical.Top);
+        Place(panel, reloadLabel, equipmentLeft, footerY);
+        refreshers.Add(() => reloadLabel.Text = _pendingReloads.Count > 0 ? $"Reload {_pendingReloads.Count} weapon(s)" : "");
         var message = CreateHudLabel("", AlignVertical.Top);
-        Place(panel, message, 280f, footerY + 8f);
-        var equipmentCost = new Element { Width = equipmentWidth, Height = 20f };
-        var costLabel = CreateHudLabel($"Turn +{Loadout.Cost(pending):0.##}", AlignVertical.Top);
+        Place(panel, message, equipmentLeft, footerY + 24f);
+        var equipmentCost = new Element
+        {
+            Width = equipmentWidth, Height = 36f,
+            HorizontalAlignment = AlignHorizontal.Left, VerticalAlignment = AlignVertical.Bottom,
+            Margins = new(Left: equipmentLeft, Right: 0f, Top: 0f, Bottom: 24f),
+        };
+        var costLabel = CreateHudLabel($"Turn +{Loadout.ItemLayoutCost(pending, _pendingReloads):0.##}", AlignVertical.Center);
         costLabel.Margins = new(0f);
         equipmentCost.Children.Add(costLabel);
-        Place(panel, equipmentCost, equipmentLeft, 348f);
-        void FooterButton(string label, Action action, float rightMargin)
+        panel.Children.Add(equipmentCost);
+        TextButton FooterButton(string label, Action action, float rightMargin)
         {
             var button = DialogButton(label, action);
             button.Width = 110f;
@@ -974,18 +975,24 @@ public class CombatScene : Scene
             button.VerticalAlignment = AlignVertical.Bottom;
             button.Margins = new(Left: 0f, Right: rightMargin, Top: 0f, Bottom: 24f);
             panel.Children.Add(button);
+            return button;
         }
-        if (Loadout.ChangedEquipmentSlots(pending).Count == 0)
-            FooterButton("Close", CloseDialog, 24f);
-        else
+        var closeButton = FooterButton("Close", CloseDialog, 24f);
+        var cancelButton = FooterButton("Cancel", () => CloseCharacterDialog(false), 146f);
+        var confirmButton = FooterButton("Confirm", () =>
         {
-            FooterButton("Cancel", CloseDialog, 146f);
-            FooterButton("Confirm", () =>
-            {
-                if (Loadout.Commit(Combat, "player", pending)) CloseDialog();
-                else message.Text = "Cannot commit equipment now";
-            }, 24f);
-        }
+            if (Loadout.CommitItemLayout(Combat, "player", pending, _pendingReloads)) CloseDialog();
+            else message.Text = "Cannot confirm changes now";
+        }, 24f);
+        refreshers.Add(() =>
+        {
+            var changed = Loadout.ChangedItemSlots(pending).Count > 0 || _pendingReloads.Count > 0;
+            closeButton.IsVisible = !changed;
+            cancelButton.IsVisible = confirmButton.IsVisible = changed;
+            costLabel.Text = $"Turn +{Loadout.ItemLayoutCost(pending, _pendingReloads):0.##}";
+            message.Text = "";
+        });
+        RefreshItems();
     }
     public void OpenZodiacDialog()
     {
@@ -1018,29 +1025,14 @@ public class CombatScene : Scene
             }
             var ability = _storyline.Abilities[Database.Abilities.DisplayOrder[index].Id];
             var dialog = _dialog!;
-            ImageElement? dragIcon = null;
-            void MoveDragIcon(Vector2D<float> position)
-            {
-                if (dragIcon is not null)
-                    dragIcon.Margins = new(Left: Math.Max(0f, position.X - 16f), Right: 0f,
-                        Top: Math.Max(0f, position.Y - 16f), Bottom: 0f);
-            }
-            var cell = new AbilityDragCell(position =>
+            AbilityDragCell? cell = null;
+            cell = new AbilityDragCell(position =>
             {
                 if (_dialog != dialog || _closeDialogRequested) return;
-                dragIcon = new ImageElement
-                {
-                    Texture = _textures.GetOrCreate(ability.Icon),
-                    Width = 32f, Height = 32f, SizingMode = ImageSizingMode.Fit,
-                    HorizontalAlignment = AlignHorizontal.Left, VerticalAlignment = AlignVertical.Top,
-                    SortOrder = 20000, RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
-                };
-                dialog.Children.Add(dragIcon);
-                MoveDragIcon(position);
-            }, MoveDragIcon, position =>
+                StartDragPreview(_textures.GetOrCreate(ability.Icon), 32f, cell!.CapturedMouse);
+            }, MoveDragPreview, position =>
             {
-                if (dragIcon is not null) dialog.Children.Remove(dragIcon);
-                dragIcon = null;
+                EndDragPreview();
                 if (_dialog != dialog || _closeDialogRequested) return;
                 for (var slot = 0; slot < _quickSlots.Count; slot++)
                 {
@@ -1180,7 +1172,8 @@ public class CombatScene : Scene
         Combat.EvaluateOutcome();
         if (!Combat.HasEnded && Combat.IsEscaping && Combat.ActiveCombatant is null) Combat.Process();
         _escapeButton.IsEnabled = !Combat.HasEnded && !Combat.IsEscaping && Combat.ActiveCombatant?.Id == "player";
-        if (!_outcomeHandled && Combat.Outcome is { } outcome)
+        if (!_outcomeHandled && Combat.Outcome is { } outcome
+            && !_characterDisplays.Any(entry => entry.Character.IsShowingFeedback))
         {
             _outcomeHandled = true;
             _gameState.LastCombatOutcome = outcome;
@@ -1190,6 +1183,7 @@ public class CombatScene : Scene
                 NexusRealms.Prelude.Combat.CombatOutcome.Defeat => _startScenario.DefeatNode,
                 _ => _startScenario.EscapeNode,
             };
+            EndDragPreview();
             _dialog?.Dispose(); _dialog = null; _pending = null;
             if (destination is { } nodeId)
             {
@@ -1233,7 +1227,7 @@ public class CombatScene : Scene
                         * character.Scale.Y * pixelsPerWorldY;
                     display.LeftOffset = symbolWidth * 0.5f + 8f;
                     display.RightOffset = display.LeftOffset + 132f;
-                    display.TopOffset = -(character.Texture.Height + character.Elevation)
+                    display.TopOffset = -(character.VisualHeight + character.Elevation)
                         * character.Scale.Y * pixelsPerWorldY - 8f - symbolHeight * 0.5f - 22f;
                     display.BottomOffset = display.TopOffset + 66f;
                 }
@@ -1241,6 +1235,7 @@ public class CombatScene : Scene
         }
     }
 }
+
 
 
 

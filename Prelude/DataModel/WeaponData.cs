@@ -1,8 +1,15 @@
 namespace NexusRealms.Prelude.DataModel;
 
 /// <summary>A weapon's complete typed damage composition and range.</summary>
+public enum AmmunitionType { Bullet, Arrow, Bolt, Stone }
+
 public sealed record WeaponData
 {
+    public string ImpactTexture { get; init; } = "effects.impact.png";
+    public AmmunitionType? Ammunition { get; init; }
+    public int Shots { get; init; }
+    public float ReloadTime { get; init; }
+    public float AttackSpeed { get; init; } = 1f;
     public bool TwoHanded { get; init; }
     public bool IsMelee { get; init; } = true;
     public WeaponRange Range { get; init; } = WeaponRange.Short;

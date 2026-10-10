@@ -9,9 +9,14 @@
     <Compile Include="../../Prelude/DataModel/StatusEffectId.cs" Link="StatusEffectId.cs" />
     <Compile Include="../../Prelude/DataModel/CharacterId.cs" Link="CharacterId.cs" />
     <Compile Include="../../Prelude/DataModel/CharacterPlacement.cs" Link="CharacterPlacement.cs" />
-    <Compile Include="../../Prelude/Combat/CombatConditions.cs" Link="CombatConditions.cs" />
-    <Compile Include="../../Prelude/Combat/CombatSystem.cs" Link="CombatSystem.cs" />
-    <Compile Include="../../Prelude/Combat/CombatTimeline.cs" Link="CombatTimeline.cs" />
+    <Compile Include="../../Prelude/Combat/*.cs" Link="Combat/%(Filename)%(Extension)" />
+    <Compile Include="../../Prelude/DataModel/AbilityId.cs" Link="DataModel/AbilityId.cs" />
+    <Compile Include="../../Prelude/DataModel/ItemId.cs" Link="DataModel/ItemId.cs" />
+    <Compile Include="../../Prelude/DataModel/DamageType.cs" Link="DataModel/DamageType.cs" />
+    <Compile Include="../../Prelude/DataModel/WeaponData.cs" Link="DataModel/WeaponData.cs" />
+    <Compile Include="../../Prelude/DataModel/ItemData.cs" Link="DataModel/ItemData.cs" />
+    <Compile Include="../../Prelude/DataModel/DamageCategory.cs" Link="DataModel/DamageCategory.cs" />
+    <Compile Include="../../Prelude/DataModel/WeaponRange.cs" Link="DataModel/WeaponRange.cs" />
   </ItemGroup>
 </Project>
 

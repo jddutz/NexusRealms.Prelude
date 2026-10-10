@@ -3,7 +3,6 @@ namespace NexusRealms.Prelude;
 /// <summary>Positions occurrences on the shared timeline over a single continuous shadow.</summary>
 public sealed class TurnOrderStrip : Element
 {
-    private readonly InstructionPanel _instructions;
     private readonly ImageElement _separator;
     private readonly ImageElement _shadow = new()
     {
@@ -29,9 +28,8 @@ public sealed class TurnOrderStrip : Element
         _boundaries.Clear();
         foreach (var entry in _entries) Items.Children.Add(entry.Element);
         var lastTurn = _entries.Count == 0 ? currentTurn : _entries.Max(x => x.Turn);
-        // Integer positions strictly before the last occurrence, including the current
-        // boundary when CurrentTurn is integral. A bounded preview also bounds marker work.
-        for (double turn = Math.Ceiling(currentTurn); turn < lastTurn && _boundaries.Count < 256; turn++)
+        // Start at the next integer, including a boundary at the final occurrence.
+        for (double turn = Math.Floor((double)currentTurn) + 1d; turn <= lastTurn && _boundaries.Count < 256; turn++)
         {
             var marker = new ImageElement
             {
@@ -45,11 +43,10 @@ public sealed class TurnOrderStrip : Element
         }
         InvalidateLayout();
     }
-    public TurnOrderStrip(ITextureRegistry textures, ITextStyle style, ITexture shadow, ITexture instructionShadow)
+    public TurnOrderStrip(ITextureRegistry textures, ITexture shadow)
     {
         _boundaryTexture = textures.GetOrCreate(new ContentId("ui.diamond.png"));
         _shadow.Texture = shadow;
-        _instructions = new InstructionPanel(style, instructionShadow);
         _separator = new ImageElement
         {
             Texture = textures.GetOrCreate(new ContentId("ui.divider.png")),
@@ -58,7 +55,6 @@ public sealed class TurnOrderStrip : Element
         };
         Children.Add(_shadow);
         Children.Add(Items);
-        Children.Add(_instructions);
         Children.Add(_separator);
     }
 
@@ -77,7 +73,7 @@ public sealed class TurnOrderStrip : Element
         var timelineLeft = Bounds.Origin.X + (Bounds.Size.X - occupiedWidth) * 0.5f;
         for (var index = 0; index < _boundaries.Count; index++)
         {
-            var turn = Math.Ceiling(_currentTurn) + index;
+            var turn = Math.Floor((double)_currentTurn) + 1d + index;
             var preceding = _entries.Count(entry => entry.Turn < turn);
             var left = timelineLeft + TimeOffset(turn) + preceding * itemWidth;
             var marker = _boundaries[index];
@@ -94,7 +90,7 @@ public sealed class TurnOrderStrip : Element
         }
         _shadow.SortOrder = SortOrder - 1;
         _shadow.IsVisible = _entries.Count > 0;
-        // Fit only the timeline contents. Instructions retain their independent bounds.
+        // Fit the shadow to the timeline contents.
         var contentBounds = _entries.Select(entry => entry.Element.Bounds)
             .Concat(_boundaries.Select(marker => marker.Bounds)).ToArray();
         if (contentBounds.Length > 0)
@@ -105,7 +101,7 @@ public sealed class TurnOrderStrip : Element
             var bottom = contentBounds.Max(rect => rect.Origin.Y + rect.Size.Y);
             _shadow.Arrange(new(left, top, right - left, bottom - top));
         }
-        // The instruction overlay extends below the grid's top row, like the marker.
+        // Position the divider below the timeline portraits.
         var separatorWidth = Bounds.Size.X * 0.18f;
         var texture = _separator.Texture!;
         var separatorHeight = separatorWidth * texture.Height / texture.Width;
@@ -113,8 +109,5 @@ public sealed class TurnOrderStrip : Element
         _separator.SortOrder = SortOrder + 3;
         _separator.Arrange(new(Bounds.Origin.X + (Bounds.Size.X - separatorWidth) * 0.5f,
             separatorTop, separatorWidth, separatorHeight));
-        _instructions.SortOrder = SortOrder;
-        _instructions.Label.SortOrder = SortOrder + 1;
-        _instructions.Arrange(new(Bounds.Origin.X, Bounds.Origin.Y + 89f, Bounds.Size.X, 34f));
     }
 }

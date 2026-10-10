@@ -3,12 +3,12 @@ using NexusRealms.Prelude.DataModel;
 
 namespace NexusRealms.Prelude.Combat;
 
-public enum WeaponType { Sword, Axe, Knives, Clubs, Maces, Flail, Pistol }
+public enum WeaponType { Sword, Axe, Knives, Clubs, Maces, Flail, Pistol, Bow, Crossbow, Sling }
 
 /// <summary>Weapon damage, range, and interchangeable icon variants.</summary>
 public static class WeaponCatalog
 {
-    public static ItemData Get(WeaponType type) => GetCore(type) with
+    public static ItemData Get(WeaponType type) => WithImpact(type) with
     {
         ThrowDamage = type switch
         {
@@ -17,6 +17,17 @@ public static class WeaponCatalog
             _ => null,
         },
     };
+    private static ItemData WithImpact(WeaponType type)
+    {
+        var data = GetCore(type);
+        return data with { Weapon = data.Weapon! with { ImpactTexture = type switch
+        {
+            WeaponType.Sword or WeaponType.Axe => "effects.slash.png",
+            WeaponType.Knives => "effects.flash.png",
+            WeaponType.Pistol or WeaponType.Bow or WeaponType.Crossbow or WeaponType.Sling => "effects.ranged.png",
+            _ => "effects.impact.png",
+        } } };
+    }
     private static ItemData GetCore(WeaponType type) => type switch
     {
         WeaponType.Sword => Define(
@@ -34,18 +45,10 @@ public static class WeaponCatalog
             (DamageType.Crushing, 1), (DamageType.Piercing, 1)),
         WeaponType.Flail => Define(["weapons.spiked_flail_01.png", "weapons.spiked_flail_02.png"],
             (DamageType.Crushing, 1), (DamageType.Piercing, 1)),
-        WeaponType.Pistol => new()
-        {
-            Weapon = new WeaponData
-            {
-                Range = WeaponRange.Long,
-                IsMelee = false,
-                Damage = new ReadOnlyDictionary<DamageType, int>(new Dictionary<DamageType, int>
-                {
-                    [DamageType.Piercing] = 3,
-                }),
-            },
-        },
+        WeaponType.Pistol => Ranged(["weapons.pistol_01.png", "weapons.pistol_02.png", "weapons.pistol_03.png"], 3, 1.4f, 0.1f, AmmunitionType.Bullet),
+        WeaponType.Bow => Ranged(["weapons.bow_01.png", "weapons.bow_02.png", "weapons.bow_03.png"], 3, 0.8f, 0.4f, AmmunitionType.Arrow, twoHanded: true),
+        WeaponType.Crossbow => Ranged(["weapons.crossbow_01.png"], 3, 2.1f, 0.2f, AmmunitionType.Bolt, twoHanded: true),
+        WeaponType.Sling => Ranged(["weapons.sling_01.png"], 2, 0.8f, 0.6f, AmmunitionType.Stone),
         _ => throw new ArgumentOutOfRangeException(nameof(type)),
     };
 
@@ -56,8 +59,25 @@ public static class WeaponCatalog
         {
             IconIndex = iconIndex,
             ThrowDamage = data.ThrowDamage,
+            Ammunition = data.Ammunition,
         };
     }
+
+    public static CarriedItem CreateAmmunition(AmmunitionType type, ItemId id, int quantity = 1) =>
+        new(id, type.ToString(), "Inventory", ["ui.item_placeholder_acc_pouch.png"])
+        {
+            Ammunition = type, Quantity = quantity,
+        };
+
+    private static ItemData Ranged(string[] icons, int damage, float reload, float attack, AmmunitionType ammunition, bool twoHanded = false) => new()
+    {
+        Icons = icons,
+        Weapon = new WeaponData
+        {
+            Ammunition = ammunition, TwoHanded = twoHanded, IsMelee = false, Range = WeaponRange.Long, Shots = 1, ReloadTime = reload, AttackSpeed = attack,
+            Damage = new ReadOnlyDictionary<DamageType, int>(new Dictionary<DamageType, int> { [DamageType.Piercing] = damage }),
+        },
+    };
 
     private static ItemData Define(string[] icons, params (DamageType Type, int Amount)[] points) => new()
     {

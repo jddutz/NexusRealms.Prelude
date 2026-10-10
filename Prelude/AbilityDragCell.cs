@@ -7,6 +7,7 @@ public sealed class AbilityDragCell(Action<Vector2D<float>> started,
     Action<Vector2D<float>> moved, Action<Vector2D<float>> dropped, Action? selected = null, Action? clicked = null) : Element
 {
     private InputDeviceId? _pointer;
+    public IMouseInputDevice? CapturedMouse { get; private set; }
     private Vector2D<float> _origin;
     private bool _dragging;
 
@@ -16,6 +17,7 @@ public sealed class AbilityDragCell(Action<Vector2D<float>> started,
             || message.Position.X < Bounds.Origin.X || message.Position.X >= Bounds.Max.X
             || message.Position.Y < Bounds.Origin.Y || message.Position.Y >= Bounds.Max.Y) return;
         _pointer = message.Mouse.Id;
+        CapturedMouse = message.Mouse;
         _origin = message.Position;
         selected?.Invoke();
     }
@@ -40,6 +42,7 @@ public sealed class AbilityDragCell(Action<Vector2D<float>> started,
         else if (message.Position.X >= Bounds.Origin.X && message.Position.X < Bounds.Max.X
             && message.Position.Y >= Bounds.Origin.Y && message.Position.Y < Bounds.Max.Y) clicked?.Invoke();
         _dragging = false;
+        CapturedMouse = null;
     }
 
     public void Handle(MouseDisconnectedEvent message)
@@ -48,5 +51,6 @@ public sealed class AbilityDragCell(Action<Vector2D<float>> started,
         _pointer = null;
         if (_dragging) dropped(new(-1f, -1f));
         _dragging = false;
+        CapturedMouse = null;
     }
 }
