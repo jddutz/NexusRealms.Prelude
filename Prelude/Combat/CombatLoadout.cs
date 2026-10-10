@@ -19,6 +19,20 @@ public sealed record CarriedItem(ItemId Id, string Name, string Slot, string? Ic
 /// <summary>Gameplay-owned command validation and transactional equipment state.</summary>
 public sealed class CombatLoadout
 {
+    /// <summary>Creates the player's initial equipment and shortcuts without spending combat Turn.</summary>
+    public static CombatLoadout CreatePlayerLoadout()
+    {
+        var loadout = new CombatLoadout { Focus = 2 };
+        var sword = new CarriedItem("starting-sword", "Sword", "Right hand", "stats.swords_crossed.png",
+            new WeaponData { BonusDamage = new Dictionary<DamageType, int> { [DamageType.Slashing] = 1 } });
+        loadout.Inventory.Add(sword);
+        loadout._equipment["Right hand"] = sword.Id.Value;
+        loadout.Abilities.Add(new("wait", "Wait", 0.6f, RequiresTarget: false, Icon: "stats.hourglass.png"));
+        loadout.Assign(0, RightHandStrike.Id.Value);
+        loadout.Assign(1, LeftHandStrike.Id.Value);
+        return loadout;
+    }
+
     public static readonly CommandDefinition LeftHandStrike = new("LeftHandStrike", "Left Hand Strike", 1f,
         Icon: "stats.fist.png", Hand: StrikeHand.Left);
     public static readonly CommandDefinition RightHandStrike = new("RightHandStrike", "Right Hand Strike", 1f,

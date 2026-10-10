@@ -345,3 +345,16 @@ foreach (var category in new[] { DamageCategory.Elemental, DamageCategory.Spirit
     Check(mace.DamagePoints.AmountIn(category) == 0);
 Check(appleStrike.DamagePoints.AmountIn(DamageCategory.Physical) == 0);
 Console.WriteLine("Damage category checks passed.");
+
+var startingLoadout = CombatLoadout.CreatePlayerLoadout();
+Check(startingLoadout.HeldItem(StrikeHand.Right) is { Name: "Sword", Weapon: not null });
+Check(startingLoadout.HeldItem(StrikeHand.Left) is null);
+Check(startingLoadout.Equipment.Count == 1);
+Check(startingLoadout.QuickSlots[0] == "RightHandStrike" && startingLoadout.QuickSlots[1] == "LeftHandStrike");
+Check(startingLoadout.QuickSlots.Skip(2).All(slot => slot is null));
+Check(startingLoadout.CanSelectQuickSlot(0) && startingLoadout.CanSelectQuickSlot(1));
+Check(startingLoadout.Cost(startingLoadout.BeginEquipment()) == 0f);
+var otherStartingLoadout = CombatLoadout.CreatePlayerLoadout();
+startingLoadout.Inventory.Clear();
+Check(otherStartingLoadout.Inventory.Count == 1 && otherStartingLoadout.Equipment.Count == 1);
+Console.WriteLine("Starting player loadout checks passed.");
