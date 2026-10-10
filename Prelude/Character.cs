@@ -43,12 +43,16 @@ public sealed class Character : GameObject2D
     public float VisualHeight => _sprite.Size.Y;
     private float _elevation;
     private readonly AnimationPlayer<Color> _damagePlayer;
-    private readonly AnimationPlayer<Combat.AttackImpact> _impactPlayer;
+    private readonly AnimationPlayer<ImpactPhase> _impactPlayer;
     private Color _normalColor;
     private bool _defeatPending;
     private readonly AnimationPlayer<Color> _defeatPlayer;
     private static readonly TimeSpan DamageFlashDuration = TimeSpan.FromMilliseconds(80);
-    private static readonly TimeSpan ImpactDuration = TimeSpan.FromMilliseconds(250);
+    // Two extra display frames at 60 Hz; stagger overlaps the final frame.
+    private static readonly TimeSpan DisplayFrame = TimeSpan.FromSeconds(1d / 60d);
+    private static readonly TimeSpan ImpactDuration = TimeSpan.FromMilliseconds(250) + DisplayFrame * 2;
+    private sealed record ImpactPhase(Combat.AttackImpact Impact, bool FinalFrame);
+    private TimeSpan _impactPhaseRemaining;
     public bool IsShowingDamage => !_damagePlayer.IsCompleted;
     public bool IsShowingFeedback => IsShowingDamage || !_impactPlayer.IsCompleted
         || _staggering || _defeatPending || !_defeatPlayer.IsCompleted;
@@ -68,15 +72,25 @@ public sealed class Character : GameObject2D
     private void ShowImpact(Combat.AttackImpact impact)
     {
         if (_feedbackTextures is null) return;
-        _impactPlayer.Enqueue(new Animation<Combat.AttackImpact>([new(impact, ImpactDuration)]));
+        _impactPlayer.Enqueue(new Animation<ImpactPhase>([
+            new(new(impact, false), ImpactDuration - DisplayFrame),
+            new(new(impact, true), DisplayFrame),
+        ]));
     }
 
-    private void ApplyImpact(Combat.AttackImpact impact)
+    private void ApplyImpact(ImpactPhase phase)
     {
+        _impactPhaseRemaining = phase.FinalFrame ? DisplayFrame : ImpactDuration - DisplayFrame;
+        if (phase.FinalFrame)
+        {
+            if (phase.Impact != Combat.AttackImpact.Blocked) StartStagger();
+            return;
+        }
+        var impact = phase.Impact;
         // Draw above all formation rows, with ammunition above the effect.
         _impactRenderer.DrawOrder = 90;
         _impactIconRenderer.DrawOrder = 91;
-        SetImpactTexture(_impactRenderer, _impactSprite, impact.EffectTexture, 0.8f);
+        SetImpactTexture(_impactRenderer, _impactSprite, impact.EffectTexture, 0.5f);
         SetImpactTexture(_impactIconRenderer, _impactIcon, impact.IconTexture, 0.5f);
     }
 
@@ -103,15 +117,18 @@ public sealed class Character : GameObject2D
                 TimeSpan.FromMilliseconds(25)))));
     }
 
+    private void StartStagger()
+    {
+        if (_spriteSheet is null) return;
+        PlayAnimation(_spriteSheet.GetAnimation("Stagger"));
+        _staggering = true;
+    }
+
     /// <summary>Queues one tint for each atomic point of inflicted damage.</summary>
     private void ShowDamage(Combat.DamageTaken result)
     {
         var damage = result.Damage;
-        if (_spriteSheet is not null)
-        {
-            PlayAnimation(_spriteSheet.GetAnimation("Stagger"));
-            _staggering = true;
-        }
+        if (result.Impact is null || _feedbackTextures is null) StartStagger();
         if (_damagePlayer.IsCompleted) _normalColor = _sprite.Color;
         var frames = new List<AnimationFrame<Color>>();
         foreach (var (type, amount) in damage.Typed)
@@ -333,7 +350,23 @@ public sealed class Character : GameObject2D
         var elapsed = TimeSpan.FromSeconds(deltaTime);
         _defeatPlayer.Advance(elapsed);
         _damagePlayer.Advance(elapsed);
-        _impactPlayer.Advance(elapsed);
+        // Split at effect boundaries so a new stagger consumes only time after its cue,
+        // including updates that span the entire effect.
+        var remaining = elapsed;
+        while (remaining > TimeSpan.Zero)
+        {
+            var step = _impactPlayer.IsCompleted ? remaining
+                : (remaining < _impactPhaseRemaining ? remaining : _impactPhaseRemaining);
+            _animationPlayer?.Advance(step);
+            if (_staggering && _animationPlayer is { IsCompleted: true })
+            {
+                _staggering = false;
+                ShowIdle();
+            }
+            if (!_impactPlayer.IsCompleted) _impactPhaseRemaining -= step;
+            _impactPlayer.Advance(step);
+            remaining -= step;
+        }
         if (!_impactPlayer.IsCompleted)
         {
             var transform = Matrix4X4.CreateTranslation(0f, -VisualHeight * 0.55f - Elevation, 0f);
@@ -341,13 +374,6 @@ public sealed class Character : GameObject2D
             _impactIcon.Transform = transform;
         }
         BeginDefeatAfterFeedback();
-        _animationPlayer?.Advance(elapsed);
-        if (_staggering && _animationPlayer is { IsCompleted: true })
-        {
-            _staggering = false;
-            ShowIdle();
-            BeginDefeatAfterFeedback();
-        }
         base.Update(deltaTime);
     }
 }

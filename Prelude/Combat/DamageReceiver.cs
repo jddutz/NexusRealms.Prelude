@@ -26,6 +26,7 @@ public sealed class DamageReceiver
 /// <summary>Resolved typed damage and the resulting health change. Overkill retains its damage types.</summary>
 public sealed record DamageTaken(DamageProfile Damage, int HealthBefore, int HealthAfter)
 {
+    public AttackImpact? Impact { get; init; }
     public int HealthLost => HealthBefore - HealthAfter;
     public bool IsLethal => HealthBefore > 0 && HealthAfter == 0;
 }
@@ -44,7 +45,7 @@ public static class DamageResolver
             : mitigate is null ? damage
             : mitigate(damage) ?? throw new InvalidOperationException("Mitigation must return a damage profile.");
         var after = Math.Max(0, before - resolved.Total);
-        var result = new DamageTaken(resolved, before, after);
+        var result = new DamageTaken(resolved, before, after) { Impact = impact };
         target.Health = after;
         if (before > 0 && impact is not null)
             target.NotifyImpact(result.HealthLost == 0 ? AttackImpact.Blocked : impact);
