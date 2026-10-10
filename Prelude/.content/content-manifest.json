@@ -241,6 +241,9 @@
       "items.items_basic.png": {
         "FilePath": "Textures/Items/items_basic.ktx2"
       },
+      "items.rock.png": {
+        "FilePath": "Textures/Items/rock.ktx2"
+      },
       "weapons.axe_01.png": {
         "FilePath": "Textures/Items/Weapons/axe_01.ktx2"
       },

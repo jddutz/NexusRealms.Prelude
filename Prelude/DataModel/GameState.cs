@@ -21,7 +21,7 @@ public record GameState
             _gameSpeed = value;
         }
     }
-    public int Health { get; set; } = 5;
+    public int Health { get; set; } = 20;
     public int Focus { get => Loadout.Focus; init => Loadout.Focus = value; }
 }
 

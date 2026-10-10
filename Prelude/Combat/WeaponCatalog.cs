@@ -3,7 +3,7 @@ using NexusRealms.Prelude.DataModel;
 
 namespace NexusRealms.Prelude.Combat;
 
-public enum WeaponType { Sword, Axe, Knives, Clubs, Maces, Flail, Pistol, Bow, Crossbow, Sling }
+public enum WeaponType { Sword, Axe, Knives, Clubs, Maces, Flail, Pistol, Bow, Crossbow, Sling, Rock }
 
 /// <summary>Weapon damage, range, and interchangeable icon variants.</summary>
 public static class WeaponCatalog
@@ -13,6 +13,7 @@ public static class WeaponCatalog
         ThrowDamage = type switch
         {
             WeaponType.Sword => new(new Dictionary<DamageType, int> { [DamageType.Piercing] = 1 }),
+            WeaponType.Rock => new(new Dictionary<DamageType, int> { [DamageType.Crushing] = 2 }),
             WeaponType.Knives => new(new Dictionary<DamageType, int> { [DamageType.Piercing] = 2 }),
             _ => null,
         },
@@ -37,6 +38,7 @@ public static class WeaponCatalog
     }
     private static ItemData GetCore(WeaponType type) => type switch
     {
+        WeaponType.Rock => Define(["items.rock.png"], (DamageType.Crushing, 1)),
         WeaponType.Sword => Define(
             ["weapons.sword_01.png", "weapons.sword_02.png", "weapons.sword_03.png", "weapons.sword_04.png",
              "weapons.sword_05.png", "weapons.sword_06.png", "weapons.sword_07.png"],

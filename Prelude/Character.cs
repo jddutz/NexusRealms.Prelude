@@ -46,7 +46,10 @@ public sealed class Character : GameObject2D
         if (_spriteSheet is null) return 0.5d;
         SpriteAnimation animation;
         try { animation = _spriteSheet.GetAnimation(name); }
-        catch (KeyNotFoundException) { return 0.5d; }
+        catch (KeyNotFoundException exception)
+        {
+            throw new InvalidOperationException($"Character {Definition.Id} has no animation named {name}.", exception);
+        }
         PlayAnimation(animation);
         _attacking = true;
         return animation.Duration.TotalSeconds;

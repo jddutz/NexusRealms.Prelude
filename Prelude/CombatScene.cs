@@ -27,6 +27,7 @@ public class CombatScene : Scene
     private readonly Queue<Color> _flashColors = new();
     private double _flashRemaining;
     private readonly Random _enemyRandom;
+    private readonly Dictionary<Character, EnemyActionState> _enemyActions = [];
     private EnemyAttackData? _enemyAttack;
     private Character? _enemyActor;
     private double _enemyElapsed;
@@ -288,6 +289,7 @@ public class CombatScene : Scene
                 _textures.GetOrCreate(character.Artwork),
                 _textures.GetOrCreate(new ContentId("shadow"))
             );
+            _enemyActions.Add(combatCharacter, new EnemyActionState(character));
             combatCharacter.ConfigureAnimations(contentManifest?.GetSpriteSheet(character.Artwork));
             combatCharacter.ConfigureAttackFeedback(_textures, _worldLayerMask);
             combatCharacter.Renderer.RenderLayerMask = _worldLayerMask;
@@ -1237,8 +1239,7 @@ public class CombatScene : Scene
             if (Combat.ActiveCombatant is not { PlayerControlled: false } actor) return;
             var index = int.Parse(actor.Id["encounter-".Length..]);
             _enemyActor = _formation[_startScenario.Characters[index].Slot]!;
-            var attacks = _enemyActor.Definition.Attacks;
-            _enemyAttack = attacks.Length == 0 ? new EnemyAttackData() : attacks[_enemyRandom.Next(attacks.Length)];
+            _enemyAttack = _enemyActions[_enemyActor].Select(_enemyRandom);
             if (!float.IsFinite(_enemyAttack.TurnCost) || _enemyAttack.TurnCost <= 0f
                 || !float.IsFinite(_enemyAttack.ImpactFraction) || _enemyAttack.ImpactFraction < 0f || _enemyAttack.ImpactFraction > 1f)
                 throw new InvalidOperationException("Enemy attack timing is invalid.");
@@ -1251,6 +1252,7 @@ public class CombatScene : Scene
         if (previous <= anticipation && _enemyElapsed > anticipation && _enemyDuration == 0d)
         {
             _enemyDuration = _enemyActor!.PlayAttack(_enemyAttack.Animation);
+            if (_enemyAttack.Reload) _enemyDuration = Math.Max(_enemyDuration, _enemyAttack.TurnCost);
             _enemyElapsed = anticipation;
         }
         if (_enemyDuration == 0d) return;
@@ -1260,6 +1262,7 @@ public class CombatScene : Scene
             if (_enemyActor!.Health > 0 && _startScenario.Characters.Any(p => _formation[p.Slot] == _enemyActor
                 && p.Team == NexusRealms.Prelude.Combat.CombatTeam.Enemies))
             {
+                _enemyActions[_enemyActor].Apply(_enemyAttack);
                 var receiver = new NexusRealms.Prelude.Combat.DamageReceiver(_gameState.Health);
                 var result = NexusRealms.Prelude.Combat.DamageResolver.Apply(receiver, _enemyAttack.Damage);
                 _gameState.Health = receiver.Health;

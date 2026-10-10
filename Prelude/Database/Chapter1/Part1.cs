@@ -13,6 +13,8 @@ public sealed record Part1 : StoryGraph
         Name = "Alleyway Thug #1",
         Artwork = new("characters.alley_thug_1.png"),
         Portrait = new("portraits.alley_thug_1.png"),
+        Items = [Combat.WeaponCatalog.Create(Combat.WeaponType.Clubs, "thug-club", "Club", "Right hand")],
+        Attacks = [new() { ItemId = new("thug-club") }],
     };
 
     public static readonly CharacterData AlleywayThug2 = new()
@@ -21,6 +23,12 @@ public sealed record Part1 : StoryGraph
         Name = "Alleyway Thug #2",
         Artwork = new("characters.alley_thug_2.png"),
         Portrait = new("portraits.alley_thug_2.png"),
+        Items =
+        [
+            Combat.WeaponCatalog.Create(Combat.WeaponType.Pistol, "thug-pistol", "Pistol", "Right hand"),
+            Combat.WeaponCatalog.CreateAmmunition(AmmunitionType.Bullet, "thug-bullets", 6),
+        ],
+        Attacks = [new() { ItemId = new("thug-pistol"), ReloadAnimation = "Reload" }],
     };
 
     public static readonly CharacterData AlleywayThug3 = new()
@@ -29,6 +37,8 @@ public sealed record Part1 : StoryGraph
         Name = "Alleyway Thug #3",
         Artwork = new("characters.alley_thug_3.png"),
         Portrait = new("portraits.alley_thug_3.png"),
+        Items = [Combat.WeaponCatalog.Create(Combat.WeaponType.Rock, "thug-rocks", "Rock", "Right hand") with { Quantity = 3 }],
+        Attacks = [new() { ItemId = new("thug-rocks"), Throw = true }],
     };
 
     public static readonly StoryNode Intro = new CombatScenario

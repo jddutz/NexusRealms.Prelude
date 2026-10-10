@@ -1,5 +1,5 @@
 { "frames": {
-   "alley_thug_3 (Layer Copy) 0.aseprite": {
+   "alley_thug_3 (Attack) 0.aseprite": {
     "frame": { "x": 0, "y": 0, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -7,7 +7,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_3 (Layer Copy) 1.aseprite": {
+   "alley_thug_3 (Attack) 1.aseprite": {
     "frame": { "x": 512, "y": 0, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -15,7 +15,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_3 (Layer Copy) 2.aseprite": {
+   "alley_thug_3 (Attack) 2.aseprite": {
     "frame": { "x": 1024, "y": 0, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -23,7 +23,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_3 (Layer Copy) 3.aseprite": {
+   "alley_thug_3 (Attack) 3.aseprite": {
     "frame": { "x": 1536, "y": 0, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -31,7 +31,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_3 (Layer Copy) 4.aseprite": {
+   "alley_thug_3 (Attack) 4.aseprite": {
     "frame": { "x": 2048, "y": 0, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -39,7 +39,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_3 (Layer Copy) 5.aseprite": {
+   "alley_thug_3 (Attack) 5.aseprite": {
     "frame": { "x": 2560, "y": 0, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -47,7 +47,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_3 (Layer Copy) 6.aseprite": {
+   "alley_thug_3 (Attack) 6.aseprite": {
     "frame": { "x": 3072, "y": 0, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -55,7 +55,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_3 (Layer Copy) 7.aseprite": {
+   "alley_thug_3 (Attack) 7.aseprite": {
     "frame": { "x": 3584, "y": 0, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -202,7 +202,7 @@
   "frameTags": [
   ],
   "layers": [
-   { "name": "Layer Copy", "opacity": 255, "blendMode": "normal" },
+   { "name": "Attack", "opacity": 255, "blendMode": "normal" },
    { "name": "Stagger", "opacity": 255, "blendMode": "normal" },
    { "name": "Idle", "opacity": 255, "blendMode": "normal" }
   ],

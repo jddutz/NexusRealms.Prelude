@@ -1,5 +1,5 @@
 { "frames": {
-   "alley_thug_2 (Attack) 0.aseprite": {
+   "alley_thug_2 (Reload) 0.aseprite": {
     "frame": { "x": 0, "y": 0, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -7,7 +7,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_2 (Attack) 1.aseprite": {
+   "alley_thug_2 (Reload) 1.aseprite": {
     "frame": { "x": 512, "y": 0, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -15,7 +15,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_2 (Attack) 2.aseprite": {
+   "alley_thug_2 (Reload) 2.aseprite": {
     "frame": { "x": 1024, "y": 0, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -23,7 +23,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_2 (Attack) 3.aseprite": {
+   "alley_thug_2 (Reload) 3.aseprite": {
     "frame": { "x": 1536, "y": 0, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -31,7 +31,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_2 (Attack) 4.aseprite": {
+   "alley_thug_2 (Reload) 4.aseprite": {
     "frame": { "x": 2048, "y": 0, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -39,7 +39,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_2 (Attack) 5.aseprite": {
+   "alley_thug_2 (Reload) 5.aseprite": {
     "frame": { "x": 2560, "y": 0, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -47,7 +47,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_2 (Attack) 6.aseprite": {
+   "alley_thug_2 (Reload) 6.aseprite": {
     "frame": { "x": 3072, "y": 0, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -55,7 +55,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_2 (Attack) 7.aseprite": {
+   "alley_thug_2 (Reload) 7.aseprite": {
     "frame": { "x": 3584, "y": 0, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -63,7 +63,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_2 (Stagger) 0.aseprite": {
+   "alley_thug_2 (Attack) 0.aseprite": {
     "frame": { "x": 0, "y": 512, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -71,7 +71,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_2 (Stagger) 1.aseprite": {
+   "alley_thug_2 (Attack) 1.aseprite": {
     "frame": { "x": 512, "y": 512, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -79,7 +79,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_2 (Stagger) 2.aseprite": {
+   "alley_thug_2 (Attack) 2.aseprite": {
     "frame": { "x": 1024, "y": 512, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -87,7 +87,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_2 (Stagger) 3.aseprite": {
+   "alley_thug_2 (Attack) 3.aseprite": {
     "frame": { "x": 1536, "y": 512, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -95,7 +95,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_2 (Stagger) 4.aseprite": {
+   "alley_thug_2 (Attack) 4.aseprite": {
     "frame": { "x": 2048, "y": 512, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -103,7 +103,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_2 (Stagger) 5.aseprite": {
+   "alley_thug_2 (Attack) 5.aseprite": {
     "frame": { "x": 2560, "y": 512, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -111,7 +111,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_2 (Stagger) 6.aseprite": {
+   "alley_thug_2 (Attack) 6.aseprite": {
     "frame": { "x": 3072, "y": 512, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -119,7 +119,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_2 (Stagger) 7.aseprite": {
+   "alley_thug_2 (Attack) 7.aseprite": {
     "frame": { "x": 3584, "y": 512, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -127,7 +127,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_2 (Idle) 0.aseprite": {
+   "alley_thug_2 (Stagger) 0.aseprite": {
     "frame": { "x": 0, "y": 1024, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -135,7 +135,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_2 (Idle) 1.aseprite": {
+   "alley_thug_2 (Stagger) 1.aseprite": {
     "frame": { "x": 512, "y": 1024, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -143,7 +143,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_2 (Idle) 2.aseprite": {
+   "alley_thug_2 (Stagger) 2.aseprite": {
     "frame": { "x": 1024, "y": 1024, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -151,7 +151,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_2 (Idle) 3.aseprite": {
+   "alley_thug_2 (Stagger) 3.aseprite": {
     "frame": { "x": 1536, "y": 1024, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -159,7 +159,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_2 (Idle) 4.aseprite": {
+   "alley_thug_2 (Stagger) 4.aseprite": {
     "frame": { "x": 2048, "y": 1024, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -167,7 +167,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_2 (Idle) 5.aseprite": {
+   "alley_thug_2 (Stagger) 5.aseprite": {
     "frame": { "x": 2560, "y": 1024, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -175,7 +175,7 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_2 (Idle) 6.aseprite": {
+   "alley_thug_2 (Stagger) 6.aseprite": {
     "frame": { "x": 3072, "y": 1024, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
@@ -183,8 +183,72 @@
     "sourceSize": { "w": 512, "h": 512 },
     "duration": 80
    },
-   "alley_thug_2 (Idle) 7.aseprite": {
+   "alley_thug_2 (Stagger) 7.aseprite": {
     "frame": { "x": 3584, "y": 1024, "w": 512, "h": 512 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 512, "h": 512 },
+    "sourceSize": { "w": 512, "h": 512 },
+    "duration": 80
+   },
+   "alley_thug_2 (Idle) 0.aseprite": {
+    "frame": { "x": 0, "y": 1536, "w": 512, "h": 512 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 512, "h": 512 },
+    "sourceSize": { "w": 512, "h": 512 },
+    "duration": 80
+   },
+   "alley_thug_2 (Idle) 1.aseprite": {
+    "frame": { "x": 512, "y": 1536, "w": 512, "h": 512 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 512, "h": 512 },
+    "sourceSize": { "w": 512, "h": 512 },
+    "duration": 80
+   },
+   "alley_thug_2 (Idle) 2.aseprite": {
+    "frame": { "x": 1024, "y": 1536, "w": 512, "h": 512 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 512, "h": 512 },
+    "sourceSize": { "w": 512, "h": 512 },
+    "duration": 80
+   },
+   "alley_thug_2 (Idle) 3.aseprite": {
+    "frame": { "x": 1536, "y": 1536, "w": 512, "h": 512 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 512, "h": 512 },
+    "sourceSize": { "w": 512, "h": 512 },
+    "duration": 80
+   },
+   "alley_thug_2 (Idle) 4.aseprite": {
+    "frame": { "x": 2048, "y": 1536, "w": 512, "h": 512 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 512, "h": 512 },
+    "sourceSize": { "w": 512, "h": 512 },
+    "duration": 80
+   },
+   "alley_thug_2 (Idle) 5.aseprite": {
+    "frame": { "x": 2560, "y": 1536, "w": 512, "h": 512 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 512, "h": 512 },
+    "sourceSize": { "w": 512, "h": 512 },
+    "duration": 80
+   },
+   "alley_thug_2 (Idle) 6.aseprite": {
+    "frame": { "x": 3072, "y": 1536, "w": 512, "h": 512 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 512, "h": 512 },
+    "sourceSize": { "w": 512, "h": 512 },
+    "duration": 80
+   },
+   "alley_thug_2 (Idle) 7.aseprite": {
+    "frame": { "x": 3584, "y": 1536, "w": 512, "h": 512 },
     "rotated": false,
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 512, "h": 512 },
@@ -197,11 +261,12 @@
   "version": "1.3.18.6-x64",
   "image": "alley_thug_2.png",
   "format": "RGBA8888",
-  "size": { "w": 4096, "h": 1536 },
+  "size": { "w": 4096, "h": 2048 },
   "scale": "1",
   "frameTags": [
   ],
   "layers": [
+   { "name": "Reload", "opacity": 255, "blendMode": "normal" },
    { "name": "Attack", "opacity": 255, "blendMode": "normal" },
    { "name": "Stagger", "opacity": 255, "blendMode": "normal" },
    { "name": "Idle", "opacity": 255, "blendMode": "normal" }
