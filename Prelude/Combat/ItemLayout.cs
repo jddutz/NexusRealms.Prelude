@@ -3,6 +3,23 @@ namespace NexusRealms.Prelude.Combat;
 /// <summary>Transactional movement between twenty inventory cells and nine equipment cells.</summary>
 public sealed partial class CombatLoadout
 {
+    /// <summary>Restores initial inventory and equipment without consuming a combat turn.</summary>
+    public static CombatLoadout FromState(IEnumerable<CarriedItem> items, Dictionary<string, string> layout, int focus)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(focus);
+        var loadout = new CombatLoadout { Focus = focus };
+        loadout.Items.AddRange(items);
+        if (!loadout.ValidLayout(layout)
+            || layout.Keys.Any(slot => IsInventorySlot(slot) && !Enumerable.Range(0, InventoryCapacity).Select(InventorySlot).Contains(slot)))
+            throw new ArgumentException("Invalid initial item layout.", nameof(layout));
+        loadout._equipment = layout.Where(pair => EquipmentSlots.Contains(pair.Key)).ToDictionary();
+        loadout._inventorySlots = Enumerable.Range(0, InventoryCapacity).Select(index => layout.GetValueOrDefault(InventorySlot(index))).ToArray();
+        loadout.Assign(0, RightHandStrike.Id.Value);
+        loadout.Assign(1, LeftHandStrike.Id.Value);
+        loadout.Assign(9, Wait.Id.Value);
+        return loadout;
+    }
+
     private bool ValidLayout(IReadOnlyDictionary<string, string> layout)
     {
         if (Items.Any(item => item.Quantity <= 0) || Items.Select(item => item.Id).Distinct().Count() != Items.Count

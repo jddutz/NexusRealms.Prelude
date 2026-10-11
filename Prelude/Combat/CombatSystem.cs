@@ -1,7 +1,7 @@
 namespace NexusRealms.Prelude.Combat;
 
 public enum CombatTeam { PlayerAndAllies, Enemies }
-public enum CombatOutcome { Victory, Defeat, Escape }
+public enum CombatOutcome { Victory, Defeat, Escape, Draw }
 public enum CombatRow { Front, Middle, Back }
 
 public sealed class Combatant(string id, bool playerControlled, float turn = 0f,
@@ -29,6 +29,8 @@ public sealed class CombatSystem
     public Combatant? ActiveCombatant { get; private set; }
     public bool HasEnded { get; private set; }
     public CombatOutcome? Outcome { get; private set; }
+    /// <summary>Optional exclusive timeline boundary. Occurrences at this turn do not resolve.</summary>
+    public float? TurnLimit { get; init; }
     public Func<CombatSystem, bool>[] VictoryConditions { get; set; } = [];
     public Func<CombatSystem, bool>[] DefeatConditions { get; set; } = [];
     public Func<string, bool>? IsCombatantAlive { get; set; }
@@ -145,6 +147,11 @@ public sealed class CombatSystem
         for (var i = 0; i < maxOccurrences && !HasEnded && ActiveCombatant is null; i++)
         {
             if (EvaluateOutcome()) break;
+            if (TurnLimit is { } limit && Timeline.Preview(1).FirstOrDefault() is { } pending && pending.Turn >= limit)
+            {
+                End(CombatOutcome.Draw);
+                break;
+            }
             var next = Timeline.Advance();
             if (next is null) break;
             if (next.CombatantId is { } id)

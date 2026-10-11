@@ -7,7 +7,7 @@ public record GameState
     public Combat.CombatOutcome? LastCombatOutcome { get; set; }
     /// <summary>Gets the player's portrait texture.</summary>
     public ContentId Portrait { get; init; } = new("portraits.mercenary_male.png");
-    public Combat.CombatLoadout Loadout { get; } = Combat.CombatLoadout.CreatePlayerLoadout();
+    public Combat.CombatLoadout Loadout { get; init; } = Combat.CombatLoadout.CreatePlayerLoadout();
     /// <summary>Active status effect identifiers shared by the HUD and Character dialog.</summary>
     public StatusEffectId[] StatusEffects { get; init; } = ["guarded", "inspired", "focused"];
     private double _gameSpeed = 1d;
