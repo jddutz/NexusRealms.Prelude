@@ -34,6 +34,7 @@ public sealed class Character : GameObject2D
     private SpriteAnimationPlayer? _animationPlayer;
     private AsepriteSpriteSheet? _spriteSheet;
     private bool _staggering;
+    public bool StaggerAnimationEnabled { get; set; } = true;
     public double AnimationSpeed { get; set; } = 1d;
     private bool _attacking;
     public double PlayAttack(string name)
@@ -61,44 +62,45 @@ public sealed class Character : GameObject2D
     public float VisualHeight => _sprite.Size.Y;
     private float _elevation;
     private readonly AnimationPlayer<Color> _damagePlayer;
-    private readonly AnimationPlayer<ImpactPhase> _impactPlayer;
+    private readonly AnimationPlayer<EffectPhase> _effectPlayer;
     private Color _normalColor;
     private bool _defeatPending;
     private readonly AnimationPlayer<Color> _defeatPlayer;
     private static readonly TimeSpan DamageFlashDuration = TimeSpan.FromMilliseconds(80);
     // Duration is elapsed time; stagger overlaps the final nominal 60 Hz frame.
     private static readonly TimeSpan DisplayFrame = TimeSpan.FromSeconds(1d / 60d);
-    private static readonly TimeSpan ImpactDuration = TimeSpan.FromMilliseconds(500);
-    private sealed record ImpactPhase(Combat.AttackImpact Impact, bool FinalFrame);
-    private TimeSpan _impactPhaseRemaining;
+    private static readonly TimeSpan EffectDuration = TimeSpan.FromMilliseconds(500);
+    private sealed record EffectPhase(Combat.AttackImpact Impact, bool FinalFrame);
+    private TimeSpan _effectPhaseRemaining;
     public bool IsShowingDamage => !_damagePlayer.IsCompleted;
-    public bool IsShowingFeedback => IsShowingDamage || !_impactPlayer.IsCompleted
+    public bool IsShowingFeedback => IsShowingDamage || !_effectPlayer.IsCompleted
         || _staggering || _defeatPending || !_defeatPlayer.IsCompleted;
-    private readonly SpriteRenderer _impactRenderer = new() { IsVisible = false };
-    private readonly SpriteRenderer _impactIconRenderer = new() { IsVisible = false };
-    private readonly SpriteInstance _impactSprite = new() { Anchor = new(0.5f, 0.5f) };
-    private readonly SpriteInstance _impactIcon = new() { Anchor = new(0.5f, 0.5f) };
+    private readonly SpriteRenderer _effectRenderer = new() { IsVisible = false };
+    private readonly SpriteRenderer _effectIconRenderer = new() { IsVisible = false };
+    private readonly SpriteInstance _effectSprite = new() { Anchor = new(0.5f, 0.5f) };
+    private readonly SpriteInstance _effectIcon = new() { Anchor = new(0.5f, 0.5f) };
     private ITextureRegistry? _feedbackTextures;
 
-    public void ConfigureAttackFeedback(ITextureRegistry textures, ulong layerMask)
+    /// <summary>Configures textures and rendering for effect sprite overlays on the character.</summary>
+    public void ConfigureEffectOverlays(ITextureRegistry textures, ulong layerMask)
     {
         _feedbackTextures = textures;
-        _impactRenderer.RenderLayerMask = layerMask;
-        _impactIconRenderer.RenderLayerMask = layerMask;
+        _effectRenderer.RenderLayerMask = layerMask;
+        _effectIconRenderer.RenderLayerMask = layerMask;
     }
 
-    private void ShowImpact(Combat.AttackImpact impact)
+    private void ShowAttackEffect(Combat.AttackImpact impact)
     {
         if (_feedbackTextures is null) return;
-        _impactPlayer.Enqueue(new Animation<ImpactPhase>([
-            new(new(impact, false), ImpactDuration - DisplayFrame),
+        _effectPlayer.Enqueue(new Animation<EffectPhase>([
+            new(new(impact, false), EffectDuration - DisplayFrame),
             new(new(impact, true), DisplayFrame),
         ]));
     }
 
-    private void ApplyImpact(ImpactPhase phase)
+    private void ApplyEffect(EffectPhase phase)
     {
-        _impactPhaseRemaining = phase.FinalFrame ? DisplayFrame : ImpactDuration - DisplayFrame;
+        _effectPhaseRemaining = phase.FinalFrame ? DisplayFrame : EffectDuration - DisplayFrame;
         if (phase.FinalFrame)
         {
             if (phase.Impact != Combat.AttackImpact.Blocked) StartStagger();
@@ -106,13 +108,13 @@ public sealed class Character : GameObject2D
         }
         var impact = phase.Impact;
         // Draw above all formation rows, with ammunition above the effect.
-        _impactRenderer.DrawOrder = 90;
-        _impactIconRenderer.DrawOrder = 91;
-        SetImpactTexture(_impactRenderer, _impactSprite, impact.EffectTexture, 0.5f);
-        SetImpactTexture(_impactIconRenderer, _impactIcon, impact.IconTexture, 0.5f);
+        _effectRenderer.DrawOrder = 90;
+        _effectIconRenderer.DrawOrder = 91;
+        SetEffectTexture(_effectRenderer, _effectSprite, impact.EffectTexture, 0.5f);
+        SetEffectTexture(_effectIconRenderer, _effectIcon, impact.IconTexture, 0.5f);
     }
 
-    private void SetImpactTexture(SpriteRenderer renderer, SpriteInstance sprite, string? textureId, float size)
+    private void SetEffectTexture(SpriteRenderer renderer, SpriteInstance sprite, string? textureId, float size)
     {
         renderer.IsVisible = false;
         if (textureId is null) return;
@@ -126,7 +128,7 @@ public sealed class Character : GameObject2D
 
     private void BeginDefeatAfterFeedback()
     {
-        if (!_defeatPending || IsShowingDamage || !_impactPlayer.IsCompleted || _staggering) return;
+        if (!_defeatPending || IsShowingDamage || !_effectPlayer.IsCompleted || _staggering) return;
         _defeatPending = false;
         _animationPlayer = null;
         // Keep the character instance and state; fade its artwork before hiding it.
@@ -137,7 +139,7 @@ public sealed class Character : GameObject2D
 
     private void StartStagger()
     {
-        if (_spriteSheet is null) return;
+        if (!StaggerAnimationEnabled || _spriteSheet is null) return;
         PlayAnimation(_spriteSheet.GetAnimation("Stagger"));
         _staggering = true;
     }
@@ -176,7 +178,7 @@ public sealed class Character : GameObject2D
         DamageReceiver = new(definition.Health);
         DamageReceiver.HealthChanged += () => ResourcesChanged?.Invoke(this);
         DamageReceiver.DamageTaken += ShowDamage;
-        DamageReceiver.ImpactOccurred += ShowImpact;
+        DamageReceiver.ImpactOccurred += ShowAttackEffect;
         Focus = definition.Focus;
         Texture = texture;
         ShadowRenderer = new SpriteRenderer { Texture = shadowTexture };
@@ -207,8 +209,8 @@ public sealed class Character : GameObject2D
             Renderer.IsVisible = false;
             ShadowRenderer.IsVisible = false;
             FocusRenderer.IsVisible = false;
-            _impactRenderer.IsVisible = false;
-            _impactIconRenderer.IsVisible = false;
+            _effectRenderer.IsVisible = false;
+            _effectIconRenderer.IsVisible = false;
         };
         _damagePlayer = new(color => _sprite.Color = color);
         _damagePlayer.Completed += () =>
@@ -216,20 +218,20 @@ public sealed class Character : GameObject2D
             _sprite.Color = _normalColor;
             BeginDefeatAfterFeedback();
         };
-        _impactPlayer = new(ApplyImpact);
-        _impactPlayer.Completed += () =>
+        _effectPlayer = new(ApplyEffect);
+        _effectPlayer.Completed += () =>
         {
-            _impactRenderer.IsVisible = false;
-            _impactIconRenderer.IsVisible = false;
+            _effectRenderer.IsVisible = false;
+            _effectIconRenderer.IsVisible = false;
             BeginDefeatAfterFeedback();
         };
         SpriteId = Renderer.Add(_sprite);
         AddComponent(Renderer);
         AddComponent(FocusRenderer);
-        _impactRenderer.Add(_impactSprite);
-        _impactIconRenderer.Add(_impactIcon);
-        AddComponent(_impactRenderer);
-        AddComponent(_impactIconRenderer);
+        _effectRenderer.Add(_effectSprite);
+        _effectIconRenderer.Add(_effectIcon);
+        AddComponent(_effectRenderer);
+        AddComponent(_effectIconRenderer);
     }
 
     public void ConfigureAnimations(AsepriteSpriteSheet? sheet)
@@ -368,23 +370,23 @@ public sealed class Character : GameObject2D
         var remaining = elapsed;
         while (remaining > TimeSpan.Zero)
         {
-            var step = _impactPlayer.IsCompleted ? remaining
-                : (remaining < _impactPhaseRemaining ? remaining : _impactPhaseRemaining);
+            var step = _effectPlayer.IsCompleted ? remaining
+                : (remaining < _effectPhaseRemaining ? remaining : _effectPhaseRemaining);
             _animationPlayer?.Advance(step);
             if ((_staggering || _attacking) && _animationPlayer is { IsCompleted: true })
             {
                 _staggering = false; _attacking = false;
                 ShowIdle();
             }
-            if (!_impactPlayer.IsCompleted) _impactPhaseRemaining -= step;
-            _impactPlayer.Advance(step);
+            if (!_effectPlayer.IsCompleted) _effectPhaseRemaining -= step;
+            _effectPlayer.Advance(step);
             remaining -= step;
         }
-        if (!_impactPlayer.IsCompleted)
+        if (!_effectPlayer.IsCompleted)
         {
             var transform = Matrix4X4.CreateTranslation(0f, -VisualHeight * 0.55f - Elevation, 0f);
-            _impactSprite.Transform = transform;
-            _impactIcon.Transform = transform;
+            _effectSprite.Transform = transform;
+            _effectIcon.Transform = transform;
         }
         BeginDefeatAfterFeedback();
         base.Update(deltaTime);

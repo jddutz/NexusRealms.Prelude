@@ -80,7 +80,7 @@ Console.WriteLine("Scenario placement initiative checks passed.");
 var feedbackCharacter = new Character(new CharacterData
     { Id = "feedback", Name = "Feedback", Artwork = new("test"), Portrait = new("test") }, texture, texture);
 var feedbackTextures = new FeedbackTextures(texture);
-feedbackCharacter.ConfigureAttackFeedback(feedbackTextures, 1);
+feedbackCharacter.ConfigureEffectOverlays(feedbackTextures, 1);
 NexusRealms.Prelude.Combat.DamageResolver.Apply(feedbackCharacter.DamageReceiver,
     new(new Dictionary<DamageType, int> { [DamageType.General] = 5 }),
     impact: new("effects.ranged.png", "test-ammo"));
@@ -94,7 +94,7 @@ feedbackCharacter.Update(0.25d);
 Check(!feedbackCharacter.IsShowingFeedback && !feedbackCharacter.Renderer.IsVisible && !feedbackCharacter.ShadowRenderer.IsVisible);
 var blockedCharacter = new Character(new CharacterData
     { Id = "blocked", Name = "Blocked", Artwork = new("test"), Portrait = new("test") }, texture, texture);
-blockedCharacter.ConfigureAttackFeedback(feedbackTextures, 1);
+blockedCharacter.ConfigureEffectOverlays(feedbackTextures, 1);
 NexusRealms.Prelude.Combat.DamageResolver.Apply(blockedCharacter.DamageReceiver, new(), impact: new("effects.impact.png"));
 Check(blockedCharacter.IsShowingFeedback && !blockedCharacter.IsShowingDamage);
 Check(feedbackTextures.Requests.Last().Value == "effects.blocked.png");
@@ -116,7 +116,7 @@ var lifecycleScene = new Scene { MainCamera = new Nexus.Graphics.Cameras.StaticC
 var lifecycleFormation = new CharacterFormation(new(1000f, 800f));
 var lifecycleCharacter = new Character(new CharacterData
     { Id = "lifecycle", Name = "Lifecycle", Artwork = new("test"), Portrait = new("test") }, texture, texture);
-lifecycleCharacter.ConfigureAttackFeedback(feedbackTextures, 1);
+lifecycleCharacter.ConfigureEffectOverlays(feedbackTextures, 1);
 lifecycleFormation.SetSlot(FormationSlot.FrontCenter, lifecycleCharacter);
 lifecycleScene.Children.Add(lifecycleFormation);
 var gameSystem = new GameSystem(new Nexus.Core.Events.EventHub(), Microsoft.Extensions.Logging.Abstractions.NullLogger<GameSystem>.Instance);
@@ -181,7 +181,7 @@ try
     Check(sprite.TexCoord.X == 4f / 6f && animated.IsShowingFeedback);
     animated.Update(0.1d);
     Check(sprite.TexCoord.X == 0f && !animated.IsShowingFeedback && animated.HitTest(new(0f, -1f)));
-    animated.ConfigureAttackFeedback(feedbackTextures, 1);
+    animated.ConfigureEffectOverlays(feedbackTextures, 1);
     NexusRealms.Prelude.Combat.DamageResolver.Apply(animated.DamageReceiver,
         new(new Dictionary<DamageType, int> { [DamageType.Fire] = 1 }), impact: new("effects.slash_01.png"));
     Check(sprite.TexCoord.X == 0f && animated.IsShowingDamage);
@@ -205,6 +205,20 @@ try
     Check(sprite.TexCoord.X == 2f / 6f && !effectRenderer.IsVisible);
     animated.Update(0.184d);
     Check(sprite.TexCoord.X == 0f && !animated.IsShowingFeedback);
+    animated.StaggerAnimationEnabled = false;
+    animated.Health = 10;
+    NexusRealms.Prelude.Combat.DamageResolver.Apply(animated.DamageReceiver,
+        new(new Dictionary<DamageType, int> { [DamageType.General] = 1 }));
+    Check(sprite.TexCoord.X == 0f && animated.IsShowingDamage);
+    animated.Update(0.08d);
+    Check(sprite.TexCoord.X == 0f && !animated.IsShowingFeedback);
+    NexusRealms.Prelude.Combat.DamageResolver.Apply(animated.DamageReceiver,
+        new(new Dictionary<DamageType, int> { [DamageType.General] = 1 }), impact: new("effects.slash_01.png"));
+    animated.Update(0.484d);
+    Check(sprite.TexCoord.X == 0f && effectRenderer.IsVisible);
+    animated.Update(0.017d);
+    Check(sprite.TexCoord.X == 0f && !animated.IsShowingFeedback);
+    animated.StaggerAnimationEnabled = true;
     animated.Health = 1;
     NexusRealms.Prelude.Combat.DamageResolver.Apply(animated.DamageReceiver,
         new(new Dictionary<DamageType, int> { [DamageType.General] = 1 }), impact: new("effects.slash_01.png"));

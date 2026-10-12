@@ -383,10 +383,10 @@ public class CombatScene : Scene
                 character,
                 _textures.GetOrCreate(character.Artwork),
                 _textures.GetOrCreate(new ContentId("shadow"))
-            );
+            ) { StaggerAnimationEnabled = placement.Team != CombatTeam.Enemies };
             _enemyActions.Add(combatCharacter, new EnemyActionState(character, combatCharacter.Loadout));
             combatCharacter.ConfigureAnimations(contentManifest?.GetSpriteSheet(character.Artwork));
-            combatCharacter.ConfigureAttackFeedback(_textures, _worldLayerMask);
+            combatCharacter.ConfigureEffectOverlays(_textures, _worldLayerMask);
             combatCharacter.Renderer.RenderLayerMask = _worldLayerMask;
             combatCharacter.ShadowRenderer.RenderLayerMask = _worldLayerMask;
             combatCharacter.ConfigureFocusIndicator(
