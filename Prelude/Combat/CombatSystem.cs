@@ -1,16 +1,12 @@
 namespace NexusRealms.Prelude.Combat;
 
-public enum CombatTeam { PlayerAndAllies, Enemies }
-public enum CombatOutcome { Victory, Defeat, Escape, Draw }
-public enum CombatRow { Front, Middle, Back }
-
 public sealed class Combatant(string id, bool playerControlled, float turn = 0f,
     int initiative = 0, CombatTeam team = CombatTeam.PlayerAndAllies,
     CombatRow row = CombatRow.Front)
 {
     public int Initiative { get; } = initiative;
     public CombatTeam Team { get; } = team;
-    public CombatRow Row { get; } = row;
+    public CombatRow Row { get; internal set; } = row;
     public uint RandomRank { get; internal set; }
     public string Id { get; } = id;
     public bool PlayerControlled { get; } = playerControlled;
@@ -60,6 +56,32 @@ public sealed class CombatSystem
     public Func<CombatSystem, Combatant, CombatAction>? DecideAction { get; set; }
     public Func<CombatSystem, bool>? IsCombatOver { get; set; }
     public event Action? Changed;
+    /// <summary>Raised at the start of a character's turn before input or automatic decisions.</summary>
+    public event Action<string>? TurnStarted;
+
+    /// <summary>Delays only an existing future occurrence, never an action currently resolving.</summary>
+    public bool TryDelay(string id, float amount)
+    {
+        if (!float.IsFinite(amount) || amount < 0) throw new ArgumentOutOfRangeException(nameof(amount));
+        if (HasEnded || !_turns.ContainsKey(id) || !IsAlive(id) || amount == 0) return false;
+        var next = _combatants[id].Turn + amount;
+        if (!float.IsFinite(next) || next <= _combatants[id].Turn) return false;
+        AdjustTurn(id, amount);
+        return true;
+    }
+
+    /// <summary>Updates row-based tie breaking after an authored formation move.</summary>
+    public void Relocate(string id, CombatRow row)
+    {
+        if (!Enum.IsDefined(row)) throw new ArgumentOutOfRangeException(nameof(row));
+        _combatants[id].Row = row;
+        if (_turns.Remove(id, out var turn))
+        {
+            Timeline.Cancel(turn);
+            ScheduleTurn(_combatants[id]);
+        }
+        Changed?.Invoke();
+    }
 
     private bool _resolving;
     public bool IsResolving => _resolving;
@@ -158,6 +180,7 @@ public sealed class CombatSystem
             {
                 _turns.Remove(id);
                 ActiveCombatant = _combatants[id];
+                TurnStarted?.Invoke(id);
                 if (EvaluateOutcome()) break;
                 if (id == _escapingActor) { End(CombatOutcome.Escape); break; }
                 Changed?.Invoke();

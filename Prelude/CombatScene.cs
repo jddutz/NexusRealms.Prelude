@@ -41,6 +41,9 @@ public class CombatScene : Scene
     private bool _enemyHit;
     private bool _outcomeHandled;
     public Combat.CombatSystem Combat { get; }
+    /// <summary>Shared action resolution over scene-owned health and inventory.</summary>
+    public Actions.CombatActionResolver ActionResolver { get; }
+    private readonly Dictionary<string, Character> _runtimeCharacters = [];
     public int EncounterSeed { get; }
     public TimelineEventRenderer TimelineRenderer { get; }
     private View? _worldView;
@@ -81,37 +84,18 @@ public class CombatScene : Scene
 
     private Combat.CommandTarget? CurrentTarget()
     {
-        var index = Array.FindIndex(
-            _startScenario.Characters.ToArray(),
-            p => _formation[p.Slot] == FocusedCharacter
-        );
-        if (index < 0)
-            return null;
-        var placement = _startScenario.Characters[index];
-        var row = RowOf(placement.Slot);
-        var occupiedRows = _startScenario
-            .Characters.Select((p, i) => (Placement: p, Index: i))
-            .Where(entry =>
-                entry.Placement.Team == NexusRealms.Prelude.Combat.CombatTeam.Enemies
-                && Combat.Contains($"encounter-{entry.Index}")
-                && _formation[entry.Placement.Slot] is { Health: > 0 }
-            )
-            .Select(entry => RowOf(entry.Placement.Slot))
-            .ToHashSet();
-        return new(
-            Combat.Contains($"encounter-{index}"),
-            FocusedCharacter!.Health > 0,
-            placement.Team,
-            row,
-            occupiedRows.Contains(NexusRealms.Prelude.Combat.CombatRow.Front),
-            occupiedRows.Contains(NexusRealms.Prelude.Combat.CombatRow.Middle)
-        );
+        var pair = _runtimeCharacters.FirstOrDefault(pair => pair.Value == FocusedCharacter);
+        if (pair.Key is null) return null;
+        var target = ActionResolver.Characters[pair.Key];
+        var occupied = ActionResolver.Characters.Values.Where(character => character.Team == CombatTeam.Enemies
+            && Combat.IsAlive(character.Id) && character.Position is not null).Select(character => RowOf(character.Position!.Value)).ToHashSet();
+        return new(Combat.Contains(pair.Key), target.Health.Health > 0, target.Team, RowOf(target.Position!.Value),
+            occupied.Contains(CombatRow.Front), occupied.Contains(CombatRow.Middle));
     }
-
-    private static Combat.CombatRow RowOf(FormationSlot slot) =>
-        slot >= FormationSlot.FrontLeft ? NexusRealms.Prelude.Combat.CombatRow.Front
-        : slot >= FormationSlot.MiddleLeft ? NexusRealms.Prelude.Combat.CombatRow.Middle
-        : NexusRealms.Prelude.Combat.CombatRow.Back;
+    private static CombatRow RowOf(FormationSlot slot) =>
+        slot >= FormationSlot.FrontLeft ? NexusRealms.Prelude.DataModel.CombatRow.Front
+        : slot >= FormationSlot.MiddleLeft ? NexusRealms.Prelude.DataModel.CombatRow.Middle
+        : NexusRealms.Prelude.DataModel.CombatRow.Back;
 
     private bool ValidTarget() =>
         Loadout.ValidTarget(Loadout.Find(SelectedActionId), CurrentTarget());
@@ -139,9 +123,17 @@ public class CombatScene : Scene
         var target = FocusedCharacter;
         if (_dialog is not null)
             return false;
+        if (SelectedActionId is { } actionId && Loadout.Actions.TryGetValue(actionId, out var action))
+        {
+            var targetId = _runtimeCharacters.FirstOrDefault(pair => pair.Value == target).Key;
+            if (!ActionResolver.CanCommit("player", action, targetId)) return false;
+            ActionResolver.Commit("player", action, targetId);
+            RefreshCommand();
+            return true;
+        }
         if (SelectedActionId == NexusRealms.Prelude.Combat.CombatLoadout.Throw.Id.Value)
         {
-            var thrownItem = Loadout.Items.Find(item =>
+        var thrownItem = Loadout.Items.Find(item =>
                 item.Id.Value == Loadout.PreparedThrowItemId
             );
             var confirmed = Loadout.ConfirmPreparedThrow(
@@ -151,8 +143,8 @@ public class CombatScene : Scene
                 damage =>
                 {
                     if (target is not null)
-                        NexusRealms.Prelude.Combat.DamageResolver.Apply(
-                            target.DamageReceiver,
+                        ResolvePlayerDamage(
+                            target,
                             damage,
                             impact: thrownItem is null
                                 ? null
@@ -178,8 +170,8 @@ public class CombatScene : Scene
                 attack =>
                 {
                     if (target is not null)
-                        NexusRealms.Prelude.Combat.DamageResolver.Apply(
-                            target.DamageReceiver,
+                        ResolvePlayerDamage(
+                            target,
                             attack.DamagePoints,
                             impact: NexusRealms.Prelude.Combat.AttackImpact.ForStrike(attack)
                         );
@@ -187,16 +179,19 @@ public class CombatScene : Scene
             );
     }
 
+    /// <summary>Adapts committed strikes and throws to shared action resolution and feedback.</summary>
+    private void ResolvePlayerDamage(Character target, DamageProfile damage, Combat.AttackImpact? impact)
+    {
+        var id = _runtimeCharacters.Single(pair => pair.Value == target).Key;
+        ActionResolver.ResolveDamage("player", id, SelectedActionId ?? "attack", damage, impact);
+    }
+
     private void OnDamageTaken(Character target, Combat.DamageTaken result)
     {
         if (!result.IsLethal)
             return;
-        var index = Array.FindIndex(
-            _startScenario.Characters.ToArray(),
-            p => _formation[p.Slot] == target
-        );
-        if (index >= 0)
-            Combat.Remove($"encounter-{index}");
+        var id = _runtimeCharacters.FirstOrDefault(pair => pair.Value == target).Key;
+        if (id is not null) Combat.Remove(id);
         if (FocusedCharacter == target)
             FocusCharacter(null);
     }
@@ -327,6 +322,11 @@ public class CombatScene : Scene
 
         EncounterSeed = _startScenario.RandomSeed ?? Random.Shared.Next();
         Combat = new(unchecked((uint)EncounterSeed));
+        ActionResolver = new(Combat, storyline.StatusEffects);
+        foreach (var ability in storyline.Abilities.Values) ActionResolver.RegisterAbility(ability);
+        var playerHealth = new Combat.DamageReceiver(gameState.Health);
+        playerHealth.HealthChanged += () => gameState.Health = playerHealth.Health;
+        ActionResolver.Add(new("player", true, CombatTeam.PlayerAndAllies, playerHealth, gameState.Loadout), gameState.StatusEffects);
         var startingStats = new Random(EncounterSeed);
         _enemyRandom = new Random(EncounterSeed);
 
@@ -373,7 +373,7 @@ public class CombatScene : Scene
         foreach (var placement in _startScenario.Characters)
         {
             var character = _storyline.Characters[placement.CharacterId];
-            if (placement.Team == NexusRealms.Prelude.Combat.CombatTeam.Enemies)
+            if (placement.Team == NexusRealms.Prelude.DataModel.CombatTeam.Enemies)
                 character = character with
                 {
                     Health = startingStats.Next(3, 8),
@@ -384,7 +384,7 @@ public class CombatScene : Scene
                 _textures.GetOrCreate(character.Artwork),
                 _textures.GetOrCreate(new ContentId("shadow"))
             );
-            _enemyActions.Add(combatCharacter, new EnemyActionState(character));
+            _enemyActions.Add(combatCharacter, new EnemyActionState(character, combatCharacter.Loadout));
             combatCharacter.ConfigureAnimations(contentManifest?.GetSpriteSheet(character.Artwork));
             combatCharacter.ConfigureAttackFeedback(_textures, _worldLayerMask);
             combatCharacter.Renderer.RenderLayerMask = _worldLayerMask;
@@ -418,9 +418,9 @@ public class CombatScene : Scene
             _turnPortraits.Add(id, _storyline.Characters[placement.CharacterId].Portrait);
             var row = placement.Slot switch
             {
-                <= FormationSlot.BackRight => NexusRealms.Prelude.Combat.CombatRow.Back,
-                <= FormationSlot.MiddleRight => NexusRealms.Prelude.Combat.CombatRow.Middle,
-                _ => NexusRealms.Prelude.Combat.CombatRow.Front,
+                <= FormationSlot.BackRight => NexusRealms.Prelude.DataModel.CombatRow.Back,
+                <= FormationSlot.MiddleRight => NexusRealms.Prelude.DataModel.CombatRow.Middle,
+                _ => NexusRealms.Prelude.DataModel.CombatRow.Front,
             };
             Combat.Add(
                 new Combat.Combatant(
@@ -432,14 +432,24 @@ public class CombatScene : Scene
                     row
                 )
             );
+            var visual = _formation[placement.Slot]!;
+            _runtimeCharacters[id] = visual;
+            ActionResolver.Add(new(id, false, placement.Team, visual.DamageReceiver, _enemyActions[visual].Loadout, placement.Slot), visual.Definition.StatusEffects);
         }
+        ActionResolver.Moved += (id, destination) =>
+        {
+            var character = _runtimeCharacters[id];
+            var previous = Enum.GetValues<FormationSlot>().Single(slot => _formation[slot] == character);
+            _formation.SetSlot(previous, null);
+            _formation.SetSlot(destination, character);
+        };
 
         // Automatic turns yield to scene playback.
         foreach (var occurrence in _startScenario.Events)
             Combat.ScheduleEvent(
                 occurrence.Turn,
                 occurrence.Label,
-                occurrence.Resolve,
+                _ => ActionResolver.ResolveCommitted(occurrence.Action, occurrence.SourceId, [occurrence.RecipientId]),
                 occurrence.Priority,
                 occurrence.Icon,
                 occurrence.IsVisible,
@@ -455,10 +465,10 @@ public class CombatScene : Scene
                 || (uint)index >= _startScenario.Characters.Length
             )
                 return true;
-            return _formation[_startScenario.Characters[index].Slot] is { Health: > 0 };
+            return _runtimeCharacters[$"encounter-{index}"].Health > 0;
         };
         Combat.VictoryConditions = _startScenario.BuildVictoryConditions();
-        Combat.DefeatConditions = _startScenario.DefeatConditions.ToArray();
+        Combat.DefeatConditions = _startScenario.BuildDefeatConditions();
         Combat.Changed += RefreshTurnOrder;
         Combat.Changed += () =>
         {
@@ -744,7 +754,7 @@ public class CombatScene : Scene
                 _textures,
                 isEnemy: id != "player"
                     && _startScenario.Characters[int.Parse(id["encounter-".Length..])].Team
-                        == NexusRealms.Prelude.Combat.CombatTeam.Enemies
+                        == NexusRealms.Prelude.DataModel.CombatTeam.Enemies
             )
             {
                 IsActive = isActive,
@@ -880,12 +890,12 @@ public class CombatScene : Scene
     private const float InventoryCellGap = 4f;
 
     private Element ItemCell(
-        Combat.CarriedItem? item,
+        CarriedItem? item,
         string? placeholder,
         Action action,
         IReadOnlyDictionary<string, Element>? itemTargets = null,
         string? sourceSlot = null,
-        Func<Combat.CarriedItem, Vector2D<float>, bool>? dropItem = null,
+        Func<CarriedItem, Vector2D<float>, bool>? dropItem = null,
         List<Action>? refreshers = null,
         Action? refreshDialog = null
     )
@@ -1064,7 +1074,7 @@ public class CombatScene : Scene
             },
             refreshers: refreshers
         );
-        bool DropItem(Combat.CarriedItem item, Vector2D<float> position)
+        bool DropItem(CarriedItem item, Vector2D<float> position)
         {
             static bool Contains(Element element, Vector2D<float> point) =>
                 point.X >= element.Bounds.Origin.X
@@ -1374,17 +1384,11 @@ public class CombatScene : Scene
                             || position.Y >= bounds.Max.Y
                         )
                             continue;
-                        // Presentation placeholders can be assigned, but are unavailable until authored for combat.
-                        if (Loadout.Find(ability.Id.Value) is null)
-                            Loadout.Abilities.Add(
-                                new(
-                                    ability.Id,
-                                    ability.Name,
-                                    ability.TurnCost,
-                                    Icon: ability.Icon.ToString()
-                                )
-                            );
-                        Loadout.Assign(slot, ability.Id.Value);
+                        var unlocked = ability.Actions.FirstOrDefault(action =>
+                            Loadout.LearnedAbilities.Contains(ability.Id) && Loadout.Actions.ContainsKey(action.Id)
+                            && Loadout.MeetsRequirements(Loadout.Actions[action.Id]));
+                        if (unlocked is null) return;
+                        Loadout.Assign(slot, unlocked.Id);
                         RefreshCommand();
                         break;
                     }
@@ -1563,8 +1567,8 @@ public class CombatScene : Scene
             _gameState.LastCombatOutcome = outcome;
             var destination = outcome switch
             {
-                NexusRealms.Prelude.Combat.CombatOutcome.Victory => _startScenario.VictoryNode,
-                NexusRealms.Prelude.Combat.CombatOutcome.Defeat => _startScenario.DefeatNode,
+                NexusRealms.Prelude.DataModel.CombatOutcome.Victory => _startScenario.VictoryNode,
+                NexusRealms.Prelude.DataModel.CombatOutcome.Defeat => _startScenario.DefeatNode,
                 _ => _startScenario.EscapeNode,
             };
             EndDragPreview();
@@ -1609,8 +1613,16 @@ public class CombatScene : Scene
             if (Combat.ActiveCombatant is not { PlayerControlled: false } actor)
                 return;
             var index = int.Parse(actor.Id["encounter-".Length..]);
-            _enemyActor = _formation[_startScenario.Characters[index].Slot]!;
-            _enemyAttack = _enemyActions[_enemyActor].Select(_enemyRandom);
+            _enemyActor = _runtimeCharacters[$"encounter-{index}"];
+            _enemyAttack = _enemyActions[_enemyActor].Select(_enemyRandom, action => ActionResolver.Allows(actor.Id, action));
+            if (_enemyAttack.Effects is not null)
+            {
+                var typedAction = _enemyAttack;
+                _enemyAttack = null;
+                if (ActionResolver.CanCommit(actor.Id, typedAction, "player")) ActionResolver.Commit(actor.Id, typedAction, "player");
+                else Combat.SubmitAutomaticAction(new(1, (_, _) => { }));
+                return;
+            }
             if (
                 !float.IsFinite(_enemyAttack.TurnCost)
                 || _enemyAttack.TurnCost <= 0f
@@ -1644,22 +1656,15 @@ public class CombatScene : Scene
             _enemyHit = true;
             if (
                 _enemyActor!.Health > 0
-                && _startScenario.Characters.Any(p =>
-                    _formation[p.Slot] == _enemyActor
-                    && p.Team == NexusRealms.Prelude.Combat.CombatTeam.Enemies
-                )
+                && ActionResolver.Characters[_runtimeCharacters.Single(pair => pair.Value == _enemyActor).Key].Team == CombatTeam.Enemies
             )
             {
                 _enemyActions[_enemyActor].Apply(_enemyAttack);
-                var receiver = new NexusRealms.Prelude.Combat.DamageReceiver(_gameState.Health);
-                var result = NexusRealms.Prelude.Combat.DamageResolver.Apply(
-                    receiver,
-                    _enemyAttack.Damage
-                );
-                _gameState.Health = receiver.Health;
-                foreach (var (type, amount) in result.Damage.Typed)
-                    for (var i = 0; i < amount; i++)
-                        _flashColors.Enqueue(Character.DamageColor(type));
+                var source = _runtimeCharacters.Single(pair => pair.Value == _enemyActor).Key;
+                var result = ActionResolver.ResolveCommitted(_enemyAttack, source, ["player"]);
+                foreach (var effect in result.Effects.Where(effect => effect.Requested is DamageEffect))
+                    for (var i = 0; i < effect.ActualChange; i++)
+                        _flashColors.Enqueue(Character.DamageColor(((DamageEffect)effect.Requested).Type));
             }
         }
         if (

@@ -1,3 +1,4 @@
+using NexusRealms.Prelude;
 using NexusRealms.Prelude.Combat;
 using NexusRealms.Prelude.Database;
 using NexusRealms.Prelude.DataModel;
@@ -7,7 +8,7 @@ var story = new Storyline();
 var scenario = (CombatScenario)story.Nodes[story.StartNodeId];
 Check(scenario.VictoryConditions.Length == 0 && scenario.DefeatConditions.Length == 1);
 Check(scenario.Characters.Count(character => character.RequiredForVictory) == 1);
-Check(scenario.Characters.Single(character => character.RequiredForVictory).Slot == NexusRealms.Prelude.FormationSlot.BackLeft);
+Check(scenario.Characters.Single(character => character.RequiredForVictory).Slot == NexusRealms.Prelude.DataModel.FormationSlot.BackLeft);
 var encounter = new CombatSystem();
 encounter.Add(new("player", true));
 for (var index = 0; index < scenario.Characters.Length; index++)

@@ -14,6 +14,8 @@ public sealed record SimulationState
     public CarriedItem[]? Items { get; init; }
     public Dictionary<string, string>? ItemLayout { get; init; }
     public bool AllowEscape { get; init; }
+    /// <summary>Learned progression nodes whose authored actions are available, subject to equipment requirements.</summary>
+    public string[] LearnedAbilities { get; init; } = [];
 
     public GameState CreateGameState()
     {
@@ -23,6 +25,11 @@ public sealed record SimulationState
         if ((Items is null) != (ItemLayout is null)) throw new ArgumentException("Items and ItemLayout must be supplied together.");
         var loadout = Items is null ? CombatLoadout.CreatePlayerLoadout() : CombatLoadout.FromState(Items, ItemLayout!, Focus);
         loadout.Focus = Focus;
+        foreach (var id in LearnedAbilities)
+        {
+            if (!Database.Abilities.All.TryGetValue(new AbilityId(id), out var ability)) throw new ArgumentException($"Unknown learned ability '{id}'.");
+            loadout.Learn(ability);
+        }
         return new(CurrentStoryNodeId) { Health = Health, Loadout = loadout, StatusEffects = StatusEffects.Select(id => new StatusEffectId(id)).ToArray() };
     }
 }

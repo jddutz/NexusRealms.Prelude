@@ -16,8 +16,15 @@ public sealed record CharacterData
     public required string Name { get; init; }
     public StatusEffectId[] StatusEffects { get; init; } = [];
     public int Health { get; init; } = 5;
-    public Combat.CarriedItem[] Items { get; init; } = [];
+    public CarriedItem[] Items { get; init; } = [];
+    /// <summary>Explicit initial equipment associations; remaining items begin in inventory.</summary>
+    public System.Collections.Immutable.ImmutableDictionary<string, string> Equipment { get; init; }
+        = System.Collections.Immutable.ImmutableDictionary<string, string>.Empty;
     public ActionData[] Attacks { get; init; } = [new()];
+    /// <summary>General action capabilities; null uses the existing attack definitions.</summary>
+    public ActionData[]? Actions { get; init; }
+    /// <summary>Returns this character's capabilities, including compatibility attacks.</summary>
+    public IReadOnlyList<ActionData> AvailableActions => Actions ?? Attacks;
     public int Focus { get; init; } = 2;
 
     /// <summary>

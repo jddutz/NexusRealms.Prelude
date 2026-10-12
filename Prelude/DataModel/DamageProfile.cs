@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using NexusRealms.Prelude.DataModel;
 
-namespace NexusRealms.Prelude.Combat;
+namespace NexusRealms.Prelude.DataModel;
 
 /// <summary>A snapshot of discrete typed damage points in one hit.</summary>
 public sealed class DamageProfile

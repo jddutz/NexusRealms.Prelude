@@ -3,7 +3,7 @@ using NexusRealms.Prelude.DataModel;
 namespace NexusRealms.Prelude.Combat;
 
 /// <summary>An authored operation, including its equipment and learning requirements.</summary>
-public sealed record CommandDefinition(AbilityId Id, string Name, float TurnCost,
+public sealed record CommandDefinition(ActionId Id, string Name, float TurnCost,
     ItemId? RequiredItem = null, string? RequiredSlot = null, bool Learned = true,
     bool Passive = false, bool RequiresTarget = true, int FocusCost = 0, Action<CombatSystem, Combatant>? Resolve = null, Func<CommandTarget, bool>? TargetRule = null, string? Icon = null, string? IconRegion = null, StrikeHand? Hand = null);
 public enum StrikeHand { Left, Right }
@@ -16,15 +16,6 @@ public sealed record HandStrike(StrikeHand Hand, CarriedItem? Item)
 }
 public sealed record CommandTarget(bool Exists, bool Alive, CombatTeam Team, CombatRow Row,
     bool FrontOccupied = true, bool MiddleOccupied = true);
-public sealed record CarriedItem(ItemId Id, string Name, string Slot, string[]? Icons = null, WeaponData? Weapon = null)
-{
-    public AmmunitionType? Ammunition { get; init; }
-    public DamageProfile? ThrowDamage { get; init; }
-    public int Quantity { get; init; } = 1;
-    public int IconIndex { get; init; }
-    public string? Icon => ItemIconVariants.Select(Icons, IconIndex);
-}
-
 /// <summary>Gameplay-owned command validation and transactional equipment state.</summary>
 public sealed partial class CombatLoadout
 {
@@ -123,16 +114,35 @@ public sealed partial class CombatLoadout
         _inventorySlots[Array.IndexOf(_inventorySlots, null)] = item.Id.Value;
         return true;
     }
-    public List<CommandDefinition> Abilities { get; } = [];
+    /// <summary>Legacy HUD commands, independent of progression abilities.</summary>
+    public List<CommandDefinition> Commands { get; } = [];
+    /// <summary>Compatibility view of HUD commands; progression uses LearnedAbilities.</summary>
+    public List<CommandDefinition> Abilities => Commands;
     private Dictionary<string, string> _equipment = [];
     public IReadOnlyDictionary<string, string> Equipment => _equipment;
     public string?[] QuickSlots { get; } = new string?[10];
     private readonly HashSet<int> _pinnedQuickSlots = [];
     public bool IsQuickSlotPinned(int slot) => _pinnedQuickSlots.Contains(slot);
-    public int Focus { get; set; }
+    private int _focus;
+    /// <summary>Current Focus shared by HUD, AI, and action resolution.</summary>
+    public int Focus
+    {
+        get => _focus;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
+            if (_focus == value) return;
+            _focus = value;
+            FocusChanged?.Invoke();
+        }
+    }
+    /// <summary>Raised when the shared Focus quantity changes.</summary>
+    public event Action? FocusChanged;
     /// <summary>Turn cost for each equipment slot whose final item changes.</summary>
     public float EquipmentChangeCost { get; init; } = 0.6f;
     private bool _resolving;
+    /// <summary>Live runtime restrictions applied to legacy commands before selection and commitment.</summary>
+    public Func<CommandDefinition, bool>? CommandAllowed { get; set; }
     public CommandDefinition? Find(string? id) => id switch
     {
         "LeftHandStrike" => LeftHandStrike, "RightHandStrike" => RightHandStrike,
@@ -161,7 +171,7 @@ public sealed partial class CombatLoadout
         }
         return action.TargetRule?.Invoke(target) ?? target is { Team: CombatTeam.Enemies, Row: CombatRow.Front };
     }
-    public bool Available(CommandDefinition a) => (Abilities.Contains(a) || ReferenceEquals(a, LeftHandStrike) || ReferenceEquals(a, RightHandStrike) || ReferenceEquals(a, Throw) || ReferenceEquals(a, Wait)) && a.Learned && !a.Passive
+    public bool Available(CommandDefinition a) => (Abilities.Contains(a) || ReferenceEquals(a, LeftHandStrike) || ReferenceEquals(a, RightHandStrike) || ReferenceEquals(a, Throw) || ReferenceEquals(a, Wait)) && a.Learned && !a.Passive && (CommandAllowed?.Invoke(a) ?? true)
         && (a != Throw || ThrowOptions().Count > 0)
         && (a.Hand is not { } shootingHand || HasShootingHands(shootingHand))
         && (a.Hand is not { } attackHand || HeldItem(attackHand) is not { Weapon.Shots: > 0 } weapon || ShotsRemaining(weapon) > 0)

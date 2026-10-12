@@ -2,6 +2,7 @@ using NexusRealms.Prelude;
 using NexusRealms.Prelude.Combat;
 using NexusRealms.Prelude.Database;
 using NexusRealms.Prelude.DataModel;
+using NexusRealms.Prelude.Actions;
 
 namespace NexusRealms.Prelude.Simulator;
 
@@ -25,6 +26,9 @@ public static class SimulationRunner
         var random = new Random(seed);
         var combat = new CombatSystem(unchecked((uint)seed)) { TurnLimit = TurnLimit };
         var health = new Dictionary<string, DamageReceiver> { ["player"] = new(state.Health) };
+        var resolver = new CombatActionResolver(combat, Database.StatusEffects.All);
+        foreach (var ability in Database.Abilities.All.Values) resolver.RegisterAbility(ability);
+        resolver.Add(new("player", true, CombatTeam.PlayerAndAllies, health["player"], state.Loadout), state.StatusEffects);
         var brains = new Dictionary<string, EnemyActionState>();
         var placements = new Dictionary<string, CharacterPlacement>();
         combat.Add(new("player", true, initiative: scenario.PlayerInitiative));
@@ -37,6 +41,7 @@ public static class SimulationRunner
             placements[id] = placement;
             brains[id] = new(definition);
             combat.Add(new(id, false, placement.InitialTurn, placement.Initiative, placement.Team, Row(placement.Slot)));
+            resolver.Add(new(id, false, placement.Team, health[id], brains[id].Loadout, placement.Slot), definition.StatusEffects);
         }
         combat.IsCombatantAlive = id => health.TryGetValue(id, out var receiver) && receiver.Health > 0;
         foreach (var (id, receiver) in health)
@@ -46,17 +51,17 @@ public static class SimulationRunner
             if (receiver.Health == 0) combat.Remove(id);
         }
         combat.VictoryConditions = scenario.BuildVictoryConditions();
-        combat.DefeatConditions = scenario.DefeatConditions.ToArray();
+        combat.DefeatConditions = scenario.BuildDefeatConditions();
         foreach (var occurrence in scenario.Events)
-            combat.ScheduleEvent(occurrence.Turn, occurrence.Label, occurrence.Resolve, occurrence.Priority,
+            combat.ScheduleEvent(occurrence.Turn, occurrence.Label, _ => resolver.ResolveCommitted(occurrence.Action, occurrence.SourceId, [occurrence.RecipientId]), occurrence.Priority,
                 occurrence.Icon, occurrence.IsVisible, occurrence.PresentationKey);
 
         CommandTarget Target(string id)
         {
-            var occupied = placements.Where(pair => pair.Value.Team == CombatTeam.Enemies && combat.IsAlive(pair.Key))
-                .Select(pair => Row(pair.Value.Slot)).ToHashSet();
-            var placement = placements[id];
-            return new(combat.Contains(id), combat.IsAlive(id), placement.Team, Row(placement.Slot),
+            var occupied = resolver.Characters.Values.Where(character => character.Team == CombatTeam.Enemies && combat.IsAlive(character.Id) && character.Position is not null)
+                .Select(character => Row(character.Position!.Value)).ToHashSet();
+            var placement = resolver.Characters[id];
+            return new(combat.Contains(id), combat.IsAlive(id), placement.Team, Row(placement.Position!.Value),
                 occupied.Contains(CombatRow.Front), occupied.Contains(CombatRow.Middle));
         }
 
@@ -75,21 +80,30 @@ public static class SimulationRunner
             if (!actor.PlayerControlled)
             {
                 var brain = brains[actor.Id];
-                var attack = brain.Select(random);
+                var attack = brain.Select(random, action => resolver.Allows(actor.Id, action));
+                if (attack.Effects is not null)
+                {
+                    if (resolver.CanCommit(actor.Id, attack, "player")) resolver.Commit(actor.Id, attack, "player");
+                    else combat.SubmitAutomaticAction(new(1, (_, _) => { }));
+                    continue;
+                }
                 combat.SubmitAutomaticAction(new(attack.TurnCost, (_, _) =>
                 {
                     // Matches Prelude: allied placements currently consume turns without attacking.
                     if (actor.Team == CombatTeam.Enemies)
                     {
                         brain.Apply(attack);
-                        DamageResolver.Apply(health["player"], attack.Damage);
+                        resolver.ResolveCommitted(attack, actor.Id, ["player"]);
                     }
                 }));
                 continue;
             }
             var loadout = state.Loadout;
             var choices = new List<Action>();
-            foreach (var command in loadout.Abilities.Concat([CombatLoadout.LeftHandStrike, CombatLoadout.RightHandStrike, CombatLoadout.Wait]).Distinct())
+            foreach (var action in loadout.Actions.Values)
+                foreach (var id in resolver.Characters.Keys.Where(id => resolver.CanCommit("player", action, id)))
+                    choices.Add(() => resolver.Commit("player", action, id));
+            foreach (var command in loadout.Commands.Where(command => !loadout.Actions.ContainsKey(command.Id.Value)).Concat([CombatLoadout.LeftHandStrike, CombatLoadout.RightHandStrike, CombatLoadout.Wait]).Distinct())
             {
                 if (!command.RequiresTarget)
                 {
@@ -99,11 +113,11 @@ public static class SimulationRunner
                 }
                 foreach (var id in placements.Keys.Where(id => loadout.CanConfirm(combat, "player", command, loadout.ValidTarget(command, Target(id)))))
                     choices.Add(() => loadout.Confirm(combat, "player", command, () => Target(id), () => { },
-                        strike => DamageResolver.Apply(health[id], strike.DamagePoints)));
+                        strike => resolver.ResolveDamage("player", id, command.Id.Value, strike.DamagePoints)));
             }
             foreach (var option in loadout.ThrowOptions())
                 foreach (var id in placements.Keys.Where(id => loadout.CanConfirm(combat, "player", CombatLoadout.Throw, loadout.ValidTarget(CombatLoadout.Throw, Target(id)))))
-                    choices.Add(() => { loadout.PrepareThrow(option.Item.Id.Value); loadout.ConfirmPreparedThrow(combat, "player", () => Target(id), damage => DamageResolver.Apply(health[id], damage)); });
+                    choices.Add(() => { loadout.PrepareThrow(option.Item.Id.Value); loadout.ConfirmPreparedThrow(combat, "player", () => Target(id), damage => resolver.ResolveDamage("player", id, "Throw", damage)); });
             var layout = loadout.BeginItemLayout();
             foreach (var source in layout.Keys)
                 foreach (var destination in CombatLoadout.EquipmentSlots.Concat(Enumerable.Range(0, CombatLoadout.InventoryCapacity).Select(CombatLoadout.InventorySlot)))

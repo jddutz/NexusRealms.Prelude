@@ -11,7 +11,7 @@ public sealed record ItemData
     public string? Icon => ItemIconVariants.Select(Icons, IconIndex);
     public AmmunitionType? Ammunition { get; init; }
     public WeaponData? Weapon { get; init; }
-    public NexusRealms.Prelude.Combat.DamageProfile? ThrowDamage { get; init; }
+    public DamageProfile? ThrowDamage { get; init; }
 }
 
 public static class ItemIconVariants

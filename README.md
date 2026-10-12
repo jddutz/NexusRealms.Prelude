@@ -2,6 +2,17 @@
 
 Prelude is a game built to exercise the Nexus game engine. It is a classic 2D RPG, with a dialogue-driven storyline and simple combat mechanics.
 
+Authored combat definitions belong to `DataModel`: character action capabilities,
+progression abilities, `TargetingProfile`, typed effects, items, and status definitions.
+Runtime resolution in `Actions` uses the existing health, loadout, and scheduler owners.
+Abilities unlock action classes subject to their item and equipment requirements;
+learning an ability and selecting an action are separate operations. See
+[action authoring](docs/Action-Effects.md) for composition and lifetime rules.
+
+The headless `Prelude/Simulator` uses the same action resolver. Mutable `GameState`
+lives in the Prelude runtime; scenario objectives and events remain data definitions
+and are converted into runtime behavior by adapters.
+
 Story graphs implementing `IStoryGraph` in `Prelude.Database.Chapter*` namespaces are discovered automatically; their characters and nodes are validated and registered by ID at runtime. The loaded story database uses immutable graph data and frozen lookup dictionaries, while chapter definitions remain authored in C#.
 
 Combat characters are world-space `GameObject2D` entities. Each character owns its

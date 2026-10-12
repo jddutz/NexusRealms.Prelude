@@ -12,7 +12,7 @@ Runs default to 1. Each run reconstructs a fresh GameState and encounter. The sa
 textures, or graphics device are created. The project references Prelude to reuse
 its gameplay code; graphics assemblies remain transitive build dependencies.
 
-State JSON accepts `health`, `focus`, `statusEffects`, and `allowEscape` (default
+State JSON accepts `health`, `focus`, `statusEffects`, `learnedAbilities`, and `allowEscape` (default
 false). Omit `items` and `itemLayout` to use Prelude's starting sword. Supply both
 as empty collections for an unarmed player. Custom `items` use Prelude's
 CarriedItem JSON representation (IDs are objects such as `{ "value": "sword" }`);
@@ -23,8 +23,10 @@ Player decisions sample uniformly from legal command/target combinations, throw
 item/target combinations, equipment moves, reloads, and optionally escape. This
 is a random baseline, not optimal play; option counts influence its behavior.
 AI uses Prelude's EnemyActionState selection and ammunition rules. Allies match
-the current game behavior: they consume turns without attacking. Status effects
-and ability presentation placeholders gain no new mechanics in the simulator.
+the current game behavior for legacy attacks: they consume turns without attacking.
+Explicit typed action definitions use the shared resolver for every team.
+Status identifiers expand into independent runtime instances, with behavior
+declared by their definitions. Presentation placeholders have no implicit mechanics.
 
 Turn means the fractional combat timeline, not the number of actions. At Turn
 100 the encounter is a draw, before any occurrence at or beyond 100 resolves.

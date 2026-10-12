@@ -3,21 +3,28 @@ using NexusRealms.Prelude.Combat;
 namespace NexusRealms.Prelude;
 
 /// <summary>Per-encounter inventory and action selection, using shared player weapon definitions.</summary>
-public sealed class EnemyActionState(CharacterData definition)
+public sealed class EnemyActionState
 {
-    private readonly List<CarriedItem> _items = definition.Items.ToList();
-    private readonly Dictionary<ItemId, int> _shots = [];
+    /// <summary>Creates AI decisions over the same loadout used by action effects.</summary>
+    public EnemyActionState(CharacterData definition, CombatLoadout? loadout = null)
+    {
+        Loadout = loadout ?? CombatLoadout.FromCharacter(definition);
+    }
+    /// <summary>Shared resource and inventory state for AI and action effects.</summary>
+    public CombatLoadout Loadout { get; }
+    /// <summary>Current owned item records.</summary>
+    private List<CarriedItem> _items => Loadout.Items;
     public IReadOnlyList<CarriedItem> Items => _items;
 
     public int ShotsRemaining(CarriedItem item) =>
-        _shots.GetValueOrDefault(item.Id, item.Weapon?.Shots ?? 0);
+        Loadout.ShotsRemaining(item);
 
-    public ActionData Select(Random random)
+    public ActionData Select(Random random, Func<ActionData, bool>? allowed = null)
     {
-        var choices = definition
-            .Attacks.Where(action =>
+        var choices = Loadout.Actions.Values
+            .Where(action => Loadout.MeetsRequirements(action) && (allowed?.Invoke(action) ?? true) && (
                 action.ItemId is null
-                || _items.Any(item => item.Id == action.ItemId && item.Quantity > 0)
+                || _items.Any(item => item.Id == action.ItemId && item.Quantity > 0))
             )
             .ToArray();
         if (choices.Length == 0)
@@ -73,21 +80,18 @@ public sealed class EnemyActionState(CharacterData definition)
                 ammo.Ammunition == weapon.Ammunition && ammo.Quantity > 0
             );
             Consume(ammo);
-            _shots[id] = weapon.Shots;
+            Loadout.SetWeaponShots(id, weapon.Shots);
         }
         else
         {
             if (ShotsRemaining(item) == 0)
                 throw new InvalidOperationException("Enemy weapon is empty.");
-            _shots[id] = ShotsRemaining(item) - 1;
+            Loadout.SetWeaponShots(id, ShotsRemaining(item) - 1);
         }
     }
 
     private void Consume(CarriedItem item)
     {
-        if (item.Quantity <= 1)
-            _items.Remove(item);
-        else
-            _items[_items.IndexOf(item)] = item with { Quantity = item.Quantity - 1 };
+        Loadout.ConsumeItem(item.Id, 1);
     }
 }

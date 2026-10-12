@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="TargetSelectionChecks" />
     <Compile Remove="Simulator\**\*.cs" />
     <EmbeddedResource Remove="Simulator\**\*" />
     <None Remove="Simulator\**\*" />

@@ -14,7 +14,8 @@ public sealed class Character : GameObject2D
     private ITexture? _invalidIndicator;
     private byte[]? _hitPixels;
     public Combat.DamageReceiver DamageReceiver { get; }
-    private int _focus;
+    /// <summary>Shared mutable inventory, equipment, capabilities, and Focus.</summary>
+    public Combat.CombatLoadout Loadout { get; }
     public event Action<Character>? ResourcesChanged;
     public int Health
     {
@@ -23,14 +24,8 @@ public sealed class Character : GameObject2D
     }
     public int Focus
     {
-        get => _focus;
-        set
-        {
-            ArgumentOutOfRangeException.ThrowIfNegative(value);
-            if (_focus == value) return;
-            _focus = value;
-            ResourcesChanged?.Invoke(this);
-        }
+        get => Loadout.Focus;
+        set => Loadout.Focus = value;
     }
     public bool IsFocused { get; private set; }
     public bool IsValidTarget { get; private set; }
@@ -176,6 +171,8 @@ public sealed class Character : GameObject2D
         ArgumentNullException.ThrowIfNull(shadowTexture);
 
         Definition = definition;
+        Loadout = Combat.CombatLoadout.FromCharacter(definition);
+        Loadout.FocusChanged += () => ResourcesChanged?.Invoke(this);
         DamageReceiver = new(definition.Health);
         DamageReceiver.HealthChanged += () => ResourcesChanged?.Invoke(this);
         DamageReceiver.DamageTaken += ShowDamage;

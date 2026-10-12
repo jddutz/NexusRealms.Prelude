@@ -14,7 +14,7 @@ public sealed record Part1 : StoryGraph
         Artwork = new("characters.alley_thug_1.png"),
         Portrait = new("portraits.alley_thug_1.png"),
         Items = [Combat.WeaponCatalog.Create(Combat.WeaponType.Clubs, "thug-club", "Club", "Right hand")],
-        Attacks = [new() { ItemId = new("thug-club") }],
+        Attacks = [new WeaponAttackAction("club-attack", "thug-club")],
     };
 
     public static readonly CharacterData AlleywayThug2 = new()
@@ -28,7 +28,7 @@ public sealed record Part1 : StoryGraph
             Combat.WeaponCatalog.Create(Combat.WeaponType.Pistol, "thug-pistol", "Pistol", "Right hand"),
             Combat.WeaponCatalog.CreateAmmunition(AmmunitionType.Bullet, "thug-bullets", 6),
         ],
-        Attacks = [new() { ItemId = new("thug-pistol"), ReloadAnimation = "Reload" }],
+        Attacks = [new WeaponAttackAction("pistol-attack", "thug-pistol") { ReloadAnimation = "Reload" }],
     };
 
     public static readonly CharacterData AlleywayThug3 = new()
@@ -38,7 +38,7 @@ public sealed record Part1 : StoryGraph
         Artwork = new("characters.alley_thug_3.png"),
         Portrait = new("portraits.alley_thug_3.png"),
         Items = [Combat.WeaponCatalog.Create(Combat.WeaponType.Rock, "thug-rocks", "Rock", "Right hand") with { Quantity = 3 }],
-        Attacks = [new() { ItemId = new("thug-rocks"), Throw = true }],
+        Attacks = [new ThrowItemAction("rock-throw", "thug-rocks")],
     };
 
     public static readonly StoryNode Intro = new CombatScenario
@@ -48,7 +48,7 @@ public sealed record Part1 : StoryGraph
         DefeatNode = $"{SubgraphId}_{nameof(Defeat)}",
         EscapeNode = $"{SubgraphId}_{nameof(Escape)}",
         VictoryConditions = [],
-        DefeatConditions = [Combat.CombatConditions.PlayerDefeated],
+        DefeatConditions = [new(CombatConditionKind.PlayerDefeated)],
         Background = new("background.harbor_district_dockside_dusk.png"),
         Characters =
         [

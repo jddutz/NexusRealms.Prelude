@@ -165,5 +165,27 @@ public sealed class Storyline
 
         Characters = characters.ToFrozenDictionary();
         Nodes = nodes.ToFrozenDictionary();
+        foreach (var status in StatusEffects.Values) ActionValidation.ValidateStatus(status);
+        foreach (var character in Characters.Values)
+        {
+            _ = Combat.CombatLoadout.FromCharacter(character);
+            foreach (var action in character.AvailableActions) ActionValidation.Validate(action, StatusEffects);
+            foreach (var id in character.StatusEffects)
+                if (!StatusEffects.ContainsKey(id)) throw new InvalidOperationException($"Character '{character.Id}' references unknown status '{id}'.");
+        }
+        foreach (var ability in Abilities.Values)
+            foreach (var action in ability.Actions) ActionValidation.Validate(action, StatusEffects);
+        foreach (var scenario in Nodes.Values.OfType<CombatScenario>())
+        {
+            _ = scenario.BuildVictoryConditions();
+            _ = scenario.BuildDefeatConditions();
+            foreach (var occurrence in scenario.Events)
+            {
+                if (!float.IsFinite(occurrence.Turn) || occurrence.Turn < 0) throw new ArgumentException("Invalid authored event Turn.");
+                var recipients = Enumerable.Range(0, scenario.Characters.Length).Select(index => $"encounter-{index}").Append("player").ToHashSet();
+                if (!recipients.Contains(occurrence.SourceId) || !recipients.Contains(occurrence.RecipientId)) throw new ArgumentException("Authored event references an unresolved character.");
+                ActionValidation.Validate(occurrence.Action, StatusEffects);
+            }
+        }
     }
 }

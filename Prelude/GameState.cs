@@ -1,10 +1,10 @@
-namespace NexusRealms.Prelude.DataModel;
+namespace NexusRealms.Prelude;
 
-public record GameState
+public sealed class GameState
 {
     public GameState(StoryNodeId currentStoryNodeId) => CurrentStoryNodeId = currentStoryNodeId;
     public StoryNodeId CurrentStoryNodeId { get; set; }
-    public Combat.CombatOutcome? LastCombatOutcome { get; set; }
+    public CombatOutcome? LastCombatOutcome { get; set; }
     /// <summary>Gets the player's portrait texture.</summary>
     public ContentId Portrait { get; init; } = new("portraits.mercenary_male.png");
     public Combat.CombatLoadout Loadout { get; init; } = Combat.CombatLoadout.CreatePlayerLoadout();
