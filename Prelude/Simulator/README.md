@@ -32,19 +32,18 @@ Runs default to 1. Each run reconstructs a fresh GameState and encounter. The sa
 textures, or graphics device are created. The project references Prelude to reuse
 its gameplay code; graphics assemblies remain transitive build dependencies.
 
-State JSON accepts `health`, `focus`, `statusEffects`, `learnedAbilities`, and `allowEscape` (default
-false). Omit `items` and `itemLayout` to use Prelude's starting sword and stack of five rocks. Supply both
-as empty collections for an unarmed player. Custom `items` use Prelude's
+State JSON accepts `health`, `focus`, `statusEffects`, `learnedAbilities`, `allowEscape` (default
+false), and `playerStrategy` (default `Aggressive`). Omit `items` and `itemLayout` to use Prelude's
+starting sword and stack of five rocks. Supply both as empty collections for an unarmed player. Custom `items` use Prelude's
 CarriedItem JSON representation (IDs are objects such as `{ "value": "sword" }`);
 `itemLayout` maps equipment names or `Inventory:0` through `Inventory:19` to item
 ID strings. Invalid layouts and unknown JSON properties are rejected.
 
-Player decisions sample uniformly from legal command/target combinations, throw
-item/target combinations, equipment moves, reloads, and optionally escape. This
-is a random baseline, not optimal play; option counts influence its behavior.
-AI uses Prelude's EnemyActionState selection and ammunition rules. Allies match
-the current game behavior for legacy attacks: they consume turns without attacking.
-Explicit typed action definitions use the shared resolver for every team.
+Player and enemy decisions use Prelude's configured strategy policies and complete
+legal action candidates. The default player policy is deterministic `Aggressive`;
+set `playerStrategy` to another `StrategyAssignment` to compare policies. Allies
+match the current game behavior for legacy attacks: they consume turns without
+attacking. Explicit typed action definitions use the shared resolver for every team.
 Status identifiers expand into independent runtime instances, with behavior
 declared by their definitions. Presentation placeholders have no implicit mechanics.
 
@@ -55,10 +54,15 @@ action semantics. Victory or defeat before the boundary takes precedence.
 Malformed encounters that exhaust an operation budget fail explicitly.
 
 The base seed is printed; run N uses base seed + N (starting at zero). Use the
-same state, seed, code, and runtime to replay results. Output includes outcome
-counts, percentages, mean ending turn and health; optional JSON records each
-run's seed, outcome, ending turn, health, and operation count. These statistics
-support balance assessment but do not automatically determine good design.
+same state, seed, code, and runtime to replay results. The console report includes
+player strategy by outcome and victory rate, deciding action by outcome, player
+action totals/averages and use-count distributions, plus a strategy x enemy
+configuration x deciding-action cross-tab. A deciding action is the resolution
+that reaches a terminal condition; turn-limit draws and initial terminal states
+have no deciding action. These are associations, not causal explanations.
+Optional JSON records each run's outcome, strategy, enemy configuration, terminal
+condition, deciding action/source, action-use counts, ending turn, health, and
+operation count.
 
 Validation:
 

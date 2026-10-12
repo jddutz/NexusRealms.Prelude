@@ -9,16 +9,51 @@ public sealed class CombatActionResolver
     private readonly Dictionary<string, ActionCharacterState> _characters = new(StringComparer.Ordinal);
     private readonly Dictionary<StatusEffectId, StatusEffectData> _statuses;
     private long _statusSequence;
+    internal long NextApplicationSequence() => ++_statusSequence;
+    internal long ApplicationSequence => _statusSequence;
+    internal void RestoreApplicationSequence(long sequence) => _statusSequence = Math.Max(_statusSequence, sequence);
+    private IReadOnlyDictionary<string, CharacterData> _definitions = new Dictionary<string, CharacterData>();
     /// <summary>Creates a resolver and validates every registered persistent definition.</summary>
     public CombatActionResolver(CombatSystem combat, IReadOnlyDictionary<StatusEffectId, StatusEffectData> statuses)
     {
         Combat = combat;
+        combat.Resolver = this;
         _statuses = statuses.ToDictionary();
         foreach (var definition in _statuses.Values) ActionValidation.ValidateStatus(definition);
         combat.TurnStarted += OnTurnStarted;
+        Behavior = new(this);
     }
     /// <summary>The shared encounter scheduler.</summary>
     public CombatSystem Combat { get; }
+    public EncounterBehavior Behavior { get; }
+    public DecisionTrace? LastDecision { get; internal set; }
+    public bool CaptureCandidateTraces { get; set; } = true;
+    public bool AllowEscape { get; init; }
+    public void ConfigureCharacters(IReadOnlyDictionary<string, CharacterData> definitions)
+    {
+        _definitions = definitions.ToImmutableDictionary(StringComparer.Ordinal);
+        foreach (var (id, definition) in definitions.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+            Behavior.Assign(id, BindAssignment(id, definition.Strategy));
+        foreach (var (id, definition) in definitions.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+            foreach (var transition in definition.StrategyTransitions)
+                Behavior.AddTransition(id, transition with { Destination = BindAssignment(id, transition.Destination),
+                    Actors = transition.Actors.Select(reference => BindReference(id, reference)).ToImmutableArray(),
+                    Condition = transition.Condition with { SubjectId = BindReference(id, transition.Condition.SubjectId) } });
+        // Validate all capabilities, grants, and preview support before starting the encounter.
+        foreach (var action in ActionCatalog.Values) ValidateContext(action);
+        if (_characters.Values.Any(character => character.Loadout.Commands.Any(command => command.Resolve is not null)))
+            throw new ArgumentException("AI cannot simulate opaque command callbacks; author typed effects instead.");
+        _ = CopyForSimulation();
+    }
+    internal StrategyAssignment BindAssignment(string actorId, StrategyAssignment assignment) => assignment with
+        { ProtectedIds = assignment.ProtectedIds?.Select(reference => BindReference(actorId, reference)).ToArray() };
+    private string BindReference(string actorId, string reference)
+    {
+        if (reference == "$self") return actorId;
+        if (_characters.ContainsKey(reference)) return reference;
+        var matches = _definitions.Where(pair => pair.Value.Id.Value == reference).Select(pair => pair.Key).ToArray();
+        return matches.Length == 1 ? matches[0] : throw new ArgumentException($"Character reference '{reference}' is unknown or ambiguous; use an explicit group selector for duplicates.");
+    }
     /// <summary>Registered runtime characters; state is never copied into a second inventory.</summary>
     public IReadOnlyDictionary<string, ActionCharacterState> Characters => _characters;
     /// <summary>Resolved capabilities available to Grant and progression unlocks.</summary>
@@ -41,7 +76,7 @@ public sealed class CombatActionResolver
         character.Loadout.CommandAllowed = command => Allows(character.Id, character.Loadout.Actions.GetValueOrDefault(command.Id.Value) ?? new ActionData
         {
             Id = command.Id.Value,
-            Classifications = command.Hand is not null || command == CombatLoadout.Throw ? ["weapon"] : [],
+            Classifications = command.Hand is not null || command == CombatLoadout.Throw ? ["weapon"] : command.Classifications.IsDefault ? [] : command.Classifications,
         });
         foreach (var action in character.Loadout.Actions.Values) { Register(action); character.Loadout.AddActionCommand(action); }
         foreach (var id in initial) ApplyStatus(character, id, character.Id, _statuses[id].Persistence);
@@ -83,6 +118,15 @@ public sealed class CombatActionResolver
             || Combat.IsResolving || Combat.ActiveCombatant?.Id != sourceId || !source.Loadout.Actions.TryGetValue(action.Id, out var capability) || capability != action
             || !source.Loadout.MeetsRequirements(action) || Restricted(source, action)) return false;
         if (action.Costs.GroupBy(cost => cost.Subject).Any(group => Available(source, group.Key) < group.Sum(cost => (long)cost.Amount))) return false;
+        if (action.Effects is null && action.ItemId is not null)
+        {
+            var prepared = new EnemyActionState(source.Loadout).Prepare(action);
+            if (prepared is null) return false;
+            if (prepared.Reload) return true;
+            var hand = Enum.GetValues<StrikeHand>().FirstOrDefault(hand => source.Loadout.HeldItem(hand)?.Id == prepared.ItemId);
+            if (!prepared.Throw && !source.Loadout.ValidTarget(hand == StrikeHand.Left ? CombatLoadout.LeftHandStrike : CombatLoadout.RightHandStrike,
+                CandidateGeneration.Target(this, sourceId, targetId))) return false;
+        }
         var recipients = action.Targeting.Select(this, sourceId, targetId);
         if (recipients.Length == 0) return false;
         if (action.BuildEffects().OfType<MoveEffect>().Any(effect =>
@@ -93,6 +137,12 @@ public sealed class CombatActionResolver
     /// <summary>Commits a class-based action atomically; invalid actions pay no costs.</summary>
     public ActionOutcome Commit(string sourceId, ActionData action, string? targetId)
     {
+        if (action.Effects is null && action.ItemId is not null)
+        {
+            var prepared = new EnemyActionState(_characters[sourceId].Loadout).Prepare(action)
+                ?? throw new InvalidOperationException("Owned legacy weapon or ammunition unavailable.");
+            return Commit(sourceId, new ActionCandidate(prepared, targetId) { Kind = CandidateKind.LegacyWeapon, ItemId = action.ItemId.Value.Value });
+        }
         if (!CanCommit(sourceId, action, targetId)) throw new InvalidOperationException("Action is unavailable for the current state.");
         var source = _characters[sourceId];
         ActionOutcome? outcome = null;
@@ -106,6 +156,151 @@ public sealed class CombatActionResolver
         if (Combat.ActiveCombatant!.PlayerControlled) Combat.SubmitAction(operation);
         else Combat.SubmitAutomaticAction(operation);
         return outcome ?? throw new InvalidOperationException("Committed action did not resolve.");
+    }
+
+    /// <summary>Clones all mutable combat owners and rebinds simulation-safe scheduled effects.</summary>
+    public CombatActionResolver CopyForSimulation()
+    {
+        var copy = new CombatActionResolver(Combat.CopyForPreview(), _statuses) { _statusSequence = _statusSequence,
+            AllowEscape = AllowEscape, CaptureCandidateTraces = CaptureCandidateTraces, _definitions = _definitions };
+        foreach (var original in _characters.Values)
+        {
+            var character = new ActionCharacterState(original.Id, original.IsPlayer, original.Team,
+                new DamageReceiver(original.Health.Health), original.Loadout.CopyForPreview(), original.Position)
+            { MaximumHealth = original.MaximumHealth, Rules = original.Rules.ToArray(), TurnsStarted = original.TurnsStarted };
+            copy.Add(character);
+            character.ActiveStatuses.AddRange(original.ActiveStatuses.Select(status => status.CopyForPreview()));
+            character.Health.DamageTaken += result => { if (result.IsLethal) copy.Combat.Remove(character.Id); };
+        }
+        copy.Combat.IsCombatantAlive = id => copy._characters[id].Health.Health > 0;
+        copy.ActionCatalog.Clear();
+        foreach (var pair in ActionCatalog) copy.ActionCatalog.Add(pair.Key, pair.Value);
+        Behavior.CopyTo(copy.Behavior);
+        return copy;
+    }
+
+    /// <summary>Executes ordinary commitment, including scheduling and terminal objectives, without pumping future occurrences.</summary>
+    public ActionPreview Preview(string sourceId, ActionData action, string? targetId) => Preview(sourceId, new ActionCandidate(action, targetId));
+    public ActionPreview Preview(string sourceId, ActionCandidate candidate)
+    {
+        var copy = CopyForSimulation();
+        var outcome = copy.Commit(sourceId, candidate);
+        return ActionPreview.Capture(outcome, copy);
+    }
+
+    /// <summary>Schedules authored effects with mutable state resolved from the supplied simulation.</summary>
+    public long ScheduleEvent(EncounterEventData occurrence)
+    {
+        if (!occurrence.KnownToAi) throw new ArgumentException("Unrevealed encounter events require an observation-based simulation view; fully visible AI cannot preview them.");
+        ValidateContext(occurrence.Action);
+        if (!_characters.ContainsKey(occurrence.SourceId) || !_characters.ContainsKey(occurrence.RecipientId))
+            throw new ArgumentException("Unknown authored event source or recipient.");
+        return Combat.ScheduleSimulationEvent(occurrence.Turn, occurrence.Label,
+            system => system.Resolver!.ResolveCommitted(occurrence.Action, occurrence.SourceId, [occurrence.RecipientId]),
+            occurrence.Priority, occurrence.Icon, occurrence.IsVisible, occurrence.PresentationKey);
+    }
+
+    public bool CanCommit(string sourceId, ActionCandidate candidate)
+    {
+        if (!_characters.TryGetValue(sourceId, out var source) || Combat.HasEnded || Combat.IsResolving
+            || Combat.ActiveCombatant?.Id != sourceId || !Combat.IsAlive(sourceId)) return false;
+        switch (candidate.Kind)
+        {
+            case CandidateKind.Escape: return source.IsPlayer && AllowEscape && !Combat.IsEscaping;
+            case CandidateKind.Capability: return CanCommit(sourceId, candidate.Action, candidate.TargetId);
+            case CandidateKind.LegacyWeapon:
+                if (!source.Loadout.Actions.TryGetValue(candidate.Action.Id, out var original)) return false;
+                var prepared = new EnemyActionState(source.Loadout).Prepare(original);
+                if (prepared is null || prepared.ItemId?.Value != candidate.ItemId || prepared.Reload != candidate.Action.Reload
+                    || prepared.TurnCost != candidate.Action.TurnCost || !prepared.BuildEffects().SequenceEqual(candidate.Action.BuildEffects())
+                    || !Allows(sourceId, original)) return false;
+                return CanCommit(sourceId, original, candidate.TargetId);
+            case CandidateKind.ItemLayout:
+                return source.Loadout.CanCommitItemLayout(Combat, sourceId, candidate.Layout, candidate.Reloads);
+            case CandidateKind.Command:
+                var command = source.Loadout.Find(candidate.Action.Id);
+                return command is not null && command.Resolve is null && source.Loadout.CanConfirm(Combat, sourceId, command,
+                    source.Loadout.ValidTarget(command, CandidateGeneration.Target(this, sourceId, candidate.TargetId)))
+                    && (command.Hand is not { } hand || source.Loadout.HeldItem(hand)?.Id.Value == candidate.ItemId);
+            case CandidateKind.Throw:
+                return source.Loadout.ThrowOptions().Any(option => option.Item.Id.Value == candidate.ItemId)
+                    && source.Loadout.CanConfirm(Combat, sourceId, CombatLoadout.Throw,
+                        source.Loadout.ValidTarget(CombatLoadout.Throw, CandidateGeneration.Target(this, sourceId, candidate.TargetId)));
+            default: throw new ArgumentException("Unknown candidate kind.");
+        }
+    }
+
+    internal string ExplainUnavailable(string sourceId, ActionCandidate candidate)
+    {
+        if (Combat.HasEnded) return "Encounter has ended.";
+        if (Combat.ActiveCombatant?.Id != sourceId || Combat.IsResolving) return "Actor has no pending decision boundary.";
+        var source = _characters[sourceId];
+        if (!Combat.IsAlive(sourceId)) return "Actor is incapacitated or unscheduled.";
+        if (Restricted(source, candidate.Action)) return "An active restriction matches this action.";
+        if (!source.Loadout.MeetsRequirements(candidate.Action)) return "Progression, ownership or equipment prerequisites are unmet.";
+        foreach (var group in candidate.Action.Costs.GroupBy(cost => cost.Subject))
+            if (Available(source, group.Key) < group.Sum(cost => (long)cost.Amount)) return $"Insufficient quantity for {group.Key}.";
+        if (candidate.Kind == CandidateKind.ItemLayout) return "Inventory layout, reload ammunition, capacity or equipment rules reject this transaction.";
+        if (candidate.Kind == CandidateKind.Throw) return "Selected item cannot be thrown with the current hands, ownership or target.";
+        if (candidate.Kind == CandidateKind.Command && !source.Loadout.BasicCommands) return "Basic command is not part of this character's repertoire.";
+        if (candidate.TargetId is { } target && !Combat.IsAlive(target)) return "Selected recipient or anchor is incapacitated or unscheduled.";
+        return "Selected recipient, anchor, range, hand or capability fails ordinary commitment validation.";
+    }
+
+    public ActionOutcome Commit(string sourceId, ActionCandidate candidate)
+    {
+        if (!CanCommit(sourceId, candidate)) throw new InvalidOperationException("Stale or invalid AI candidate; no costs paid.");
+        if (candidate.Kind == CandidateKind.Capability) return Commit(sourceId, candidate.Action, candidate.TargetId);
+        var source = _characters[sourceId];
+        ActionOutcome? outcome = null;
+        void EmptyOutcome() { outcome = new(candidate.Action, sourceId, [], []); Resolved?.Invoke(outcome); }
+        switch (candidate.Kind)
+        {
+            case CandidateKind.Escape:
+                if (!Combat.RequestEscape(sourceId)) throw new InvalidOperationException("Escape invalidated before commitment.");
+                outcome = new(candidate.Action, sourceId, [], []);
+                break;
+            case CandidateKind.LegacyWeapon:
+                var original = source.Loadout.Actions[candidate.Action.Id];
+                var prepared = new EnemyActionState(source.Loadout).Prepare(original)!;
+                var operation = new CombatAction(prepared.TurnCost, (_, _) =>
+                {
+                    foreach (var cost in original.Costs) Consume(source, cost.Subject, cost.Amount);
+                    new EnemyActionState(source.Loadout).Apply(prepared);
+                    outcome = ResolveCommitted(prepared, sourceId, prepared.Reload ? [sourceId] : original.Targeting.Select(this, sourceId, candidate.TargetId));
+                });
+                if (Combat.ActiveCombatant!.PlayerControlled) Combat.SubmitAction(operation); else Combat.SubmitAutomaticAction(operation);
+                break;
+            case CandidateKind.Command:
+                var command = source.Loadout.Find(candidate.Action.Id)!;
+                if (!source.Loadout.Confirm(Combat, sourceId, command,
+                    () => CandidateGeneration.Target(this, sourceId, candidate.TargetId),
+                    () => { if (outcome is null) EmptyOutcome(); },
+                    strike => outcome = ResolveDamage(sourceId, candidate.TargetId!, command.Id.Value, strike.DamagePoints, AttackImpact.ForStrike(strike))))
+                    throw new InvalidOperationException("Command invalidated before commitment.");
+                break;
+            case CandidateKind.Throw:
+                var thrownItem = source.Loadout.Items.Single(item => item.Id.Value == candidate.ItemId);
+                source.Loadout.PrepareThrow(candidate.ItemId!);
+                if (!source.Loadout.ConfirmPreparedThrow(Combat, sourceId, () => CandidateGeneration.Target(this, sourceId, candidate.TargetId),
+                    damage => outcome = ResolveDamage(sourceId, candidate.TargetId!, "Throw", damage, AttackImpact.ForThrow(thrownItem))))
+                    throw new InvalidOperationException("Throw invalidated before commitment.");
+                break;
+            case CandidateKind.ItemLayout:
+                // Equipment commitment has no effects; its inventory/resource changes remain in the resulting state.
+                if (!source.Loadout.CommitItemLayout(Combat, sourceId, candidate.Layout.ToDictionary(), candidate.Reloads))
+                    throw new InvalidOperationException("Item layout invalidated before commitment.");
+                outcome = new(candidate.Action, sourceId, [], []);
+                break;
+        }
+        return outcome ?? throw new InvalidOperationException("Candidate did not resolve.");
+    }
+
+    internal ActionOutcome RecordEmptyAction(string sourceId, string actionId, float turnCost)
+    {
+        var outcome = new ActionOutcome(new ActionData { Id = actionId, TurnCost = turnCost, Damage = new DamageProfile() }, sourceId, [], []);
+        Resolved?.Invoke(outcome);
+        return outcome;
     }
 
     /// <summary>Resolves effects of an already committed action, adapting existing attack playback without charging its costs again.</summary>
@@ -320,11 +515,17 @@ public sealed class CombatActionResolver
         if (duplicates.Length > 0 && definition.Duplicates == DuplicateStatusRule.Reject) return false;
         if (definition.Duplicates is DuplicateStatusRule.Refresh or DuplicateStatusRule.Replace)
             foreach (var existing in duplicates) recipient.ActiveStatuses.Remove(existing);
-        var sequence = definition.Duplicates == DuplicateStatusRule.Refresh && duplicates.Length > 0 ? duplicates[0].Sequence : ++_statusSequence;
+        var application = NextApplicationSequence();
+        var sequence = definition.Duplicates == DuplicateStatusRule.Refresh && duplicates.Length > 0 ? duplicates[0].Sequence : application;
         var status = new ActiveStatus(sequence, definition, source, persistence, Combat.Timeline.CurrentTurn, recipient.TurnsStarted);
+        status.ApplicationSequence = application;
         recipient.ActiveStatuses.Add(status);
         if (status.ExpiresAt is { } expiration && !Combat.HasEnded)
-            Combat.ScheduleEvent(expiration, $"Expire {id}", _ => recipient.ActiveStatuses.Remove(status), isVisible: false);
+        {
+            var recipientId = recipient.Id;
+            Combat.ScheduleSimulationEvent(expiration, $"Expire {id}",
+                system => system.Resolver!._characters[recipientId].ActiveStatuses.RemoveAll(instance => instance.ApplicationSequence == application), isVisible: false);
+        }
         return true;
     }
 

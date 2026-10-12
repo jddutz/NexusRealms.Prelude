@@ -26,6 +26,13 @@ public sealed record CharacterData
     /// <summary>Returns this character's capabilities, including compatibility attacks.</summary>
     public IReadOnlyList<ActionData> AvailableActions => Actions ?? Attacks;
     public int Focus { get; init; } = 2;
+    /// <summary>Explicitly add basic hand, Throw, and Wait commands to this character's authored actions.</summary>
+    public bool BasicCommands { get; init; }
+
+    /// <summary>This character's reusable decision policy, independent of scenario placement.</summary>
+    public StrategyAssignment Strategy { get; init; } = new();
+    /// <summary>Character-owned conditions for changing its runtime policy.</summary>
+    public ImmutableArray<StrategyTransition> StrategyTransitions { get; init; } = [];
 
     /// <summary>
     /// Gets the identifier of the character's artwork.

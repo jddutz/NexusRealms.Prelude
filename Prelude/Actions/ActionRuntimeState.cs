@@ -39,6 +39,7 @@ public sealed class ActionCharacterState
 /// <summary>An independent status instance retaining definition, source, expiration, and uses.</summary>
 public sealed class ActiveStatus
 {
+    internal ActiveStatus CopyForPreview() => (ActiveStatus)MemberwiseClone();
     /// <summary>Creates a validated instance at a particular clock position.</summary>
     internal ActiveStatus(long sequence, StatusEffectData definition, string source, StatusPersistence persistence, float turn, int turnsStarted)
     {
@@ -49,6 +50,8 @@ public sealed class ActiveStatus
     }
     /// <summary>Stable application order and attribution identity.</summary>
     public long Sequence { get; }
+    /// <summary>Committed application order, including refreshes; shared with scenario overrides.</summary>
+    public long ApplicationSequence { get; internal set; }
     /// <summary>The authored status and its rules.</summary>
     public StatusEffectData Definition { get; }
     /// <summary>Character responsible for applying this status.</summary>

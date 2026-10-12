@@ -31,6 +31,7 @@ try
     foreach (var group in results.GroupBy(result => result.Outcome).OrderBy(group => group.Key))
         Console.WriteLine($"{group.Key}: {group.Count()} ({100d * group.Count() / runs:F2}%)");
     Console.WriteLine($"Mean ending turn: {results.Average(result => result.Turn):F2}; mean remaining health: {results.Average(result => result.PlayerHealth):F2}");
+    Console.WriteLine(SimulationReport.Format(results));
     if (options.TryGetValue("--output", out var output)) File.WriteAllText(output, JsonSerializer.Serialize(results, json));
     return 0;
 }

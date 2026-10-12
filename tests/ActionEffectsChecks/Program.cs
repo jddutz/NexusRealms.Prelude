@@ -32,6 +32,22 @@ Fixture New() => new(definitions);
 void Apply(Fixture f, string id, string recipient = "enemy", StatusPersistence? persistence = null)
     => f.Resolve(recipient, new ApplyEffect(id, persistence ?? new()));
 
+var aiFixture = New(); Apply(aiFixture, "resistance");
+var mitigated = new ExampleAction("a-mitigated", new DamageEffect(DamageType.Slashing, 6));
+var effective = new ExampleAction("b-effective", new DamageEffect(DamageType.General, 6))
+    { Costs = [new(new ResourceSubject(ResourceKind.Focus), 1)] };
+aiFixture.Player.Loadout.Actions[mitigated.Id] = mitigated;
+aiFixture.Player.Loadout.Actions[effective.Id] = effective;
+var preview = aiFixture.Resolver.Preview("player", effective, "enemy");
+Check(aiFixture.Enemy.Health.Health == 20 && aiFixture.Player.Loadout.Focus == 2 && preview.Characters["enemy"].Health == 14
+    && preview.Characters["player"].Focus == 1, "Preview must isolate health and costs.");
+var decision = CombatDecisionMaker.Decide(aiFixture.Resolver, "player", new());
+Check(decision.Selected?.Action.Id == effective.Id, "Immediate policy must compare resolved damage.");
+Check(CombatDecisionMaker.Decide(aiFixture.Resolver, "player", new()).Selected == decision.Selected, "Repeated decisions must be stable.");
+aiFixture.Resolver.Commit("player", effective, "enemy");
+Check(aiFixture.Enemy.Health.Health == preview.Characters["enemy"].Health && aiFixture.Player.Loadout.Focus == preview.Characters["player"].Focus,
+    "Known immediate preview must match committed health and Focus.");
+Console.WriteLine("AI preview and deterministic selection checks passed.");
 var mixed = new ActionEffect[] { new DamageEffect(DamageType.General, 1), new DamageEffect(DamageType.Slashing, 2), new DamageEffect(DamageType.Fire, 1) };
 var f = New(); Apply(f, "resistance");
 var outcome = f.Resolve("enemy", mixed);
@@ -67,8 +83,10 @@ var weapon = new ExampleAction("weapon", new DamageEffect(DamageType.General, 1)
 f.Player.Loadout.Actions[weapon.Id] = weapon; f.Resolver.Register(weapon);
 Check(!f.Resolver.CanCommit("player", weapon, "enemy") && !f.Player.Loadout.Available(CombatLoadout.RightHandStrike)
     && f.Player.Loadout.Equipment.ContainsKey("Right hand"), "Restriction must affect new and legacy actions without removing equipment.");
+var ownedBeforeUnequip = f.Player.Loadout.Items.ToArray();
 f.Resolve("player", new RemoveEffect(new RemoveEquipment("Right hand")));
-Check(f.Player.Loadout.Items.Count == 1 && f.Player.Loadout.Equipment.Count == 0 && f.Player.Loadout.Inventory.Any(item => item is not null), "Unequip must preserve ownership.");
+Check(f.Player.Loadout.Items.SequenceEqual(ownedBeforeUnequip) && f.Player.Loadout.Equipment.Count == 0
+    && f.Player.Loadout.Inventory.Count(item => item is not null) == ownedBeforeUnequip.Length, "Unequip must preserve ownership.");
 f = New(); Apply(f, "modifier"); Apply(f, "negate");
 outcome = f.Resolve("enemy", new DamageEffect(DamageType.Fire, 1));
 Check(f.Enemy.Health.Health == 20 && outcome.Effects.Single().Result == EffectResult.Negated, "Negate must override numerical damage changes.");
@@ -79,15 +97,16 @@ f = New();
 var expensive = costly with { Id = "expensive", Costs = [new(new ResourceSubject(ResourceKind.Focus), 3)] };
 f.Player.Loadout.Actions[expensive.Id] = expensive; f.Resolver.Register(expensive);
 Check(!f.Resolver.CanCommit("player", expensive, "enemy") && f.Player.Loadout.Focus == 2, "Full commitment costs must reject before mutation.");
-var sword = f.Player.Loadout.Items.Single();
+var sword = f.Player.Loadout.HeldItem(StrikeHand.Right)!;
 for (var index = 0; index < CombatLoadout.InventoryCapacity; index++)
     Check(f.Enemy.Loadout.TryAddItem(new($"full-{index}", "Item", "Accessory")), "Fill destination inventory.");
 outcome = f.Resolve("player", new TransferEffect("enemy", new ItemQuantitySubject(sword.Id), 1));
 Check(outcome.Effects.Single().ActualChange == 0 && f.Player.Loadout.Equipment["Right hand"] == sword.Id.Value
     && f.Player.Loadout.Items.Contains(sword) && !f.Enemy.Loadout.Items.Any(item => item.Id == sword.Id), "Invalid transfer must be atomic.");
-f = New(); sword = f.Player.Loadout.Items.Single();
+f = New(); sword = f.Player.Loadout.HeldItem(StrikeHand.Right)!;
 f.Resolve("player", new TransferEffect("enemy", new ItemQuantitySubject(sword.Id), 1));
-Check(f.Player.Loadout.Items.Count == 0 && f.Player.Loadout.Equipment.Count == 0 && ReferenceEquals(f.Enemy.Loadout.Items.Single(), sword)
+Check(!f.Player.Loadout.Items.Contains(sword) && f.Player.Loadout.Items.Single().Id.Value == "starting-rocks"
+    && f.Player.Loadout.Equipment.Count == 0 && ReferenceEquals(f.Enemy.Loadout.Items.Single(), sword)
     && f.Enemy.Loadout.Equipment.Count == 0, "Valid item transfer preserves identity without equipping.");
 f = New(); Apply(f, "resistance"); f.Resolve("enemy", new DamageEffect(DamageType.Slashing, 2));
 f.Resolve("enemy", new DispelEffect(new("resistance"))); f.Resolve("enemy", new DamageEffect(DamageType.Slashing, 2));

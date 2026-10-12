@@ -83,11 +83,11 @@ var rocksState = new NexusRealms.Prelude.EnemyActionState(NexusRealms.Prelude.Da
 for (var remainingRocks = 3; remainingRocks > 0; remainingRocks--)
 {
     Check(rocksState.Items.Single().Quantity == remainingRocks);
-    var throwRock = rocksState.Select(actionRandom);
+    var throwRock = rocksState.Select(actionRandom, action => action.Throw);
     Check(throwRock.Throw && throwRock.Animation == "Attack" && throwRock.TurnCost == 1f && throwRock.Damage.Total == 2);
     rocksState.Apply(throwRock);
 }
-Check(rocksState.Items.Count == 0 && rocksState.Select(actionRandom).Damage.Total == 0);
+Check(rocksState.Items.Count == 0 && rocksState.Select(actionRandom, action => action.Throw).Damage.Total == 0);
 Check(NexusRealms.Prelude.Database.Chapter1.Part1.AlleywayThug3.Items.Single().Quantity == 3);
 var rock = WeaponCatalog.Create(WeaponType.Rock, "test-rock", "Rock", "Right hand");
 var rockLoadout = new CombatLoadout();

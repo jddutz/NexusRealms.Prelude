@@ -5,6 +5,23 @@ namespace NexusRealms.Prelude.Combat;
 /// <summary>Runtime ownership and capability operations reuse the existing combat loadout.</summary>
 public sealed partial class CombatLoadout
 {
+    internal CombatLoadout CopyForPreview()
+    {
+        var copy = new CombatLoadout { Focus = Focus, EquipmentChangeCost = EquipmentChangeCost, BasicCommands = BasicCommands };
+        copy.Items.AddRange(Items);
+        copy._equipment = new(_equipment);
+        copy._inventorySlots = (string?[])_inventorySlots.Clone();
+        foreach (var pair in _shots) copy._shots.Add(pair.Key, pair.Value);
+        foreach (var pair in _loadedAmmunition) copy._loadedAmmunition.Add(pair.Key, pair.Value);
+        copy.LearnedAbilities.UnionWith(LearnedAbilities);
+        foreach (var pair in Actions) copy.Actions.Add(pair.Key, pair.Value);
+        copy.Commands.AddRange(Commands);
+        copy.ThrownItems.AddRange(ThrownItems);
+        QuickSlots.CopyTo(copy.QuickSlots, 0);
+        copy._pinnedQuickSlots.UnionWith(_pinnedQuickSlots);
+        copy.PreparedThrowItemId = PreparedThrowItemId;
+        return copy;
+    }
     /// <summary>Expands authored character inventory and capabilities into one runtime owner.</summary>
     public static CombatLoadout FromCharacter(CharacterData definition)
     {
@@ -13,6 +30,7 @@ public sealed partial class CombatLoadout
         foreach (var item in definition.Items.Where(item => !definition.Equipment.Values.Contains(item.Id.Value)))
             layout[InventorySlot(indexInInventory++)] = item.Id.Value;
         var loadout = FromState(definition.Items, layout, definition.Focus);
+        loadout.BasicCommands = definition.BasicCommands;
         for (var index = 0; index < definition.AvailableActions.Count; index++)
         {
             var action = definition.AvailableActions[index];

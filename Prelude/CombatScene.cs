@@ -32,7 +32,8 @@ public class CombatScene : Scene
     };
     private readonly Queue<Color> _flashColors = new();
     private double _flashRemaining;
-    private readonly Random _enemyRandom;
+    private NexusRealms.Prelude.Combat.ActionCandidate? _enemyCandidate;
+    private string? _enemyDecisionKey;
     private readonly Dictionary<Character, EnemyActionState> _enemyActions = [];
     private ActionData? _enemyAttack;
     private Character? _enemyActor;
@@ -328,7 +329,6 @@ public class CombatScene : Scene
         playerHealth.HealthChanged += () => gameState.Health = playerHealth.Health;
         ActionResolver.Add(new("player", true, CombatTeam.PlayerAndAllies, playerHealth, gameState.Loadout), gameState.StatusEffects);
         var startingStats = new Random(EncounterSeed);
-        _enemyRandom = new Random(EncounterSeed);
 
         MainCamera = new StaticCamera();
         _worldLayerMask = 1UL << RenderLayers.Create("World", RenderPasses.Main).Index;
@@ -444,17 +444,10 @@ public class CombatScene : Scene
             _formation.SetSlot(destination, character);
         };
 
+        ActionResolver.ConfigureCharacters(_runtimeCharacters.ToDictionary(pair => pair.Key, pair => pair.Value.Definition));
         // Automatic turns yield to scene playback.
         foreach (var occurrence in _startScenario.Events)
-            Combat.ScheduleEvent(
-                occurrence.Turn,
-                occurrence.Label,
-                _ => ActionResolver.ResolveCommitted(occurrence.Action, occurrence.SourceId, [occurrence.RecipientId]),
-                occurrence.Priority,
-                occurrence.Icon,
-                occurrence.IsVisible,
-                occurrence.PresentationKey
-            );
+            ActionResolver.ScheduleEvent(occurrence);
         Combat.IsCombatantAlive = id =>
         {
             if (id == "player")
@@ -467,8 +460,7 @@ public class CombatScene : Scene
                 return true;
             return _runtimeCharacters[$"encounter-{index}"].Health > 0;
         };
-        Combat.VictoryConditions = _startScenario.BuildVictoryConditions();
-        Combat.DefeatConditions = _startScenario.BuildDefeatConditions();
+        _startScenario.ConfigureCombat(Combat);
         Combat.Changed += RefreshTurnOrder;
         Combat.Changed += () =>
         {
@@ -1612,17 +1604,17 @@ public class CombatScene : Scene
                 return;
             if (Combat.ActiveCombatant is not { PlayerControlled: false } actor)
                 return;
-            var index = int.Parse(actor.Id["encounter-".Length..]);
-            _enemyActor = _runtimeCharacters[$"encounter-{index}"];
-            _enemyAttack = _enemyActions[_enemyActor].Select(_enemyRandom, action => ActionResolver.Allows(actor.Id, action));
-            if (_enemyAttack.Effects is not null)
+            var decision = NexusRealms.Prelude.Combat.CombatDecisionMaker.Decide(ActionResolver, actor.Id);
+            if (decision.Selected is not { } candidate) { Combat.SubmitNoLegalAction(); return; }
+            if (candidate.Kind == NexusRealms.Prelude.Combat.CandidateKind.ItemLayout && candidate.Reloads.Count == 0 || candidate.Action.Id == "wait")
             {
-                var typedAction = _enemyAttack;
-                _enemyAttack = null;
-                if (ActionResolver.CanCommit(actor.Id, typedAction, "player")) ActionResolver.Commit(actor.Id, typedAction, "player");
-                else Combat.SubmitAutomaticAction(new(1, (_, _) => { }));
+                ActionResolver.Commit(actor.Id, candidate);
                 return;
             }
+            _enemyActor = _runtimeCharacters[actor.Id];
+            _enemyCandidate = candidate;
+            _enemyDecisionKey = decision.StateKey;
+            _enemyAttack = candidate.Action;
             if (
                 !float.IsFinite(_enemyAttack.TurnCost)
                 || _enemyAttack.TurnCost <= 0f
@@ -1654,17 +1646,24 @@ public class CombatScene : Scene
         )
         {
             _enemyHit = true;
-            if (
-                _enemyActor!.Health > 0
-                && ActionResolver.Characters[_runtimeCharacters.Single(pair => pair.Value == _enemyActor).Key].Team == CombatTeam.Enemies
-            )
+            if (_enemyActor!.Health > 0 && Combat.ActiveCombatant is { } acting)
             {
-                _enemyActions[_enemyActor].Apply(_enemyAttack);
-                var source = _runtimeCharacters.Single(pair => pair.Value == _enemyActor).Key;
-                var result = ActionResolver.ResolveCommitted(_enemyAttack, source, ["player"]);
-                foreach (var effect in result.Effects.Where(effect => effect.Requested is DamageEffect))
-                    for (var i = 0; i < effect.ActualChange; i++)
-                        _flashColors.Enqueue(Character.DamageColor(((DamageEffect)effect.Requested).Type));
+                var selected = _enemyCandidate!;
+                if (_enemyDecisionKey != NexusRealms.Prelude.Combat.CombatDecisionMaker.StateKey(ActionResolver) || !ActionResolver.CanCommit(acting.Id, selected))
+                    selected = NexusRealms.Prelude.Combat.CombatDecisionMaker.Decide(ActionResolver, acting.Id).Selected;
+                Combat.SuppressPump = true;
+                try
+                {
+                    if (selected is null) Combat.SubmitNoLegalAction();
+                    else
+                    {
+                        var result = ActionResolver.Commit(acting.Id, selected);
+                        foreach (var effect in result.Effects.Where(effect => effect.RecipientId == "player" && effect.Requested is DamageEffect))
+                            for (var i = 0; i < effect.ActualChange; i++)
+                                _flashColors.Enqueue(Character.DamageColor(((DamageEffect)effect.Requested).Type));
+                    }
+                }
+                finally { Combat.SuppressPump = false; }
             }
         }
         if (
@@ -1673,9 +1672,10 @@ public class CombatScene : Scene
             || _playerFlash.IsVisible
         )
             return;
-        var completed = _enemyAttack;
         _enemyAttack = null;
-        Combat.SubmitAutomaticAction(new(completed.TurnCost, (_, _) => { }));
+        _enemyCandidate = null;
+        _enemyDecisionKey = null;
+        Combat.Process();
     }
 
     /// <summary>Updates the fixed-size world camera and world-space content.</summary>

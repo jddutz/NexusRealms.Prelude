@@ -16,7 +16,14 @@ Check(startingLoadout.Inventory.Single(item => item?.Id.Value == "starting-rocks
 var first = SimulationRunner.Run(storyline, state, 42);
 Check(first == SimulationRunner.Run(storyline, state, 42), "Seed replay or fresh-state isolation failed.");
 Check(state.Health == 20, "Simulation mutated its starting state.");
-Check(SimulationRunner.Run(storyline, state with { Health = 0 }, 42).Outcome == CombatOutcome.Defeat, "Dead player must lose immediately.");
+Check(first.PlayerStrategy == state.PlayerStrategy.Strategy, "Run must record the configured player strategy.");
+Check(first.EnemyConfiguration.Length == ((CombatScenario)storyline.Nodes[storyline.StartNodeId]).Characters.Length,
+    "Run must record the scenario's character configuration.");
+Check(first.PlayerActionUses.Values.Sum() > 0, "Run must record player action usage.");
+Check(!string.IsNullOrWhiteSpace(first.TerminalCondition), "Run must record its terminal condition.");
+var immediateDefeat = SimulationRunner.Run(storyline, state with { Health = 0 }, 42);
+Check(immediateDefeat.Outcome == CombatOutcome.Defeat && immediateDefeat.TerminalCondition == "PlayerDefeated"
+    && immediateDefeat.DecidingAction is null, "Initial defeat must be attributed to the player objective, not an action.");
 var combat = new CombatSystem { TurnLimit = 100 };
 var resolved = false;
 combat.ScheduleEvent(100, "cutoff", _ => resolved = true);
@@ -42,14 +49,35 @@ var harmless = storyline.Characters.ToDictionary(pair => pair.Key, pair => pair.
 });
 var draw = SimulationRunner.Run(authored, harmless, state.CreateGameState(), 42);
 Check(draw.Outcome == CombatOutcome.Draw && draw.Turn == 100, "Full encounter did not draw at Turn 100.");
-var selectedRockThrow = false;
-for (var seed = 0; seed < 32 && !selectedRockThrow; seed++)
+Check(state.PlayerStrategy.Strategy == StrategyId.Aggressive, "Simulation must default to a named deterministic policy.");
+Check(draw.TerminalCondition == "TurnLimit" && draw.DecidingAction is null, "Turn-limit draws must not be attributed to a combat action.");
+var reportSamples = new[]
 {
-    var throwState = state.CreateGameState();
-    SimulationRunner.Run(authored, harmless, throwState, seed);
-    selectedRockThrow = throwState.Loadout.ThrownItems.Any(item => item.Id.Value == "starting-rocks");
-}
-Check(selectedRockThrow, "Simulator random action selection must include throwing inventory rocks.");
+    first with
+    {
+        PlayerStrategy = StrategyId.Analytical,
+        Outcome = CombatOutcome.Victory,
+        TerminalCondition = "AllEnemiesDefeated",
+        DecidingAction = "Throw [starting-rocks]",
+        DecidingActionSource = "Player",
+        PlayerActionUses = new Dictionary<string, int> { ["Throw [starting-rocks]"] = 3 },
+    },
+    first with
+    {
+        PlayerStrategy = StrategyId.Analytical,
+        Outcome = CombatOutcome.Defeat,
+        TerminalCondition = "PlayerDefeated",
+        DecidingAction = "strike",
+        DecidingActionSource = "Enemy",
+        PlayerActionUses = new Dictionary<string, int> { ["Throw [starting-rocks]"] = 1 },
+    },
+};
+var report = SimulationReport.Format(reportSamples);
+Check(report.Contains("Analytical\t1\t1\t0\t0\t50.00", StringComparison.Ordinal)
+    && report.Contains("Throw [starting-rocks]\tVictory\t0\t0\t0\t1\t0", StringComparison.Ordinal)
+    && report.Contains("Player strategy x enemy configuration x deciding action:", StringComparison.Ordinal),
+    "Simulation report must include strategy rates, usage distributions, and strategy/action cross-tabs.");
+// Complete item-specific Throw choices are covered by AiDecisionChecks.
 try
 {
     SimulationRunner.Run(storyline, state with { CurrentStoryNodeId = "missing" }, 42);

@@ -14,6 +14,8 @@ public sealed record SimulationState
     public CarriedItem[]? Items { get; init; }
     public Dictionary<string, string>? ItemLayout { get; init; }
     public bool AllowEscape { get; init; }
+    /// <summary>Policy for the simulated player; normal gameplay still uses player input.</summary>
+    public StrategyAssignment PlayerStrategy { get; init; } = new();
     /// <summary>Learned progression nodes whose authored actions are available, subject to equipment requirements.</summary>
     public string[] LearnedAbilities { get; init; } = [];
 

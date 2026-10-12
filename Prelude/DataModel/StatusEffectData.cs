@@ -15,4 +15,7 @@ public sealed record StatusEffectData
     public System.Collections.Immutable.ImmutableArray<ActionEffect> Rules { get; init; } = [];
     /// <summary>Explicit metadata available to dispel selectors.</summary>
     public System.Collections.Immutable.ImmutableArray<string> Tags { get; init; } = [];
+    /// <summary>Optional temporary policy while this status remains active.</summary>
+    public StrategyAssignment? StrategyOverride { get; init; }
+    public int StrategyPriority { get; init; }
 }

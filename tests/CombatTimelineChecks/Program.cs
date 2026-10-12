@@ -388,7 +388,8 @@ Check(startingLoadout.CanSelectQuickSlot(0) && startingLoadout.CanSelectQuickSlo
 Check(startingLoadout.Cost(startingLoadout.BeginEquipment()) == 0f);
 var otherStartingLoadout = CombatLoadout.CreatePlayerLoadout();
 startingLoadout.Items.Clear();
-Check(otherStartingLoadout.Items.Count == 1 && otherStartingLoadout.Equipment.Count == 1);
+Check(otherStartingLoadout.Items.Count == 2 && otherStartingLoadout.Equipment.Count == 1
+    && otherStartingLoadout.Inventory.Single(item => item is not null)?.Quantity == 5);
 Console.WriteLine("Starting player loadout checks passed.");
 
 // Range checks cover every nonempty combination of occupied enemy rows.
@@ -785,6 +786,7 @@ AmmunitionType weaponTypeAmmo(WeaponType type) => type switch
 
 // Preparing a specific throw is free and independent of targeting.
 var prepared = CombatLoadout.CreatePlayerLoadout();
+prepared.RemoveOwnedItem("starting-rocks"); // This fixture exercises single-item preparation.
 var preparedCombat = ThrowCombat();
 var preparedTurn = preparedCombat.ActiveCombatant!.Turn;
 Check(prepared.PrepareThrow("starting-sword") && prepared.CanThrowPreparedItem);
@@ -830,6 +832,7 @@ string Bag(int index) => CombatLoadout.InventorySlot(index);
 bool SameLayout(IReadOnlyDictionary<string, string> a, IReadOnlyDictionary<string, string> b) =>
     a.Count == b.Count && a.All(pair => b.GetValueOrDefault(pair.Key) == pair.Value);
 var locations = CombatLoadout.CreatePlayerLoadout();
+locations.RemoveOwnedItem("starting-rocks"); // This fixture starts with an empty inventory grid.
 var locationCombat = ThrowCombat();
 Check(locations.Inventory.Count == 20 && locations.Inventory.All(item => item is null));
 Check(CombatLoadout.EquipmentSlots.Count == 9);

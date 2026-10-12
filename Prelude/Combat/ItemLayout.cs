@@ -94,4 +94,15 @@ public sealed partial class CombatLoadout
         var inventory = Enumerable.Range(0, InventoryCapacity).Select(index => pending.GetValueOrDefault(InventorySlot(index))).ToArray();
         return CommitCore(combat, actorId, equipment, reloads, inventory, ItemLayoutCost(pending, reloads));
     }
+
+    internal bool CanCommitItemLayout(CombatSystem combat, string actorId, IReadOnlyDictionary<string, string> pending,
+        IReadOnlyDictionary<string, string> reloads)
+    {
+        if (!ValidLayout(pending)) return false;
+        var copy = CopyForPreview();
+        if (!LayoutAllowed(reloads, copy.ItemLayoutCost(pending, reloads))) return false;
+        var equipment = pending.Where(pair => EquipmentSlots.Contains(pair.Key)).ToDictionary();
+        var inventory = Enumerable.Range(0, InventoryCapacity).Select(index => pending.GetValueOrDefault(InventorySlot(index))).ToArray();
+        return copy.CommitCore(combat, actorId, equipment, reloads, inventory, copy.ItemLayoutCost(pending, reloads), validateOnly: true);
+    }
 }

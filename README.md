@@ -13,6 +13,15 @@ The headless `Prelude/Simulator` uses the same action resolver. Mutable `GameSta
 lives in the Prelude runtime; scenario objectives and events remain data definitions
 and are converted into runtime behavior by adapters.
 
+Each `CharacterData` owns its AI strategy. Combat and simulation share complete
+legal candidates, isolated previews, deterministic policies and bounded Analytical
+rollouts. See [character AI decisions](docs/AI-Decision-Making.md) for configuration,
+observation assumptions, memory, diagnostics and acceptance checks.
+
+The simulator reports player strategy and decisive action by outcome, player
+action-use totals and distributions, and a strategy/action cross-tab by enemy
+configuration. Per-run JSON retains those dimensions for further analysis.
+
 Story graphs implementing `IStoryGraph` in `Prelude.Database.Chapter*` namespaces are discovered automatically; their characters and nodes are validated and registered by ID at runtime. The loaded story database uses immutable graph data and frozen lookup dictionaries, while chapter definitions remain authored in C#.
 
 Combat characters are world-space `GameObject2D` entities. Each character owns its

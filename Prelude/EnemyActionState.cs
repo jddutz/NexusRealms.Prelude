@@ -2,96 +2,59 @@ using NexusRealms.Prelude.Combat;
 
 namespace NexusRealms.Prelude;
 
-/// <summary>Per-encounter inventory and action selection, using shared player weapon definitions.</summary>
+/// <summary>Legacy weapon playback adapter; selection and AI use the same preparation rules.</summary>
 public sealed class EnemyActionState
 {
-    /// <summary>Creates AI decisions over the same loadout used by action effects.</summary>
-    public EnemyActionState(CharacterData definition, CombatLoadout? loadout = null)
-    {
-        Loadout = loadout ?? CombatLoadout.FromCharacter(definition);
-    }
-    /// <summary>Shared resource and inventory state for AI and action effects.</summary>
+    public EnemyActionState(CharacterData definition, CombatLoadout? loadout = null) => Loadout = loadout ?? CombatLoadout.FromCharacter(definition);
+    public EnemyActionState(CombatLoadout loadout) => Loadout = loadout;
     public CombatLoadout Loadout { get; }
-    /// <summary>Current owned item records.</summary>
-    private List<CarriedItem> _items => Loadout.Items;
-    public IReadOnlyList<CarriedItem> Items => _items;
-
-    public int ShotsRemaining(CarriedItem item) =>
-        Loadout.ShotsRemaining(item);
-
-    public ActionData Select(Random random, Func<ActionData, bool>? allowed = null)
+    public IReadOnlyList<CarriedItem> Items => Loadout.Items;
+    public int ShotsRemaining(CarriedItem item) => Loadout.ShotsRemaining(item);
+    public ActionData? Prepare(ActionData action)
     {
-        var choices = Loadout.Actions.Values
-            .Where(action => Loadout.MeetsRequirements(action) && (allowed?.Invoke(action) ?? true) && (
-                action.ItemId is null
-                || _items.Any(item => item.Id == action.ItemId && item.Quantity > 0))
-            )
-            .ToArray();
-        if (choices.Length == 0)
-            return new() { Animation = "Idle", Damage = new DamageProfile() };
-        var action = choices[random.Next(choices.Length)];
-        if (action.ItemId is not { } id)
-            return action;
-        var item = _items.Single(item => item.Id == id);
+        if (!Loadout.MeetsRequirements(action)) return null;
+        if (action.ItemId is not { } id) return action;
+        var item = Loadout.Items.Find(item => item.Id == id && item.Quantity > 0);
+        if (item is null) return null;
         if (action.Throw)
-            return action with
-            {
-                TurnCost = CombatLoadout.Throw.TurnCost,
-                Damage = item.ThrowDamage ?? DamageProfile.ForStrike(item.Weapon),
-            };
-        if (item.Weapon is not { } weapon)
-            throw new InvalidOperationException("Enemy attack item is not a weapon.");
+        {
+            if (!Loadout.ThrowOptions().Any(option => option.Item.Id == id)) return null;
+            return action with { TurnCost = CombatLoadout.Throw.TurnCost, Damage = item.ThrowDamage ?? DamageProfile.ForStrike(item.Weapon) };
+        }
+        if (item.Weapon is not { } weapon) throw new InvalidOperationException("Enemy attack item is not a weapon.");
+        var hand = Enum.GetValues<StrikeHand>().FirstOrDefault(hand => Loadout.HeldItem(hand)?.Id == id);
+        if (Loadout.HeldItem(hand)?.Id != id || !Loadout.HasShootingHands(hand)) return null;
         if (weapon.Shots > 0 && ShotsRemaining(item) == 0)
         {
-            if (!_items.Any(ammo => ammo.Ammunition == weapon.Ammunition && ammo.Quantity > 0))
-                return new() { Animation = "Idle", Damage = new DamageProfile() };
-            return action with
-            {
-                Reload = true,
-                ImpactFraction = 1f,
-                Animation = action.ReloadAnimation,
-                TurnCost = weapon.ReloadTime,
-                Damage = new DamageProfile(),
-            };
+            if (!Loadout.Items.Any(ammo => ammo.Ammunition == weapon.Ammunition && ammo.Quantity > 0)) return null;
+            return action with { Reload = true, ImpactFraction = 1f, Animation = action.ReloadAnimation,
+                TurnCost = weapon.ReloadTime, Damage = new DamageProfile() };
         }
-        return action with
-        {
-            TurnCost = weapon.AttackSpeed,
-            Damage = DamageProfile.ForStrike(weapon),
-        };
+        return action with { TurnCost = weapon.AttackSpeed, Damage = DamageProfile.ForStrike(weapon) };
     }
-
-    /// <summary>Commits ammunition or thrown inventory once, at the action's impact cue.</summary>
+    public ActionData Select(Random random, Func<ActionData, bool>? allowed = null)
+    {
+        var choices = Loadout.Actions.Values.Where(action => allowed?.Invoke(action) ?? true)
+            .Select(Prepare).OfType<ActionData>().OrderBy(action => action.Id, StringComparer.Ordinal).ToArray();
+        return choices.Length == 0 ? new() { Animation = "Idle", Damage = new DamageProfile() } : choices[random.Next(choices.Length)];
+    }
     public void Apply(ActionData action)
     {
-        if (action.ItemId is not { } id)
-            return;
-        var item = _items.Single(item => item.Id == id);
-        if (action.Throw)
-        {
-            Consume(item);
-            return;
-        }
-        if (item.Weapon is not { Shots: > 0 } weapon)
-            return;
+        if (action.ItemId is not { } id) return;
+        var item = Loadout.Items.Single(item => item.Id == id);
+        if (action.Throw) { Loadout.ConsumeItem(id, 1); return; }
+        if (item.Weapon is not { Shots: > 0 } weapon) return;
         if (action.Reload)
         {
-            var ammo = _items.First(ammo =>
-                ammo.Ammunition == weapon.Ammunition && ammo.Quantity > 0
-            );
-            Consume(ammo);
+            var ammo = Loadout.Items.OrderBy(item => item.Id.Value, StringComparer.Ordinal)
+                .First(ammo => ammo.Ammunition == weapon.Ammunition && ammo.Quantity > 0);
+            Loadout.ConsumeItem(ammo.Id, 1);
             Loadout.SetWeaponShots(id, weapon.Shots);
         }
         else
         {
-            if (ShotsRemaining(item) == 0)
-                throw new InvalidOperationException("Enemy weapon is empty.");
+            if (ShotsRemaining(item) == 0) throw new InvalidOperationException("Enemy weapon is empty.");
             Loadout.SetWeaponShots(id, ShotsRemaining(item) - 1);
         }
-    }
-
-    private void Consume(CarriedItem item)
-    {
-        Loadout.ConsumeItem(item.Id, 1);
     }
 }

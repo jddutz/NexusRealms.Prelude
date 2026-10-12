@@ -25,10 +25,12 @@ public sealed class CombatTimeline
     public IReadOnlyList<TimelineOccurrence> Preview(int count, bool visibleOnly = false)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(count);
-        return _pending.Values.Where(x => !visibleOnly || x.IsVisible).OrderBy(x => x.Turn).ThenBy(x => x.Priority)
-            .ThenByDescending(x => x.Initiative).ThenBy(x => x.Team).ThenBy(x => x.Row)
-            .ThenBy(x => x.RandomRank).ThenBy(x => x.Sequence).Take(count).ToArray();
+        return OrderOccurrences(_pending.Values.Where(x => !visibleOnly || x.IsVisible)).Take(count).ToArray();
     }
+
+    internal static IOrderedEnumerable<TimelineOccurrence> OrderOccurrences(IEnumerable<TimelineOccurrence> occurrences) => occurrences.OrderBy(x => x.Turn).ThenBy(x => x.Priority)
+            .ThenByDescending(x => x.Initiative).ThenBy(x => x.Team).ThenBy(x => x.Row)
+            .ThenBy(x => x.RandomRank).ThenBy(x => x.Sequence);
 
     public long Schedule(float turn, string label, int priority = TimelinePriority.Effect,
         string? combatantId = null, string? icon = null,
@@ -90,6 +92,13 @@ public sealed class CombatTimeline
     internal static void Validate(float value)
     {
         if (!float.IsFinite(value)) throw new ArgumentOutOfRangeException(nameof(value));
+    }
+
+    internal void CopyTo(CombatTimeline target)
+    {
+        target.CurrentTurn = CurrentTurn;
+        target._sequence = _sequence;
+        foreach (var pair in _pending) target._pending.Add(pair.Key, pair.Value);
     }
 }
 

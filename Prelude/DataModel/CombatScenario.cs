@@ -32,4 +32,8 @@ public enum CombatConditionKind { PlayerDefeated, AllEnemiesDefeated, CharacterD
 public sealed record CombatConditionData(CombatConditionKind Kind, string? CharacterId = null);
 /// <summary>An authored occurrence executing effects without a character commitment.</summary>
 public sealed record EncounterEventData(float Turn, string Label, string SourceId, string RecipientId, ActionData Action,
-    int Priority = 0, string? Icon = null, bool IsVisible = true, string? PresentationKey = null);
+    int Priority = 0, string? Icon = null, bool IsVisible = true, string? PresentationKey = null)
+{
+    /// <summary>AI currently supports fully visible encounters; unrevealed rules require an observation view.</summary>
+    public bool KnownToAi { get; init; } = true;
+}

@@ -21,6 +21,15 @@ public sealed class CombatSystem
     private readonly Dictionary<string, Combatant> _combatants = [];
     private readonly Dictionary<string, long> _turns = [];
     private readonly Dictionary<long, Action<CombatSystem>> _effects = [];
+    private readonly HashSet<long> _simulationEvents = [];
+    internal NexusRealms.Prelude.Actions.CombatActionResolver? Resolver { get; set; }
+    internal bool SuppressPump { get; set; }
+    /// <summary>After effects, outcome checking, and rescheduling; before the next occurrence.</summary>
+    public event Action<string>? ActionCommitted;
+    public event Action<string>? ActionCommitting;
+    public event Action? EventResolved;
+    internal bool LastCommitHadAction { get; private set; }
+    private bool _noLegalAction;
     public CombatTimeline Timeline { get; } = new();
     public Combatant? ActiveCombatant { get; private set; }
     public bool HasEnded { get; private set; }
@@ -29,6 +38,15 @@ public sealed class CombatSystem
     public float? TurnLimit { get; init; }
     public Func<CombatSystem, bool>[] VictoryConditions { get; set; } = [];
     public Func<CombatSystem, bool>[] DefeatConditions { get; set; } = [];
+    private Func<CombatSystem, bool>[]? _safeVictory;
+    private Func<CombatSystem, bool>[]? _safeDefeat;
+    public void ConfigureObjectives(IEnumerable<CombatConditionData> victory, IEnumerable<CombatConditionData> defeat)
+    {
+        VictoryConditions = victory.Select(ScenarioRules.Build).ToArray();
+        DefeatConditions = defeat.Select(ScenarioRules.Build).ToArray();
+        _safeVictory = VictoryConditions.ToArray();
+        _safeDefeat = DefeatConditions.ToArray();
+    }
     public Func<string, bool>? IsCombatantAlive { get; set; }
     public bool IsAlive(string id) => Contains(id) && (IsCombatantAlive?.Invoke(id) ?? true);
     public bool HasLivingEnemies => _combatants.Values.Any(actor => actor.Team == CombatTeam.Enemies && IsAlive(actor.Id));
@@ -50,7 +68,7 @@ public sealed class CombatSystem
         if (HasEnded || _resolving || IsEscaping || ActiveCombatant is not { PlayerControlled: true } actor
             || actor.Id != actorId || EvaluateOutcome()) return false;
         _escapingActor = actorId;
-        SubmitAction(new(1f, (_, _) => { }));
+        SubmitAction(new(1f, (system, actor) => system.Resolver?.RecordEmptyAction(actor.Id, "escape", 1f)));
         return true;
     }
     public Func<CombatSystem, Combatant, CombatAction>? DecideAction { get; set; }
@@ -155,9 +173,19 @@ public sealed class CombatSystem
         return id;
     }
 
+    /// <summary>Schedules a callback whose mutable owners are obtained only from its combat argument.</summary>
+    internal long ScheduleSimulationEvent(float turn, string label, Action<CombatSystem> resolve,
+        int priority = TimelinePriority.Effect, string? icon = null, bool isVisible = true, string? presentationKey = null)
+    {
+        var id = ScheduleEvent(turn, label, resolve, priority, icon, isVisible, presentationKey);
+        _simulationEvents.Add(id);
+        return id;
+    }
+
     public bool CancelEvent(long id)
     {
         _effects.Remove(id);
+        _simulationEvents.Remove(id);
         return Timeline.Cancel(id);
     }
 
@@ -188,7 +216,12 @@ public sealed class CombatSystem
                 if (DecideAction is null) break;
                 ResolveAction(DecideAction(this, ActiveCombatant));
             }
-            else if (_effects.Remove(next.Id, out var effect)) effect(this);
+            else if (_effects.Remove(next.Id, out var effect))
+            {
+                _simulationEvents.Remove(next.Id);
+                effect(this);
+                EventResolved?.Invoke();
+            }
         }
         Changed?.Invoke();
     }
@@ -200,7 +233,7 @@ public sealed class CombatSystem
         if (ActiveCombatant is not { PlayerControlled: true })
             throw new InvalidOperationException("No player action is pending.");
         ResolveAction(action);
-        Process();
+        if (!SuppressPump) Process();
     }
 
     public void SubmitAutomaticAction(CombatAction action)
@@ -209,7 +242,26 @@ public sealed class CombatSystem
         if (_resolving || ActiveCombatant is not { PlayerControlled: false })
             throw new InvalidOperationException("No automatic action is pending.");
         ResolveAction(action);
-        Process();
+        if (!SuppressPump) Process();
+    }
+
+    /// <summary>Existing unavailable-action rule: spend one timeline unit, with no invented voluntary action.</summary>
+    public void SubmitNoLegalAction()
+    {
+        var operation = new CombatAction(1f, (_, _) => { });
+        _noLegalAction = true;
+        try { if (ActiveCombatant?.PlayerControlled == true) SubmitAction(operation); else SubmitAutomaticAction(operation); }
+        finally { _noLegalAction = false; }
+    }
+
+    // A declared local threat assumption, on an isolated copy only: act now, with no
+    // intervening events. It is not a prediction of the player's next input.
+    internal void OpenThreatProbe(string id)
+    {
+        if (!SuppressPump) throw new InvalidOperationException("Threat probes require isolated simulation state.");
+        if (_turns.Remove(id, out var occurrence)) Timeline.Cancel(occurrence);
+        ActiveCombatant = _combatants[id];
+        ActiveCombatant.Turn = Timeline.CurrentTurn;
     }
 
     private void ResolveAction(CombatAction action)
@@ -222,7 +274,7 @@ public sealed class CombatSystem
         if (action.TurnCost <= 0f || !float.IsFinite(next) || next <= actor.Turn)
             throw new ArgumentOutOfRangeException(nameof(action), "Cost must advance the float timeline.");
         _resolving = true;
-        try { action.Resolve(this, actor); }
+        try { ActionCommitting?.Invoke(actor.Id); action.Resolve(this, actor); }
         finally { _resolving = false; }
         ActiveCombatant = null;
         EvaluateOutcome();
@@ -235,6 +287,8 @@ public sealed class CombatSystem
             ScheduleTurn(actor);
         }
         Changed?.Invoke();
+        LastCommitHadAction = !_noLegalAction;
+        ActionCommitted?.Invoke(actor.Id);
     }
 
     public void End(CombatOutcome? outcome = null)
@@ -245,6 +299,7 @@ public sealed class CombatSystem
         ActiveCombatant = null;
         _turns.Clear();
         _effects.Clear();
+        _simulationEvents.Clear();
         Timeline.Clear();
         Changed?.Invoke();
         if (outcome is { } result) Ended?.Invoke(result);
@@ -253,6 +308,29 @@ public sealed class CombatSystem
     private void EnsureRunning()
     {
         if (HasEnded) throw new InvalidOperationException("The encounter has ended.");
+    }
+
+    internal CombatSystem CopyForPreview()
+    {
+        if (_effects.Keys.Any(id => !_simulationEvents.Contains(id)))
+            throw new InvalidOperationException("Combat has an opaque event callback; use resolver.ScheduleEvent for AI simulation.");
+        if (IsCombatOver is not null) throw new InvalidOperationException("AI simulation requires data-only encounter objectives.");
+        if (VictoryConditions.Length > 0 && (_safeVictory is null || !VictoryConditions.SequenceEqual(_safeVictory))
+            || DefeatConditions.Length > 0 && (_safeDefeat is null || !DefeatConditions.SequenceEqual(_safeDefeat)))
+            throw new InvalidOperationException("AI simulation requires ConfigureObjectives, not opaque objective predicates.");
+        var copy = new CombatSystem(_randomState) { TurnLimit = TurnLimit, SuppressPump = true,
+            VictoryConditions = VictoryConditions.ToArray(), DefeatConditions = DefeatConditions.ToArray(),
+            HasEnded = HasEnded, Outcome = Outcome, _escapingActor = _escapingActor };
+        copy._safeVictory = copy.VictoryConditions.ToArray();
+        copy._safeDefeat = copy.DefeatConditions.ToArray();
+        Timeline.CopyTo(copy.Timeline);
+        foreach (var (id, actor) in _combatants)
+            copy._combatants.Add(id, new(id, actor.PlayerControlled, actor.Turn, actor.Initiative, actor.Team, actor.Row) { RandomRank = actor.RandomRank });
+        foreach (var pair in _turns) copy._turns.Add(pair.Key, pair.Value);
+        foreach (var pair in _effects) copy._effects.Add(pair.Key, pair.Value);
+        copy._simulationEvents.UnionWith(_simulationEvents);
+        if (ActiveCombatant is { } active) copy.ActiveCombatant = copy._combatants[active.Id];
+        return copy;
     }
 }
 

@@ -27,6 +27,7 @@ public static class ActionValidation
         if (string.IsNullOrWhiteSpace(definition.Id.Value) || definition.Duplicates is not { } duplicates || !Enum.IsDefined(duplicates))
             throw new ArgumentException($"Status '{definition.Id}' must declare duplicate handling.");
         Persistence(definition.Persistence);
+        definition.StrategyOverride?.Validate();
         foreach (var rule in definition.Rules) ValidateEffect(rule, true, new Dictionary<StatusEffectId, StatusEffectData>());
     }
 

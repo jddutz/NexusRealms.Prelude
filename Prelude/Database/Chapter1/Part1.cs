@@ -14,6 +14,7 @@ public sealed record Part1 : StoryGraph
         Artwork = new("characters.alley_thug_1.png"),
         Portrait = new("portraits.alley_thug_1.png"),
         Items = [Combat.WeaponCatalog.Create(Combat.WeaponType.Clubs, "thug-club", "Club", "Right hand")],
+        Equipment = ImmutableDictionary<string, string>.Empty.Add("Right hand", "thug-club"),
         Attacks = [new WeaponAttackAction("club-attack", "thug-club")],
     };
 
@@ -28,7 +29,8 @@ public sealed record Part1 : StoryGraph
             Combat.WeaponCatalog.Create(Combat.WeaponType.Pistol, "thug-pistol", "Pistol", "Right hand"),
             Combat.WeaponCatalog.CreateAmmunition(AmmunitionType.Bullet, "thug-bullets", 6),
         ],
-        Attacks = [new WeaponAttackAction("pistol-attack", "thug-pistol") { ReloadAnimation = "Reload" }],
+        Equipment = ImmutableDictionary<string, string>.Empty.Add("Right hand", "thug-pistol"),
+        Attacks = [new WeaponAttackAction("pistol-attack", "thug-pistol") { ReloadAnimation = "Reload", Classifications = ["weapon", "ranged"] }],
     };
 
     public static readonly CharacterData AlleywayThug3 = new()
@@ -38,7 +40,16 @@ public sealed record Part1 : StoryGraph
         Artwork = new("characters.alley_thug_3.png"),
         Portrait = new("portraits.alley_thug_3.png"),
         Items = [Combat.WeaponCatalog.Create(Combat.WeaponType.Rock, "thug-rocks", "Rock", "Right hand") with { Quantity = 3 }],
-        Attacks = [new ThrowItemAction("rock-throw", "thug-rocks")],
+        Strategy = new(StrategyId.Protective) { ProtectAllies = true },
+        StrategyTransitions = [new("last-stand", new(StrategyConditionKind.HealthAtMost, Health: 2), new(StrategyId.Aggressive))],
+        Actions =
+        [
+            new ThrowItemAction("rock-throw", "thug-rocks"),
+            new ActionData { Id = "rally-ally", Effects = [new RestoreEffect(2)],
+                Targeting = new(TargetShape.Single, TargetRelationship.SameTeam),
+                Costs = [new(new ResourceSubject(ResourceKind.Focus), 1)], Classifications = ["restoration"] },
+            new ActionData { Id = "distract", Effects = [new DelayEffect(1)], Targeting = new(TargetShape.Single, TargetRelationship.OpposingTeam) },
+        ],
     };
 
     public static readonly StoryNode Intro = new CombatScenario

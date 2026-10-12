@@ -5,7 +5,8 @@ namespace NexusRealms.Prelude.Combat;
 /// <summary>An authored operation, including its equipment and learning requirements.</summary>
 public sealed record CommandDefinition(ActionId Id, string Name, float TurnCost,
     ItemId? RequiredItem = null, string? RequiredSlot = null, bool Learned = true,
-    bool Passive = false, bool RequiresTarget = true, int FocusCost = 0, Action<CombatSystem, Combatant>? Resolve = null, Func<CommandTarget, bool>? TargetRule = null, string? Icon = null, string? IconRegion = null, StrikeHand? Hand = null);
+    bool Passive = false, bool RequiresTarget = true, int FocusCost = 0, Action<CombatSystem, Combatant>? Resolve = null, Func<CommandTarget, bool>? TargetRule = null, string? Icon = null, string? IconRegion = null, StrikeHand? Hand = null,
+    ImmutableArray<string> Classifications = default);
 public enum StrikeHand { Left, Right }
 /// <summary>One hit using the held weapon's damage, or one General point when unarmed.</summary>
 public sealed record HandStrike(StrikeHand Hand, CarriedItem? Item)
@@ -117,6 +118,8 @@ public sealed partial class CombatLoadout
     }
     /// <summary>Legacy HUD commands, independent of progression abilities.</summary>
     public List<CommandDefinition> Commands { get; } = [];
+    /// <summary>Whether universal player hand, Throw, and Wait commands are part of this repertoire.</summary>
+    public bool BasicCommands { get; internal set; } = true;
     /// <summary>Compatibility view of HUD commands; progression uses LearnedAbilities.</summary>
     public List<CommandDefinition> Abilities => Commands;
     private Dictionary<string, string> _equipment = [];
@@ -172,7 +175,7 @@ public sealed partial class CombatLoadout
         }
         return action.TargetRule?.Invoke(target) ?? target is { Team: CombatTeam.Enemies, Row: CombatRow.Front };
     }
-    public bool Available(CommandDefinition a) => (Abilities.Contains(a) || ReferenceEquals(a, LeftHandStrike) || ReferenceEquals(a, RightHandStrike) || ReferenceEquals(a, Throw) || ReferenceEquals(a, Wait)) && a.Learned && !a.Passive && (CommandAllowed?.Invoke(a) ?? true)
+    public bool Available(CommandDefinition a) => (Abilities.Contains(a) || BasicCommands && (ReferenceEquals(a, LeftHandStrike) || ReferenceEquals(a, RightHandStrike) || ReferenceEquals(a, Throw) || ReferenceEquals(a, Wait))) && a.Learned && !a.Passive && (CommandAllowed?.Invoke(a) ?? true)
         && (a != Throw || ThrowOptions().Count > 0)
         && (a.Hand is not { } shootingHand || HasShootingHands(shootingHand))
         && (a.Hand is not { } attackHand || HeldItem(attackHand) is not { Weapon.Shots: > 0 } weapon || ShotsRemaining(weapon) > 0)
@@ -194,7 +197,7 @@ public sealed partial class CombatLoadout
     public bool CanConfirm(CombatSystem combat, string actorId, CommandDefinition? a, bool validTarget) =>
         !_resolving && !combat.IsResolving && !combat.HasEnded && combat.ActiveCombatant?.Id == actorId
         && combat.IsAlive(actorId)
-        && combat.ActiveCombatant.PlayerControlled && a is not null && Available(a)
+        && a is not null && Available(a)
         && (a != Wait || combat.WaitCost(actorId) is not null)
         && (!a.RequiresTarget || validTarget);
     public bool Confirm(CombatSystem combat, string actorId, CommandDefinition? a,
@@ -206,7 +209,7 @@ public sealed partial class CombatLoadout
         _resolving = true;
         try
         {
-            combat.SubmitAction(new(a == Wait ? combat.WaitCost(actorId)!.Value : CommandCost(a), (_, _) =>
+            Submit(combat, new(a == Wait ? combat.WaitCost(actorId)!.Value : CommandCost(a), (_, _) =>
             {
                 Focus -= a.FocusCost;
                 if (a.Hand is { } hand)
@@ -268,7 +271,7 @@ public sealed partial class CombatLoadout
         _resolving = true;
         try
         {
-            selection.Combat.SubmitAction(new(Throw.TurnCost, (_, _) =>
+            Submit(selection.Combat, new(Throw.TurnCost, (_, _) =>
             {
                 Focus -= Throw.FocusCost;
                 if (option.Item.Quantity == 1)
@@ -329,7 +332,7 @@ public sealed partial class CombatLoadout
     public bool Commit(CombatSystem combat, string actorId, Dictionary<string, string> pending, IReadOnlyDictionary<string, string>? reloads = null) =>
         CommitCore(combat, actorId, pending, reloads, BuildInventorySlots(pending), Cost(pending, reloads));
     private bool CommitCore(CombatSystem combat, string actorId, Dictionary<string, string> pending,
-        IReadOnlyDictionary<string, string>? reloads, string?[]? inventorySlots, float cost)
+        IReadOnlyDictionary<string, string>? reloads, string?[]? inventorySlots, float cost, bool validateOnly = false)
     {
         if (inventorySlots is null || _resolving || combat.IsResolving || pending.Any(p => !Items.Any(i => i.Id.Value == p.Value && CanEquip(i, p.Key)))
             || pending.GroupBy(pair => pair.Value).Any(group =>
@@ -343,12 +346,14 @@ public sealed partial class CombatLoadout
                     Items.Find(item => item.Id.Value == pair.Key)!.Weapon!.Shots - ShotsRemaining(Items.Find(item => item.Id.Value == pair.Key)!)))) return false;
         if (cost == 0f && queuedReloads.Count == 0) return true;
         if (!float.IsFinite(cost) || cost <= 0f) return false;
-        if (combat.HasEnded || combat.ActiveCombatant?.Id != actorId || !combat.ActiveCombatant.PlayerControlled) return false;
+        if (!LayoutAllowed(queuedReloads, cost)) return false;
+        if (combat.HasEnded || combat.ActiveCombatant?.Id != actorId || !combat.IsAlive(actorId)) return false;
+        if (validateOnly) return true;
         var committed = new Dictionary<string, string>(pending);
         _resolving = true;
         try
         {
-            combat.SubmitAction(new(cost, (_, _) =>
+            Submit(combat, new(cost, (_, _) =>
             {
                 _equipment = committed;
                 _inventorySlots = (string?[])inventorySlots.Clone();
@@ -363,9 +368,19 @@ public sealed partial class CombatLoadout
                     _shots[weaponId] = weapon.Weapon.Shots;
                     _loadedAmmunition[weaponId] = ammo with { Quantity = 1 };
                 }
+                combat.Resolver?.RecordEmptyAction(actorId, queuedReloads.Count > 0 ? "reload" : "equipment", cost);
             }));
             return true;
         }
         finally { _resolving = false; }
     }
+
+    private static void Submit(CombatSystem combat, CombatAction operation)
+    {
+        if (combat.ActiveCombatant!.PlayerControlled) combat.SubmitAction(operation);
+        else combat.SubmitAutomaticAction(operation);
+    }
+    private bool LayoutAllowed(IReadOnlyDictionary<string, string> reloads, float cost) => CommandAllowed?.Invoke(
+        new(reloads.Count > 0 ? "reload" : "equipment", "Equipment", cost, RequiresTarget: false,
+            Classifications: reloads.Count > 0 ? ["weapon", "reload"] : ["equipment"])) ?? true;
 }

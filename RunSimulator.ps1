@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [ValidateRange(1, [int]::MaxValue)]
-    [int]$Runs = 100,
+    [int]$Runs = 1000,
     [string]$State = (Join-Path $PSScriptRoot 'Prelude/Simulator/examples/intro.json'),
     [Nullable[int]]$Seed,
     [string]$OutputDirectory = (Join-Path $PSScriptRoot 'simulation-results'),
@@ -23,11 +23,11 @@ Write-Host "Console log: $logPath"
 Write-Host "Results JSON: $resultsPath"
 if (!$NoBuild) {
     & dotnet build $projectPath --disable-build-servers -m:1 --verbosity quiet 2>&1 |
-        Tee-Object -FilePath $logPath
+    Tee-Object -FilePath $logPath
     if ($LASTEXITCODE -ne 0) { throw "Simulator build failed. See $logPath" }
 }
 & dotnet run --project $projectPath --no-build --no-launch-profile -- @simulatorArguments 2>&1 |
-    Tee-Object -FilePath $logPath -Append
+Tee-Object -FilePath $logPath -Append
 $simulatorExitCode = $LASTEXITCODE
 if ($simulatorExitCode -ne 0) {
     throw "Simulator exited with code $simulatorExitCode. See $logPath"
