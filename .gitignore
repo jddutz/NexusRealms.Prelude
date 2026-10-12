@@ -414,6 +414,7 @@ FodyWeavers.xsd
 *.vsix
 
 # Windows Installer files from build outputs
+simulation-results/
 *.cab
 *.msi
 *.msix
