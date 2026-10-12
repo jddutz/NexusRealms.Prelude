@@ -10,6 +10,9 @@ static void Check(bool condition, string message)
 
 var storyline = new Storyline();
 var state = new SimulationState { CurrentStoryNodeId = storyline.StartNodeId.Value };
+var startingLoadout = state.CreateGameState().Loadout;
+Check(startingLoadout.Inventory.Single(item => item?.Id.Value == "starting-rocks")?.Quantity == 5,
+    "Player must start with one inventory stack of five rocks.");
 var first = SimulationRunner.Run(storyline, state, 42);
 Check(first == SimulationRunner.Run(storyline, state, 42), "Seed replay or fresh-state isolation failed.");
 Check(state.Health == 20, "Simulation mutated its starting state.");
@@ -39,6 +42,14 @@ var harmless = storyline.Characters.ToDictionary(pair => pair.Key, pair => pair.
 });
 var draw = SimulationRunner.Run(authored, harmless, state.CreateGameState(), 42);
 Check(draw.Outcome == CombatOutcome.Draw && draw.Turn == 100, "Full encounter did not draw at Turn 100.");
+var selectedRockThrow = false;
+for (var seed = 0; seed < 32 && !selectedRockThrow; seed++)
+{
+    var throwState = state.CreateGameState();
+    SimulationRunner.Run(authored, harmless, throwState, seed);
+    selectedRockThrow = throwState.Loadout.ThrownItems.Any(item => item.Id.Value == "starting-rocks");
+}
+Check(selectedRockThrow, "Simulator random action selection must include throwing inventory rocks.");
 try
 {
     SimulationRunner.Run(storyline, state with { CurrentStoryNodeId = "missing" }, 42);

@@ -25,6 +25,7 @@ public sealed partial class CombatLoadout
         var loadout = new CombatLoadout { Focus = 2 };
         var sword = WeaponCatalog.Create(WeaponType.Sword, "starting-sword", "Sword", "Right hand");
         loadout.Items.Add(sword);
+        loadout.Items.Add(WeaponCatalog.Create(WeaponType.Rock, "starting-rocks", "Rock", "Right hand") with { Quantity = 5 });
         loadout._equipment["Right hand"] = sword.Id.Value;
         loadout.Assign(0, RightHandStrike.Id.Value);
         loadout.Assign(1, LeftHandStrike.Id.Value);
