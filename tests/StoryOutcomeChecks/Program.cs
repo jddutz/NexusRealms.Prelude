@@ -5,7 +5,7 @@ using NexusRealms.Prelude.DataModel;
 
 static void Check(bool condition) { if (!condition) throw new Exception("Story outcome check failed"); }
 var story = new Storyline();
-var scenario = (CombatScenario)story.Nodes[story.StartNodeId];
+var scenario = (CombatScenario)story.Nodes[NexusRealms.Prelude.Database.Chapter1.Part1.Intro.Id];
 Check(scenario.VictoryConditions.Length == 0 && scenario.DefeatConditions.Length == 1);
 Check(scenario.Characters.Count(character => character.RequiredForVictory) == 1);
 Check(scenario.Characters.Single(character => character.RequiredForVictory).Slot == NexusRealms.Prelude.DataModel.FormationSlot.BackLeft);
@@ -118,7 +118,7 @@ Check(costCombat.Timeline.TurnOrder.Single(entry => entry.CombatantId == "pistol
 Console.WriteLine("Enemy weapon costs, typed damage, pistol reload, three rocks, equipment, and second-player-turn ordering passed.");
 
 // Validate the authored action names against the exported animation sheets when available.
-var contentRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../Prelude/.content"));
+var contentRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../.content"));
 foreach (var thug in new[]
 {
     NexusRealms.Prelude.Database.Chapter1.Part1.AlleywayThug1,

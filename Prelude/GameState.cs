@@ -5,6 +5,8 @@ public sealed class GameState
     public GameState(StoryNodeId currentStoryNodeId) => CurrentStoryNodeId = currentStoryNodeId;
     public StoryNodeId CurrentStoryNodeId { get; set; }
     public CombatOutcome? LastCombatOutcome { get; set; }
+    public ZodiacSign Zodiac { get; init; } = ZodiacSign.Aries;
+    public HashSet<StoryNodeId> CompletedProgressionNodes { get; } = [];
     /// <summary>Gets the player's portrait texture.</summary>
     public ContentId Portrait { get; init; } = new("portraits.mercenary_male.png");
     public Combat.CombatLoadout Loadout { get; init; } = Combat.CombatLoadout.CreatePlayerLoadout();

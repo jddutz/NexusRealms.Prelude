@@ -213,8 +213,10 @@ public static class CombatDecisionMaker
         // A complete authored objective is worth 10,000 by default. Partial
         // progress is normalized by recipient Health at this decision boundary,
         // rather than rewarding incidental damage to unrelated combatants.
-        void Objectives(ImmutableArray<CombatConditionData> conditions, string label, int sign)
+        void Objectives(ImmutableArray<CombatConditionData> conditions, string label, int sign, bool any = false)
         {
+            long bestProgress = 0;
+            var bestIndex = 0;
             for (var index = 0; index < conditions.Length; index++)
             {
                 var condition = conditions[index];
@@ -229,12 +231,25 @@ public static class CombatDecisionMaker
                 var progress = targets.Sum(character => character.Health.Health <= 0 ? 0L
                     : Math.Clamp(((long)character.Health.Health - after.Characters[character.Id].Health.Health)
                         * 1000 / character.Health.Health, 0L, 1000L)) / targets.Length;
-                Add($"objective-{label}-progress:{index}", sign * progress, weights.ObjectiveProgress);
+                if (!any) Add($"objective-{label}-progress:{index}", sign * progress, weights.ObjectiveProgress);
+                else if (progress > bestProgress) { bestProgress = progress; bestIndex = index; }
             }
+            // Defeat is an OR: one route is sufficient, so do not add unrelated routes.
+            if (any) Add($"objective-{label}-progress:{bestIndex}", sign * bestProgress, weights.ObjectiveProgress);
         }
-        var victorySign = actor.Team == CombatTeam.Enemies ? -1 : 1;
-        Objectives(before.Combat.VictoryObjectives, "victory", victorySign);
-        Objectives(before.Combat.DefeatObjectives, "defeat", -victorySign);
+        if (actor.Team == CombatTeam.Enemies)
+        {
+            // Enemy success is any authored Defeat condition, independently of
+            // player Victory. Preventing Victory is a loss-avoidance consideration.
+            Objectives(before.Combat.DefeatObjectives, "defeat", 1, any: true);
+            Objectives(before.Combat.VictoryObjectives, "victory", -1);
+        }
+        else
+        {
+            // There is one player, pursuing the authored Victory conditions.
+            Objectives(before.Combat.VictoryObjectives, "victory", 1);
+            Objectives(before.Combat.DefeatObjectives, "defeat", -1, any: true);
+        }
         Add("schedule-opportunities", ScheduleAdvantage(before, after, actorId, candidate.Action.TurnCost), weights.Denial);
         Add("allied-actions-enabled", beforeThreat is not null && afterThreat is not null
             ? afterThreat.AlliedActions.Except(beforeThreat.AlliedActions).Count()

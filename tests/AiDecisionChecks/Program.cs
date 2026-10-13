@@ -305,6 +305,39 @@ decision = CombatDecisionMaker.Decide(f.Resolver, "player", new(StrategyId.Analy
 Check(decision.Selected?.Action.Id == "z-strong"
     && decision.Planning is { Truncated: true, UsedFallback: false, CompletedDepth: 1 },
     "Budget exhaustion must preserve a completed comparison rather than favor a candidate prefix.");
+// Every enemy policy pursues Defeat directly, with a separate player Victory condition.
+foreach (var strategy in Enum.GetValues<StrategyId>())
+{
+    f = new Fixture();
+    f.Add("player", true, CombatTeam.PlayerAndAllies, 10, 100);
+    f.Add("actor", false, CombatTeam.Enemies, 20, 0, FormationSlot.FrontLeft);
+    f.Add("ward", false, CombatTeam.Enemies, 1, 100, FormationSlot.FrontRight);
+    f.Give("actor", Act("a-protect-victory-target", new RestoreEffect(1)) with { Targeting = new(TargetShape.Single, TargetRelationship.SameTeam) },
+        Act("z-pursue-defeat", new DamageEffect(DamageType.General, 1)));
+    f.Combat.ConfigureObjectives([new(CombatConditionKind.CharacterDefeated, "ward")], [new(CombatConditionKind.PlayerDefeated)]);
+    f.Start();
+    var assignment = new StrategyAssignment(strategy) { ProtectedIds = ["ward"] };
+    decision = CombatDecisionMaker.Decide(f.Resolver, "actor", assignment);
+    Check(decision.Selected?.Action.Id == "z-pursue-defeat", $"{strategy} must pursue authored Defeat rather than merely impede Victory.");
+    Check(decision.Candidates.Single(entry => entry.Candidate.Key == decision.Selected!.Key).Contributions
+        .Any(feature => feature.Feature == "objective-defeat-progress:0" && feature.Utility > 0),
+        $"{strategy} must receive positive progress from the enemy's own objective.");
+}
+
+// A known timeline event can fulfill Defeat without the enemy dealing direct damage.
+f = new Fixture();
+f.Add("player", true, CombatTeam.PlayerAndAllies, 10, 1);
+f.Add("actor", false, CombatTeam.Enemies, 1, 0, FormationSlot.FrontLeft);
+f.Give("player", Act("finish", new DamageEffect(DamageType.General, 1)));
+f.Give("actor", Act("a-attack", new DamageEffect(DamageType.General, 3)) with { TurnCost = 2 },
+    Act("z-stall", new DelayEffect(2)) with { TurnCost = 2 });
+f.Combat.ConfigureObjectives([new(CombatConditionKind.AllEnemiesDefeated)], [new(CombatConditionKind.PlayerDefeated)]);
+f.Resolver.ScheduleEvent(new(1.5f, "known hazard", "actor", "player", Act("hazard", new DamageEffect(DamageType.General, 10))));
+f.Start();
+decision = CombatDecisionMaker.Decide(f.Resolver, "actor", new(StrategyId.Analytical));
+Check(decision.Selected?.Action.Id == "z-stall"
+    && decision.Candidates.Single(entry => entry.Candidate.Key == decision.Selected!.Key).Preview.EncounterOutcome == CombatOutcome.Defeat,
+    "Enemy Analytical must stall for a known Defeat-producing event instead of maximizing direct damage.");
 Console.WriteLine("AI decision acceptance checks passed.");
 
 sealed class Fixture

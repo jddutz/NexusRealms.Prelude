@@ -1329,9 +1329,9 @@ public class CombatScene : Scene
         _dialog?.Dispose();
         _dialog = null;
         var panel = BeginDialog(null);
-        const int columns = 3;
+        const int columns = 4;
         const int rows = 5;
-        const float cellWidth = 280f;
+        const float cellWidth = 210f;
         const float cellHeight = 72f;
         _dialog!.Content.VerticalAlignment = AlignVertical.Top;
         _dialog.Content.Margins = new(Left: 0f, Right: 0f, Top: 72f, Bottom: 0f);
@@ -1342,15 +1342,16 @@ public class CombatScene : Scene
             Columns = Enumerable.Repeat(GridSize.Absolute(cellWidth), columns).ToArray(),
             Rows = Enumerable.Repeat(GridSize.Absolute(cellHeight), rows).ToArray(),
         };
+        var abilityOrder = Database.Progression.ProgressionGraphs.All[_gameState.Zodiac].Branches.SelectMany(branch => branch.Abilities).Select(node => node.Ability).ToArray();
         var selectionFrames = new Dictionary<AbilityId, ImageElement>();
         for (var index = 0; index < columns * rows; index++)
         {
-            if (index >= Database.Abilities.DisplayOrder.Count)
+            if (index >= abilityOrder.Length)
             {
                 grid.SetCell(index / columns, index % columns, new Element());
                 continue;
             }
-            var ability = _storyline.Abilities[Database.Abilities.DisplayOrder[index].Id];
+            var ability = _storyline.Abilities[abilityOrder[index]];
             var dialog = _dialog!;
             AbilityDragCell? cell = null;
             cell = new AbilityDragCell(
@@ -1472,7 +1473,7 @@ public class CombatScene : Scene
         var image = new ImageElement
         {
             Texture = _textures.GetOrCreate(new ContentId("zodiac_signs")),
-            SourceRegion = signs[0],
+            SourceRegion = signs[(int)_gameState.Zodiac],
             Width = 68f,
             Height = 68f,
             HorizontalAlignment = AlignHorizontal.Right,
@@ -1572,6 +1573,8 @@ public class CombatScene : Scene
                 _gameState.CurrentStoryNodeId = nodeId;
                 if (_storyline.Nodes[nodeId] is CombatScenario)
                     _sceneManager.LoadScene<CombatScene>();
+                else if (_storyline.Nodes[nodeId] is ProgressionNode)
+                    _sceneManager.LoadScene<ProgressionScene>();
                 else
                     _sceneManager.LoadScene<OutcomeScene>();
             }

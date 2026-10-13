@@ -10,7 +10,7 @@ static void Check(bool condition, string message)
 }
 
 var storyline = new Storyline();
-var state = new SimulationState { CurrentStoryNodeId = storyline.StartNodeId.Value };
+var state = new SimulationState { CurrentStoryNodeId = NexusRealms.Prelude.Database.Chapter1.Part1.Intro.Id.Value };
 var startingLoadout = state.CreateGameState().Loadout;
 Check(startingLoadout.Inventory.Single(item => item?.Id.Value == "starting-rocks")?.Quantity == 5,
     "Player must start with one inventory stack of five rocks.");
@@ -38,7 +38,7 @@ Check(omittedEquipmentLayouts > 0
     "Decision trace output must omit unselected equipment-layout alternatives.");
 Check(state.Health == 20, "Simulation mutated its starting state.");
 Check(first.PlayerStrategy == state.PlayerStrategy.Strategy, "Run must record the configured player strategy.");
-Check(first.EnemyConfiguration.Length == ((CombatScenario)storyline.Nodes[storyline.StartNodeId]).Characters.Length,
+Check(first.EnemyConfiguration.Length == ((CombatScenario)storyline.Nodes[NexusRealms.Prelude.Database.Chapter1.Part1.Intro.Id]).Characters.Length,
     "Run must record the scenario's character configuration.");
 Check(first.PlayerActionUses.Values.Sum() > 0, "Run must record player action usage.");
 Check(first.PlayerActionResults.Length > 0 && first.PlayerActionResults.All(result =>
@@ -88,7 +88,7 @@ pump.SubmitAction(new(1, (_, _) => { }));
 Check(pump.Outcome == CombatOutcome.Draw, "Automatic processing after an action crossed cutoff.");
 var empty = (state with { Items = [], ItemLayout = [] }).CreateGameState();
 Check(empty.Loadout.Items.Count == 0 && empty.Loadout.Equipment.Count == 0, "Empty saved loadout was not restored.");
-var authored = (CombatScenario)storyline.Nodes[storyline.StartNodeId];
+var authored = (CombatScenario)storyline.Nodes[NexusRealms.Prelude.Database.Chapter1.Part1.Intro.Id];
 Check(authored.Characters.Select(placement => storyline.Characters[placement.CharacterId])
     .SelectMany(character => character.Actions)
     .All(action => action.BuildEffects().All(effect => effect is not RestoreEffect)),

@@ -26,5 +26,12 @@ public static class Abilities
     public static IReadOnlyList<AbilityData> DisplayOrder { get; } =
         Array.AsReadOnly(new[] { Slash, Push, Parry, BladeStorm });
     public static FrozenDictionary<AbilityId, AbilityData> All { get; } =
-        DisplayOrder.ToFrozenDictionary(ability => ability.Id);
+        DisplayOrder.Concat(Enum.GetValues<ProgressionBranch>().SelectMany(branch =>
+            Enumerable.Range(1, 5).Select(index => new AbilityData
+            {
+                Id = $"{branch.ToString().ToLowerInvariant()}-{index}",
+                Name = $"{branch} {index}",
+                Description = "Progression placeholder; combat effects have not been authored.",
+                Icon = new("stats.swords_crossed.png"),
+            }))).ToFrozenDictionary(ability => ability.Id);
 }

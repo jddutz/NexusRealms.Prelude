@@ -24,7 +24,7 @@ public sealed class Storyline
     /// <summary>
     /// Gets the identifier of the first node in the story.
     /// </summary>
-    public StoryNodeId StartNodeId { get; } = Chapter1.Part1.Intro.Id;
+    public StoryNodeId StartNodeId { get; } = "ch1_progression_1";
 
     /// <summary>
     /// Gets the identifier of the final node in the story.
@@ -115,6 +115,11 @@ public sealed class Storyline
 
         foreach (var node in nodes.Values)
         {
+            if (node is ProgressionNode progression)
+            {
+                if (progression.Chapter is < 1 or > 5 || !nodes.ContainsKey(progression.NextNode))
+                    throw new InvalidOperationException($"Invalid progression visit '{node.Id}'.");
+            }
             if (node is not CombatScenario scenario)
             {
                 continue;

@@ -47,9 +47,12 @@ fulfilling one condition contributes 10,000 utility before ordinary tactical
 features. Progress is the average fractional Health reduction of the condition's
 recipients, relative to their Health at the current decision boundary, clamped
 between zero and completion. Surplus healing cannot manufacture objective progress.
-Player
-policies reward victory progress and penalize defeat progress; enemies reverse
-those signs. `CharacterDefeated`, `AllEnemiesDefeated`, and `PlayerDefeated` each
+There is one player, pursuing authored Victory conditions. Enemy policies pursue
+separately authored Defeat conditions directly; preventing player Victory is a
+loss-avoidance consideration, not a substitute goal. Defeat is an OR: progress
+uses the strongest individual route, rather than summing unrelated routes.
+No player allies are implied; a future captive can be an encounter objective.
+`CharacterDefeated`, `AllEnemiesDefeated`, and `PlayerDefeated` each
 derive their recipients from objective data. There are no item or character-name
 preferences. Actual terminal victory always outranks utility, regardless of weights.
 Equipment changes and reloads also score the difference in the best achievable
@@ -173,3 +176,8 @@ ability-drag checks also cover the integration boundaries. Simulation's default
 player policy is Aggressive; its seed controls scheduler ranks, not random action
 selection. `SimulationState.PlayerStrategy` selects another profile for comparisons.
 `CaptureCandidateTraces = false` omits full candidate and rejection payloads without changing evaluation or selection. The simulator enables these payloads when a trace callback is supplied.
+
+Known scheduled events are resolved during Analytical search and may fulfill Defeat
+without a direct enemy attack. Immediate policies only score currently resolved
+consequences; they do not predict arbitrary future timeline outcomes. The current
+condition schema supports character defeat, not a standalone deadline condition.
