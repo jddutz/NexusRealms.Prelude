@@ -1,7 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateRange(1, [int]::MaxValue)]
-    [int]$Runs = 1000,
+    [int]$Runs,
     [string]$State = (Join-Path $PSScriptRoot '../Simulator/examples/intro.json'),
     [Nullable[int]]$Seed,
     [string]$OutputDirectory = (Join-Path $PSScriptRoot '..\.temp\simulator-results'),
@@ -9,6 +8,9 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+if ($PSBoundParameters.ContainsKey('Runs') -and $Runs -le 0) {
+    throw 'Runs must be a positive integer.'
+}
 $statePath = (Resolve-Path -LiteralPath $State).Path
 $outputPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputDirectory)
 New-Item -ItemType Directory -Path $outputPath -Force | Out-Null
@@ -16,7 +18,8 @@ $runName = 'simulation-{0}-{1}' -f (Get-Date -Format 'yyyyMMdd-HHmmss-fff'), ([g
 $logPath = Join-Path $outputPath "$runName.log"
 $resultsPath = Join-Path $outputPath "$runName.json"
 $projectPath = Join-Path $PSScriptRoot '..\Simulator\Simulator.csproj'
-$simulatorArguments = @('--state', $statePath, '--runs', "$Runs", '--output', $resultsPath)
+$simulatorArguments = @('--state', $statePath, '--output', $resultsPath)
+if ($PSBoundParameters.ContainsKey('Runs')) { $simulatorArguments += @('--runs', "$Runs") }
 if ($null -ne $Seed) { $simulatorArguments += @('--seed', "$Seed") }
 
 Write-Host "Console log: $logPath"

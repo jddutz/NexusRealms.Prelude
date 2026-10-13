@@ -44,14 +44,23 @@ internal sealed record ThreatFacts(ImmutableDictionary<string, int> Harm, Immuta
 /// <summary>Complete legal actions, shared resolution, integer utility and canonical ties.</summary>
 public static class CombatDecisionMaker
 {
+    /// <summary>Stores candidate scores without requiring a full preview when traces are disabled.</summary>
+    /// <param name="Candidate">The legal action candidate.</param>
+    /// <param name="Preview">The resulting state, when candidate traces are requested.</param>
+    /// <param name="Utility">The weighted utility score.</param>
+    /// <param name="ObjectiveRank">The terminal-outcome preference rank.</param>
+    /// <param name="Contributions">The feature breakdown, when candidate traces are requested.</param>
+    private sealed record ScoredCandidate(ActionCandidate Candidate, ActionPreview? Preview, long Utility,
+        int ObjectiveRank, ImmutableArray<ScoreContribution> Contributions);
+
     public static DecisionTrace Decide(CombatActionResolver resolver, string actorId, StrategyAssignment? assignment = null)
     {
         if (resolver.Combat.ActiveCombatant?.Id != actorId) throw new InvalidOperationException("AI requires the actor's decision boundary.");
         var snapshot = resolver.Behavior.Snapshot(actorId, assignment);
         var effective = Effective(resolver, actorId, snapshot);
-        var rejected = new List<RejectedCandidate>();
+        var rejected = resolver.CaptureCandidateTraces ? new List<RejectedCandidate>() : null;
         var candidates = CandidateGeneration.Enumerate(resolver, actorId, rejected);
-        var evaluations = new List<CandidateEvaluation>();
+        var evaluations = new List<ScoredCandidate>();
         PlanningTrace? planning = null;
         if (effective == StrategyId.Analytical)
             planning = Plan(resolver, actorId, snapshot, candidates, evaluations);
@@ -63,17 +72,24 @@ public static class CombatDecisionMaker
             {
                 var copy = resolver.CopyForSimulation();
                 var outcome = copy.Commit(actorId, candidate);
-                evaluations.Add(Evaluate(resolver, copy, actorId, candidate, outcome, snapshot, effective, beforeThreat, Threats(copy, actorId, threatCache)));
+                var afterThreat = Threats(copy, actorId, threatCache);
+                evaluations.Add(Evaluate(resolver, copy, actorId, candidate, outcome, snapshot, effective,
+                    beforeThreat, afterThreat, resolver.CaptureCandidateTraces));
             }
         }
         var ordered = evaluations.OrderByDescending(entry => entry.ObjectiveRank).ThenByDescending(entry => entry.Utility).ToArray();
         var selected = ordered.FirstOrDefault();
-        var trace = new DecisionTrace(actorId, effective, resolver.CaptureCandidateTraces ? evaluations : Array.Empty<CandidateEvaluation>(), selected?.Candidate,
+        var candidateTraces = resolver.CaptureCandidateTraces
+            ? evaluations.Select(entry => new CandidateEvaluation(entry.Candidate,
+                entry.Preview ?? throw new InvalidOperationException("Candidate trace preview was not captured."),
+                entry.Utility, entry.ObjectiveRank, entry.Contributions)).ToArray()
+            : Array.Empty<CandidateEvaluation>();
+        var trace = new DecisionTrace(actorId, effective, candidateTraces, selected?.Candidate,
             ["Local threat estimate: each fully observed opposing action could occur now; no intervening events or player choice are predicted.",
              "Protection uses worst Health loss per recipient; enabled and denied actions use current legal choices. Analytical follows scheduled events."])
         {
             Turn = resolver.Combat.Timeline.CurrentTurn, Behavior = snapshot,
-            Rejected = resolver.CaptureCandidateTraces ? rejected.ToImmutableArray() : [], Planning = planning, StateKey = StateKey(resolver),
+            Rejected = rejected?.ToImmutableArray() ?? [], Planning = planning, StateKey = StateKey(resolver),
             Ties = selected is null ? [] : ordered.Where(entry => entry.ObjectiveRank == selected.ObjectiveRank && entry.Utility == selected.Utility)
                 .Select(entry => entry.Candidate.Key).ToImmutableArray(),
         };
@@ -81,10 +97,13 @@ public static class CombatDecisionMaker
         return trace;
     }
 
-    /// <summary>Reevaluate from live state at commitment; stale selections pay nothing.</summary>
+    /// <summary>Decides and commits synchronously without repeating the stale-state check.</summary>
     public static DecisionTrace DecideAndCommit(CombatActionResolver resolver, string actorId)
     {
-        return CommitDecision(resolver, Decide(resolver, actorId));
+        var trace = Decide(resolver, actorId);
+        if (trace.Selected is { } selection) resolver.Commit(trace.ActorId, selection);
+        else resolver.Combat.SubmitNoLegalAction();
+        return trace;
     }
     public static DecisionTrace CommitDecision(CombatActionResolver resolver, DecisionTrace trace)
     {
@@ -121,14 +140,22 @@ public static class CombatDecisionMaker
         ? resolver.Characters.Values.Where(character => character.Id != actorId && character.Team == resolver.Characters[actorId].Team).Select(character => character.Id).ToHashSet(StringComparer.Ordinal)
         : (assignment.ProtectedIds ?? []).ToHashSet(StringComparer.Ordinal);
 
-    private static CandidateEvaluation Evaluate(CombatActionResolver before, CombatActionResolver after, string actorId,
-        ActionCandidate candidate, ActionOutcome outcome, BehaviorSnapshot snapshot, StrategyId strategy, ThreatFacts? beforeThreat = null, ThreatFacts? afterThreat = null)
+    private static ScoredCandidate Evaluate(CombatActionResolver before, CombatActionResolver after, string actorId,
+        ActionCandidate candidate, ActionOutcome outcome, BehaviorSnapshot snapshot, StrategyId strategy,
+        ThreatFacts? beforeThreat = null, ThreatFacts? afterThreat = null, bool captureTrace = true)
     {
         var weights = snapshot.Effective.Weights ?? StrategyWeights.For(strategy);
         var actor = before.Characters[actorId];
         var wards = Wards(before, actorId, snapshot.Effective);
         var contributions = ImmutableArray.CreateBuilder<ScoreContribution>();
-        void Add(string feature, long value, int weight) { if (value != 0) contributions.Add(new(feature, value, weight, checked(value * weight))); }
+        long utility = 0;
+        void Add(string feature, long value, int weight)
+        {
+            if (value == 0) return;
+            var weighted = checked(value * weight);
+            utility = checked(utility + (feature == "time-centiturns" ? weighted / 100 : weighted));
+            if (captureTrace) contributions.Add(new(feature, value, weight, weighted));
+        }
         foreach (var (id, character) in before.Characters.OrderBy(pair => pair.Key, StringComparer.Ordinal))
         {
             var next = after.Characters[id];
@@ -183,9 +210,8 @@ public static class CombatDecisionMaker
             : EnabledActions(after, actor.Team).Except(EnabledActions(before, actor.Team)).Count(), weights.Support);
         Add("time-centiturns", -(long)Math.Round(candidate.Action.TurnCost * 100d, MidpointRounding.AwayFromZero), weights.Time);
         // Time is expressed in centiturns; the declared weight is per Turn, avoiding float tie comparisons.
-        var fixedContributions = contributions.Select(entry => entry.Feature == "time-centiturns" ? entry with { Utility = entry.Utility / 100 } : entry).ToImmutableArray();
-        return new(candidate, ActionPreview.Capture(outcome, after), fixedContributions.Sum(entry => entry.Utility),
-            ObjectiveRank(after.Combat.Outcome, actor.Team), fixedContributions);
+        return new(candidate, captureTrace ? ActionPreview.Capture(outcome, after) : null, utility,
+            ObjectiveRank(after.Combat.Outcome, actor.Team), captureTrace ? contributions.ToImmutable() : []);
     }
     private static int ObjectiveRank(CombatOutcome? outcome, CombatTeam team) => outcome switch
     {
@@ -214,10 +240,28 @@ public static class CombatDecisionMaker
     {
         // Equivalent inventory-cell permutations share local threat facts. This cache is
         // decision-local and keyed by every resource/rule/ownership input used by probes.
-        var state = ActionPreview.Capture(new(new ActionData { Damage = new DamageProfile() }, "", [], []), resolver);
-        var key = System.Text.Json.JsonSerializer.Serialize(new { resolver.Combat.HasEnded,
-            Characters = state.Characters.Select(pair => new { pair.Key, pair.Value.Health, pair.Value.Focus, pair.Value.Position,
-                pair.Value.Items, pair.Value.Actions, pair.Value.Statuses, pair.Value.Equipment, pair.Value.Shots, pair.Value.TurnsStarted }) });
+        var key = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            resolver.Combat.HasEnded,
+            Characters = resolver.Characters.OrderBy(pair => pair.Key, StringComparer.Ordinal).Select(pair => new
+            {
+                pair.Key,
+                Health = pair.Value.Health.Health,
+                Focus = pair.Value.Loadout.Focus,
+                pair.Value.Position,
+                Items = pair.Value.Loadout.Items.OrderBy(item => item.Id.Value, StringComparer.Ordinal)
+                    .Select(item => new { Id = item.Id.Value, item.Quantity }),
+                Actions = pair.Value.Loadout.Actions.Keys.Order(StringComparer.Ordinal),
+                Statuses = pair.Value.Statuses.OrderBy(status => status.Sequence)
+                    .Select(status => FormattableString.Invariant($"{status.Definition.Id}:{status.Sequence}:{status.RemainingUses}:{status.ExpiresAt}:{status.ExpiresOnTurnStart}")),
+                Equipment = pair.Value.Loadout.Equipment.OrderBy(item => item.Key, StringComparer.Ordinal)
+                    .Select(item => new { item.Key, item.Value }),
+                Shots = pair.Value.Loadout.Items.Where(item => item.Weapon?.Shots > 0)
+                    .OrderBy(item => item.Id.Value, StringComparer.Ordinal)
+                    .Select(item => new { Id = item.Id.Value, Remaining = pair.Value.Loadout.ShotsRemaining(item) }),
+                pair.Value.TurnsStarted,
+            }),
+        });
         if (cache?.TryGetValue(key, out var cached) == true) return cached;
         var harm = new Dictionary<string, int>(StringComparer.Ordinal);
         var actions = ImmutableHashSet.CreateBuilder<string>(StringComparer.Ordinal);
@@ -230,15 +274,16 @@ public static class CombatDecisionMaker
                 foreach (var candidate in CandidateGeneration.Enumerate(probe, opponent.Id, includeLayouts: false))
                 {
                     if (candidate.Action.Id == "wait") continue;
-                    var preview = probe.Preview(opponent.Id, candidate);
+                    var simulation = probe.CopyForSimulation();
+                    var actionOutcome = simulation.Commit(opponent.Id, candidate);
                     var useful = false;
                     foreach (var ally in resolver.Characters.Values.Where(character => character.Team == resolver.Characters[actorId].Team))
                     {
-                        var damage = Math.Max(0, ally.Health.Health - preview.Characters[ally.Id].Health);
+                        var damage = Math.Max(0, ally.Health.Health - simulation.Characters[ally.Id].Health.Health);
                         harm[ally.Id] = Math.Max(harm.GetValueOrDefault(ally.Id), damage);
                         if (damage > 0) useful = true;
                     }
-                    if (useful || preview.Outcome.Effects.Any(effect => effect.ActualChange != 0)) actions.Add(opponent.Id + "/" + candidate.Key);
+                    if (useful || actionOutcome.Effects.Any(effect => effect.ActualChange != 0)) actions.Add(opponent.Id + "/" + candidate.Key);
                 }
             }
         var result = new ThreatFacts(harm.ToImmutableDictionary(StringComparer.Ordinal), actions.ToImmutable(), EnabledActions(resolver, resolver.Characters[actorId].Team).ToImmutableHashSet(StringComparer.Ordinal));
@@ -260,7 +305,7 @@ public static class CombatDecisionMaker
     }
 
     private static PlanningTrace Plan(CombatActionResolver resolver, string actorId, BehaviorSnapshot snapshot,
-        IReadOnlyList<ActionCandidate> candidates, List<CandidateEvaluation> evaluations)
+        IReadOnlyList<ActionCandidate> candidates, List<ScoredCandidate> evaluations)
     {
         var settings = snapshot.Effective;
         var nodes = 0;
@@ -288,21 +333,23 @@ public static class CombatDecisionMaker
                     throw new InvalidOperationException("Planning encounter has no pending decision or terminal outcome.");
                 var continuation = actor.Team == resolver.Characters[actorId].Team ? settings.Continuation : settings.OpposingContinuation;
                 var continuationSnapshot = copy.Behavior.Snapshot(actor.Id, new(continuation));
-                CandidateEvaluation? best = null;
+                ScoredCandidate? best = null;
                 foreach (var choice in CandidateGeneration.Enumerate(copy, actor.Id))
                 {
                     if (nodes >= settings.NodeBudget) { complete = false; truncated = true; break; }
                     nodes++;
                     var next = copy.CopyForSimulation();
                     var nextOutcome = next.Commit(actor.Id, choice);
-                    var evaluation = Evaluate(copy, next, actor.Id, choice, nextOutcome, continuationSnapshot, continuation);
+                    var evaluation = Evaluate(copy, next, actor.Id, choice, nextOutcome, continuationSnapshot, continuation,
+                        captureTrace: false);
                     if (best is null || evaluation.ObjectiveRank > best.ObjectiveRank || evaluation.ObjectiveRank == best.ObjectiveRank && evaluation.Utility > best.Utility)
                         best = evaluation;
                 }
                 if (!complete) break;
                 if (best is null) copy.Combat.SubmitNoLegalAction(); else copy.Commit(actor.Id, best.Candidate);
             }
-            if (complete) evaluations.Add(Evaluate(resolver, copy, actorId, candidate, outcome, snapshot, settings.Fallback));
+            if (complete) evaluations.Add(Evaluate(resolver, copy, actorId, candidate, outcome, snapshot, settings.Fallback,
+                captureTrace: resolver.CaptureCandidateTraces));
             if (truncated) break;
         }
         var fallback = evaluations.Count == 0 && candidates.Count > 0;
@@ -314,10 +361,10 @@ public static class CombatDecisionMaker
             {
                 var copy = resolver.CopyForSimulation();
                 var outcome = copy.Commit(actorId, candidate);
-                evaluations.Add(Evaluate(resolver, copy, actorId, candidate, outcome, snapshot, settings.Fallback, threats, Threats(copy, actorId, threatCache)));
+                evaluations.Add(Evaluate(resolver, copy, actorId, candidate, outcome, snapshot, settings.Fallback,
+                    threats, Threats(copy, actorId, threatCache), resolver.CaptureCandidateTraces));
             }
         }
         return new(settings.DecisionDepth, settings.NodeBudget, nodes, truncated, fallback, settings.Continuation, settings.OpposingContinuation);
     }
 }
-

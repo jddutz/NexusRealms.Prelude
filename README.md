@@ -18,9 +18,11 @@ legal candidates, isolated previews, deterministic policies and bounded Analytic
 rollouts. See [character AI decisions](docs/AI-Decision-Making.md) for configuration,
 observation assumptions, memory, diagnostics and acceptance checks.
 
-The simulator reports player strategy and decisive action by outcome, player
-action-use totals and distributions, and a strategy/action cross-tab by enemy
-configuration. Per-run JSON retains those dimensions for further analysis.
+The simulator cycles through configurable player strategies instead of repeating
+one policy or choosing random actions; `playerStrategies` in the state file can
+limit the cycle. By default, it runs once per configured strategy; explicit run
+counts repeat the cycle with additional seeds. Reports and per-run JSON retain
+strategy, outcome, decisive action, and action-use details for analysis.
 
 Story graphs implementing `IStoryGraph` in `Prelude.Database.Chapter*` namespaces are discovered automatically; their characters and nodes are validated and registered by ID at runtime. The loaded story database uses immutable graph data and frozen lookup dictionaries, while chapter definitions remain authored in C#.
 

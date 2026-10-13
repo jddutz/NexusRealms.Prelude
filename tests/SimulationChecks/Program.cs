@@ -54,6 +54,19 @@ var harmless = storyline.Characters.ToDictionary(pair => pair.Key, pair => pair.
 var draw = SimulationRunner.Run(authored, harmless, state.CreateGameState(), 42);
 Check(draw.Outcome == CombatOutcome.Draw && draw.Turn == 100, "Full encounter did not draw at Turn 100.");
 Check(state.PlayerStrategy.Strategy == StrategyId.Aggressive, "Simulation must default to a named deterministic policy.");
+Check(state.PlayerStrategies.Length == Enum.GetValues<StrategyId>().Length - 1
+    && !state.PlayerStrategies.Contains(StrategyId.Protective), "Default strategy cycle must include each player-supported policy.");
+var limitedState = state with { PlayerStrategies = [StrategyId.Analytical, StrategyId.Cautious] };
+Check(limitedState.PlayerStrategyForRun(0).Strategy == StrategyId.Analytical
+    && limitedState.PlayerStrategyForRun(1).Strategy == StrategyId.Cautious
+    && limitedState.PlayerStrategyForRun(2).Strategy == StrategyId.Analytical,
+    "Configured player strategies must cycle in order.");
+try
+{
+    _ = (state with { PlayerStrategies = [StrategyId.Protective] }).PlayerStrategyForRun(0);
+    throw new Exception("Player strategy cycle accepted Protective without player allies.");
+}
+catch (ArgumentException) { }
 Check(draw.TerminalCondition == "TurnLimit" && draw.DecidingAction is null, "Turn-limit draws must not be attributed to a combat action.");
 var reportSamples = new[]
 {

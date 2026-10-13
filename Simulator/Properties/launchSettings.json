@@ -2,8 +2,8 @@
   "profiles": {
     "Simulator": {
       "commandName": "Project",
-      "commandLineArgs": "--state Prelude/Simulator/examples/intro.json --runs 100",
-      "workingDirectory": "$(MSBuildProjectDirectory)/../.."
+      "commandLineArgs": "--state Simulator/examples/intro.json",
+      "workingDirectory": "$(MSBuildProjectDirectory)/.."
     }
   }
 }

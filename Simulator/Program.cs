@@ -8,6 +8,7 @@ try
     if (args.Contains("--help"))
     {
         Console.WriteLine("Usage: Simulator --state <file.json> [--runs <positive integer>] [--seed <integer>] [--output <results.json>]");
+        Console.WriteLine("Omit --runs to run once per configured player strategy.");
         return 0;
     }
     var options = new Dictionary<string, string>();
@@ -17,17 +18,28 @@ try
             throw new ArgumentException($"Invalid or duplicate option '{args[i]}'. Use --help for usage.");
     }
     if (!options.TryGetValue("--state", out var path)) throw new ArgumentException("--state is required. Use --help for usage.");
-    var runs = options.TryGetValue("--runs", out var count) ? int.Parse(count) : 1;
-    ArgumentOutOfRangeException.ThrowIfNegativeOrZero(runs);
+    var requestedRuns = options.TryGetValue("--runs", out var count) ? int.Parse(count) : (int?)null;
+    if (requestedRuns is { } configuredRuns) ArgumentOutOfRangeException.ThrowIfNegativeOrZero(configuredRuns);
     var seed = options.TryGetValue("--seed", out var seedText) ? int.Parse(seedText) : Random.Shared.Next();
     var json = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, WriteIndented = true,
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow };
     json.Converters.Add(new JsonStringEnumConverter());
     var state = JsonSerializer.Deserialize<SimulationState>(File.ReadAllText(path), json) ?? throw new ArgumentException("State must be a JSON object.");
+    _ = state.PlayerStrategyForRun(0);
+    var strategyCycle = state.PlayerStrategies
+        .Select(strategy => state.PlayerStrategy with { Strategy = strategy }).ToArray();
+    var runs = requestedRuns ?? strategyCycle.Length;
     var storyline = new Storyline();
     var results = new List<SimulationResult>();
-    for (var run = 0; run < runs; run++) results.Add(SimulationRunner.Run(storyline, state, unchecked(seed + run)));
     Console.WriteLine($"Scenario: {state.CurrentStoryNodeId}; runs: {runs}; seed: {seed}; turn limit: {SimulationRunner.TurnLimit}");
+    Console.WriteLine($"Player strategy cycle: {string.Join(", ", strategyCycle.Select(assignment => assignment.Strategy))}");
+    for (var run = 0; run < runs; run++)
+    {
+        var runSeed = unchecked(seed + run);
+        var strategy = strategyCycle[run % strategyCycle.Length];
+        Console.WriteLine($"Starting simulation {run + 1}/{runs} ({strategy.Strategy}; seed {runSeed}).");
+        results.Add(SimulationRunner.Run(storyline, state with { PlayerStrategy = strategy }, runSeed));
+    }
     foreach (var group in results.GroupBy(result => result.Outcome).OrderBy(group => group.Key))
         Console.WriteLine($"{group.Key}: {group.Count()} ({100d * group.Count() / runs:F2}%)");
     Console.WriteLine($"Mean ending turn: {results.Average(result => result.Turn):F2}; mean remaining health: {results.Average(result => result.PlayerHealth):F2}");
