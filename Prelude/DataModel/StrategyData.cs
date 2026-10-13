@@ -11,7 +11,8 @@ public sealed record StrategyAssignment(StrategyId Strategy = StrategyId.Aggress
     public int InitialMode { get; init; }
     public int HistoryWindow { get; init; } = 4;
     public int DecisionDepth { get; init; } = 3;
-    public int NodeBudget { get; init; } = 128;
+    public int NodeBudget { get; init; } = 8192;
+    public int BeamWidth { get; init; } = 8;
     public StrategyId Continuation { get; init; } = StrategyId.Aggressive;
     public StrategyId OpposingContinuation { get; init; } = StrategyId.Aggressive;
     public bool ProtectAllies { get; init; }
@@ -21,7 +22,7 @@ public sealed record StrategyAssignment(StrategyId Strategy = StrategyId.Aggress
     {
         if (Version != 1 || !Enum.IsDefined(Strategy) || !IsImmediate(Fallback)
             || !IsImmediate(Continuation) || !IsImmediate(OpposingContinuation) || Continuation == StrategyId.Protective || OpposingContinuation == StrategyId.Protective
-            || HistoryWindow <= 0 || DecisionDepth <= 0 || NodeBudget <= 0
+            || HistoryWindow <= 0 || DecisionDepth <= 0 || NodeBudget <= 0 || BeamWidth <= 0
             || Modes.IsDefaultOrEmpty || Modes.Any(mode => !IsImmediate(mode)) || InitialMode < 0 || InitialMode >= Modes.Length)
             throw new ArgumentException("Invalid strategy settings or unsupported strategy version.");
         if ((Strategy == StrategyId.Protective || Fallback == StrategyId.Protective || Modes.Contains(StrategyId.Protective))
@@ -35,9 +36,9 @@ public sealed record StrategyAssignment(StrategyId Strategy = StrategyId.Aggress
 
 public sealed record StrategyWeights(int Damage = 100, int Elimination = 1000, int SelfPreservation = 100,
     int AllyPreservation = 100, int WardPreservation = 100, int Denial = 50, int Support = 25,
-    int Opening = 0, int Focus = 25, int Item = 50, int Time = 100)
+    int Opening = 0, int Focus = 25, int Item = 50, int Time = 100, int ObjectiveProgress = 10)
 {
-    internal IEnumerable<int> Values() => [Damage, Elimination, SelfPreservation, AllyPreservation, WardPreservation, Denial, Support, Opening, Focus, Item, Time];
+    internal IEnumerable<int> Values() => [Damage, Elimination, SelfPreservation, AllyPreservation, WardPreservation, Denial, Support, Opening, Focus, Item, Time, ObjectiveProgress];
     public static StrategyWeights For(StrategyId strategy) => strategy switch
     {
         StrategyId.Protective => new(WardPreservation: 600),

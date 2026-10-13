@@ -34,6 +34,31 @@ crossed scheduled opportunities. Opportunistic increases elimination preference
 and rewards damage types demonstrated to be effective in recent observations.
 Cautious increases Focus and item expenditure penalties.
 
+All policies share damage, elimination, preservation, resource and Turn costs;
+preferences do not require a matching effect or an ally before pursuing victory.
+Newly legal opposing choices are not penalized merely for existing: additional
+Health exposure is measured by the local resolved threat estimate. Useful denied
+actions and crossed scheduling opportunities still reward disruption.
+
+Authored victory and defeat conditions also supply `objective-victory-progress`
+and `objective-defeat-progress` features to every policy. The shared
+`ObjectiveProgress` weight defaults to 10 per thousandth of progress: completely
+fulfilling one condition contributes 10,000 utility before ordinary tactical
+features. Progress is the average fractional Health reduction of the condition's
+recipients, relative to their Health at the current decision boundary, clamped
+between zero and completion. Surplus healing cannot manufacture objective progress.
+Player
+policies reward victory progress and penalize defeat progress; enemies reverse
+those signs. `CharacterDefeated`, `AllEnemiesDefeated`, and `PlayerDefeated` each
+derive their recipients from objective data. There are no item or character-name
+preferences. Actual terminal victory always outranks utility, regardless of weights.
+Equipment changes and reloads also score the difference in the best achievable
+immediate follow-up utility, including that follow-up's costs. The symmetric
+`prepared-action-value` contribution rewards enabling a useful attack and penalizes
+losing it. This bounded probe uses legal actions and ordinary resolution, without
+special rules for named weapons or a fallback to Strike. It does not advance the
+scheduler or predict whether the actor survives until its next decision. It does
+not search further preparation sequences; Analytical remains the scheduled planner.
 Chaotic cycles its ordered `Modes` after a successful committed action. Evaluating
 or previewing never advances a cursor; switching policies preserves the cursor.
 Reactive observes committed classifications and resolved outcomes in its
@@ -41,16 +66,25 @@ Reactive observes committed classifications and resolved outcomes in its
 actions, then repeated damage, choosing Disruptive or Defensive respectively.
 Without a match it uses `Fallback`. No pattern is inferred from an action's name.
 
-Analytical compares bounded deterministic rollouts through real scheduler decisions
-and known events. `DecisionDepth` counts committed decisions, including the root.
-`NodeBudget` counts simulated candidate resolutions and scheduler occurrences.
-`Continuation` and `OpposingContinuation` name nonrecursive immediate policies;
-Protective continuation requires a protection scope and is currently rejected.
-A predicted player response is a continuation assumption. Only fully evaluated
-rollouts compete when the budget runs out. If none completed, `Fallback` performs
-immediate evaluation outside the planning budget. Traces identify truncation,
-node counts, and the fallback. This is bounded policy rollout, not an exhaustive
-proof of the encounter's optimal play or mechanical viability.
+Analytical uses a deterministic beam search through real scheduled events and
+combat decisions. It branches on future choices by the deciding actor instead of
+assuming that actor will follow a greedy continuation. `DecisionDepth` counts that
+actor's decisions, including the root (default 3); intervening enemy and allied
+actions do not consume depth. Their responses use the shared immediate evaluator
+with `OpposingContinuation` and `Continuation`, respectively. These responses are
+policy assumptions, not an adversarial search over every possible response.
+
+`BeamWidth` limits retained sequences at each layer (default 8). Every legal
+candidate in a layer is scored before pruning, so equipment candidates cannot
+consume the budget before later attack candidates are compared. `NodeBudget`
+counts candidate resolutions and scheduler occurrences (default 8192). If a
+layer is incomplete, only the last fully completed layer competes. If no layer
+completed, `Fallback` performs immediate evaluation outside the search budget.
+Terminal outcomes outrank utility; nonterminal sequences compare net consequences
+and cumulative Turn expenditure by the deciding actor. Traces report completed
+depth, explored nodes, beam width, pruning, truncation, and fallback. Beam pruning
+can discard a useful setup; this remains bounded planning, not an exhaustive
+proof of optimal play.
 
 ## Candidates, resolution and knowledge
 

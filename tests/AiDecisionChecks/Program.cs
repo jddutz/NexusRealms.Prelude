@@ -104,12 +104,12 @@ Check(CombatDecisionMaker.Decide(clone, "actor").Strategy == StrategyId.Defensiv
 // Analytical follows actual scheduled decisions and distinguishes retaliation from immediate impact.
 var shield = Status("shield", new NegateEffect(new()));
 f = new Fixture([shield]); f.Add("player", true, CombatTeam.PlayerAndAllies, 10, 1); f.Add("actor", false, CombatTeam.Enemies, 1, 0, FormationSlot.FrontLeft);
-f.Give("player", Act("retaliate", new DamageEffect(DamageType.General, 2)));
+f.Give("player", Act("retaliate", new DamageEffect(DamageType.General, 2)) with { TurnCost = 2 });
 f.Give("actor", Act("strike", new DamageEffect(DamageType.General, 3)) with { TurnCost = 2 },
     Act("protect", new ApplyEffect("shield", new(Uses: 1, UseEvent: StatusUseEvent.IncomingAction))) with { Targeting = new(TargetShape.Self), TurnCost = 2 });
 f.Combat.ConfigureObjectives([new(CombatConditionKind.AllEnemiesDefeated)], [new(CombatConditionKind.PlayerDefeated)]); f.Start();
 Check(CombatDecisionMaker.Decide(f.Resolver, "actor", new(StrategyId.Reckless)).Selected?.Action.Id == "strike", "Immediate Reckless must prefer impact.");
-decision = CombatDecisionMaker.Decide(f.Resolver, "actor", new(StrategyId.Analytical) { DecisionDepth = 2, NodeBudget = 32, Fallback = StrategyId.Reckless });
+decision = CombatDecisionMaker.Decide(f.Resolver, "actor", new(StrategyId.Analytical) { DecisionDepth = 2, NodeBudget = 128, Fallback = StrategyId.Reckless });
 Check(decision.Selected?.Action.Id == "protect" && decision.Planning is { UsedFallback: false, Truncated: false }, "Analytical must avoid forecast terminal failure through the real scheduler.");
 
 // Supportive helps the allied group; Protective keeps an explicitly designated ward.
@@ -224,6 +224,87 @@ f = new Fixture(); f.Add("player", true, CombatTeam.PlayerAndAllies, 20, 10); f.
 f.Resolver.ConfigureCharacters(new Dictionary<string, CharacterData> { ["actor"] = Character("guardian", new(StrategyId.Protective, ["protected-character"])), ["ward"] = Character("protected-character") });
 Check(f.Resolver.Behavior.Snapshot("actor").Base.ProtectedIds!.Single() == "ward", "Character strategy references must bind independently of scenario configuration.");
 Check(typeof(CharacterPlacement).GetProperties().All(property => property.PropertyType != typeof(StrategyAssignment)), "Scenario placements must not own strategies.");
+// Shared objectives remain useful without strategy-specific capabilities or allies.
+foreach (var strategy in new[] { StrategyId.Disruptive, StrategyId.Supportive })
+foreach (var frontHealth in new[] { 2, 5 })
+{
+    f = new Fixture();
+    f.Add("player", true, CombatTeam.PlayerAndAllies, 20, 0, loadout: new CombatLoadout());
+    f.Add("front", false, CombatTeam.Enemies, frontHealth, 10, FormationSlot.FrontLeft);
+    f.Add("back", false, CombatTeam.Enemies, 20, 10, FormationSlot.BackLeft);
+    f.Give("back", Act("ranged", new DamageEffect(DamageType.General, 3)));
+    f.Start();
+    decision = CombatDecisionMaker.Decide(f.Resolver, "player", new(strategy));
+    Check(decision.Selected?.TargetId == "front" && decision.Selected.Action.Id != "wait",
+        $"{strategy} must attack without specialized capabilities, despite exposing a new target.");
+}
+
+// The authored pistol user must reload and fire repeatedly instead of cycling layouts.
+f = new Fixture();
+f.Add("player", true, CombatTeam.PlayerAndAllies, 100, 100);
+f.Add("actor", false, CombatTeam.Enemies, 20, 0, FormationSlot.BackLeft,
+    loadout: CombatLoadout.FromCharacter(NexusRealms.Prelude.Database.Chapter1.Part1.AlleywayThug2));
+f.Start();
+for (var shot = 0; shot < 3; shot++)
+{
+    decision = CombatDecisionMaker.DecideAndCommit(f.Resolver, "actor");
+    Check(decision.Selected?.Action.Id == "pistol-attack", "Loaded pistol must fire.");
+    f.Combat.Process();
+    var beforeReload = CombatDecisionMaker.StateKey(f.Resolver);
+    decision = CombatDecisionMaker.Decide(f.Resolver, "actor");
+    Check(decision.Selected?.Action.Id == "reload", "Empty pistol must reload rather than stow or equip.");
+    Check(decision.Candidates.Single(entry => entry.Candidate.Key == decision.Selected!.Key)
+        .Contributions.Any(entry => entry.Feature == "prepared-action-value" && entry.Value > 0),
+        "Reload must be valued by its achievable follow-up.");
+    Check(CombatDecisionMaker.StateKey(f.Resolver) == beforeReload, "Preparation probes must preserve live state.");
+    CombatDecisionMaker.CommitDecision(f.Resolver, decision);
+    f.Combat.Process();
+}
+Check(f.State("player").Health.Health == 91, "Three shots must actually resolve against the target.");
+// Authored objectives outweigh incidental damage and follow the data when changed.
+var resistSlash = Status("objective-resist-slash", new ResistEffect(new(DamageType.Slashing), 20));
+var resistGeneral = Status("objective-resist-general", new ResistEffect(new(DamageType.General), 20));
+foreach (var requiredId in new[] { "small-target", "large-target" })
+{
+    f = new Fixture([resistSlash, resistGeneral]);
+    f.Add("player", true, CombatTeam.PlayerAndAllies, 20, 0);
+    f.Add("small-target", false, CombatTeam.Enemies, 6, 10, FormationSlot.FrontLeft, [resistSlash.Id]);
+    f.Add("large-target", false, CombatTeam.Enemies, 100, 10, FormationSlot.FrontRight, [resistGeneral.Id]);
+    f.Give("player", Act("a-high-damage", new DamageEffect(DamageType.Slashing, 10)),
+        Act("z-low-damage", new DamageEffect(DamageType.General, 2)));
+    f.Combat.ConfigureObjectives([new(CombatConditionKind.CharacterDefeated, requiredId)], [new(CombatConditionKind.PlayerDefeated)]);
+    f.Start();
+    var original = CombatDecisionMaker.StateKey(f.Resolver);
+    decision = CombatDecisionMaker.Decide(f.Resolver, "player", new(StrategyId.Analytical));
+    Check(decision.Selected?.TargetId == requiredId, "Analytical must follow the authored objective, independent of damage and candidate order.");
+    Check(decision.Candidates.Any(entry => entry.Contributions.Any(feature => feature.Feature == "objective-victory-progress:0"
+        && feature.Utility > 1000)), "Objective progress must carry a significant explicit weight.");
+    Check(CombatDecisionMaker.StateKey(f.Resolver) == original
+        && Json(decision) == Json(CombatDecisionMaker.Decide(f.Resolver, "player", new(StrategyId.Analytical))),
+        "Beam planning must preserve live state and replay deterministically.");
+    var otherId = requiredId == "small-target" ? "large-target" : "small-target";
+    f.Combat.ConfigureObjectives([new(CombatConditionKind.CharacterDefeated, otherId)], [new(CombatConditionKind.PlayerDefeated)]);
+    Check(CombatDecisionMaker.StateKey(f.Resolver) != original, "Changing objective data must invalidate a saved decision.");    Reject(() => new StrategyAssignment(StrategyId.Analytical) { BeamWidth = 0 }.Validate(), "Invalid beam widths must be rejected.");
+}
+
+// Uncapped surplus healing must not manufacture progress toward an objective.
+f = new Fixture(); f.Add("player", true, CombatTeam.PlayerAndAllies, 20, 0);
+f.Add("target", false, CombatTeam.Enemies, 50, 100, FormationSlot.FrontLeft);
+f.Give("player", Act("surplus", new RestoreEffect(100)) with { Targeting = new(TargetShape.Self) });
+f.Combat.ConfigureObjectives([new(CombatConditionKind.AllEnemiesDefeated)], [new(CombatConditionKind.PlayerDefeated)]);
+f.Start();
+decision = CombatDecisionMaker.Decide(f.Resolver, "player", new(StrategyId.Supportive));
+Check(decision.Candidates.All(entry => !entry.Contributions.Any(feature => feature.Feature.StartsWith("objective-", StringComparison.Ordinal))),
+    "Surplus healing must retain ordinary preservation value without an objective progress windfall.");
+// A truncated deeper layer must retain the fully compared earlier layer.
+f = new Fixture(); f.Add("player", true, CombatTeam.PlayerAndAllies, 20, 0);
+f.Add("target", false, CombatTeam.Enemies, 50, 100, FormationSlot.FrontLeft);
+f.Give("player", Act("a-weak", new DamageEffect(DamageType.General, 1)), Act("z-strong", new DamageEffect(DamageType.General, 3)));
+f.Start();
+decision = CombatDecisionMaker.Decide(f.Resolver, "player", new(StrategyId.Analytical) { DecisionDepth = 3, NodeBudget = 4 });
+Check(decision.Selected?.Action.Id == "z-strong"
+    && decision.Planning is { Truncated: true, UsedFallback: false, CompletedDepth: 1 },
+    "Budget exhaustion must preserve a completed comparison rather than favor a candidate prefix.");
 Console.WriteLine("AI decision acceptance checks passed.");
 
 sealed class Fixture

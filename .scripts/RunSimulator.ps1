@@ -17,13 +17,15 @@ New-Item -ItemType Directory -Path $outputPath -Force | Out-Null
 $runName = 'simulation-{0}-{1}' -f (Get-Date -Format 'yyyyMMdd-HHmmss-fff'), ([guid]::NewGuid().ToString('N').Substring(0, 8))
 $logPath = Join-Path $outputPath "$runName.log"
 $resultsPath = Join-Path $outputPath "$runName.json"
+$reportPath = Join-Path $outputPath "$runName.md"
 $projectPath = Join-Path $PSScriptRoot '..\Simulator\Simulator.csproj'
-$simulatorArguments = @('--state', $statePath, '--output', $resultsPath)
+$simulatorArguments = @('--state', $statePath, '--output', $resultsPath, '--report', $reportPath)
 if ($PSBoundParameters.ContainsKey('Runs')) { $simulatorArguments += @('--runs', "$Runs") }
 if ($null -ne $Seed) { $simulatorArguments += @('--seed', "$Seed") }
 
 Write-Host "Console log: $logPath"
 Write-Host "Results JSON: $resultsPath"
+Write-Host "Summary Markdown: $reportPath"
 if (!$NoBuild) {
     & dotnet build $projectPath --disable-build-servers -m:1 --verbosity quiet 2>&1 |
     Tee-Object -FilePath $logPath

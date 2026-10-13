@@ -38,12 +38,16 @@ public sealed class CombatSystem
     public float? TurnLimit { get; init; }
     public Func<CombatSystem, bool>[] VictoryConditions { get; set; } = [];
     public Func<CombatSystem, bool>[] DefeatConditions { get; set; } = [];
+    internal ImmutableArray<CombatConditionData> VictoryObjectives { get; private set; } = [];
+    internal ImmutableArray<CombatConditionData> DefeatObjectives { get; private set; } = [];
     private Func<CombatSystem, bool>[]? _safeVictory;
     private Func<CombatSystem, bool>[]? _safeDefeat;
     public void ConfigureObjectives(IEnumerable<CombatConditionData> victory, IEnumerable<CombatConditionData> defeat)
     {
-        VictoryConditions = victory.Select(ScenarioRules.Build).ToArray();
-        DefeatConditions = defeat.Select(ScenarioRules.Build).ToArray();
+        VictoryObjectives = victory.ToImmutableArray();
+        DefeatObjectives = defeat.ToImmutableArray();
+        VictoryConditions = VictoryObjectives.Select(ScenarioRules.Build).ToArray();
+        DefeatConditions = DefeatObjectives.Select(ScenarioRules.Build).ToArray();
         _safeVictory = VictoryConditions.ToArray();
         _safeDefeat = DefeatConditions.ToArray();
     }
@@ -320,6 +324,7 @@ public sealed class CombatSystem
             throw new InvalidOperationException("AI simulation requires ConfigureObjectives, not opaque objective predicates.");
         var copy = new CombatSystem(_randomState) { TurnLimit = TurnLimit, SuppressPump = true,
             VictoryConditions = VictoryConditions.ToArray(), DefeatConditions = DefeatConditions.ToArray(),
+            VictoryObjectives = VictoryObjectives, DefeatObjectives = DefeatObjectives,
             HasEnded = HasEnded, Outcome = Outcome, _escapingActor = _escapingActor };
         copy._safeVictory = copy.VictoryConditions.ToArray();
         copy._safeDefeat = copy.DefeatConditions.ToArray();

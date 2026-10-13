@@ -8,17 +8,20 @@ try
 {
     if (args.Contains("--help"))
     {
-        Console.WriteLine("Usage: Simulator --state <file.json> [--runs <positive integer>] [--seed <integer>] [--output <results.json>]");
+        Console.WriteLine("Usage: Simulator --state <file.json> [--runs <positive integer>] [--seed <integer>] [--output <results.json>] [--report <summary.md>]");
         Console.WriteLine("Omit --runs to run once per configured player strategy.");
         return 0;
     }
     var options = new Dictionary<string, string>();
     for (var i = 0; i < args.Length; i += 2)
     {
-        if (args[i] is not ("--state" or "--runs" or "--seed" or "--output") || i + 1 >= args.Length || !options.TryAdd(args[i], args[i + 1]))
+        if (args[i] is not ("--state" or "--runs" or "--seed" or "--output" or "--report") || i + 1 >= args.Length || !options.TryAdd(args[i], args[i + 1]))
             throw new ArgumentException($"Invalid or duplicate option '{args[i]}'. Use --help for usage.");
     }
     if (!options.TryGetValue("--state", out var path)) throw new ArgumentException("--state is required. Use --help for usage.");
+    if (options.TryGetValue("--output", out var jsonPath) && options.TryGetValue("--report", out var reportPath)
+        && string.Equals(Path.GetFullPath(jsonPath), Path.GetFullPath(reportPath), StringComparison.OrdinalIgnoreCase))
+        throw new ArgumentException("--output and --report must use different files.");
     var requestedRuns = options.TryGetValue("--runs", out var count) ? int.Parse(count) : (int?)null;
     if (requestedRuns is { } configuredRuns) ArgumentOutOfRangeException.ThrowIfNegativeOrZero(configuredRuns);
     var seed = options.TryGetValue("--seed", out var seedText) ? int.Parse(seedText) : Random.Shared.Next();
@@ -52,7 +55,15 @@ try
         results.Add(SimulationRunner.Run(storyline, state with { PlayerStrategy = strategy }, runSeed,
             decision => Console.Write(SimulationReport.FormatDecisionTrace(decision, characterNames, itemNames))));
     }
-    if (options.TryGetValue("--output", out var output)) File.WriteAllText(output, JsonSerializer.Serialize(results, json));
+    if (options.ContainsKey("--output") || options.ContainsKey("--report"))
+    {
+        var simulationOutput = new SimulationOutput(state.CurrentStoryNodeId, SimulationRunner.TurnLimit,
+            SimulationPlayerConfiguration.FromState(state), results[0].EnemyConfiguration, results);
+        if (options.TryGetValue("--output", out var output))
+            File.WriteAllText(output, JsonSerializer.Serialize(simulationOutput, json));
+        if (options.TryGetValue("--report", out var report))
+            File.WriteAllText(report, SimulationReport.FormatMarkdown(simulationOutput));
+    }
     return 0;
 }
 catch (Exception exception) when (exception is ArgumentException or IOException or JsonException or FormatException or OverflowException or InvalidOperationException)

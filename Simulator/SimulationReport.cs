@@ -30,6 +30,54 @@ public static class SimulationReport
         return report.ToString();
     }
 
+    /// <summary>Formats a compact Markdown summary and per-strategy comparison.</summary>
+    /// <param name="output">The completed simulation output.</param>
+    /// <returns>A Markdown report with overall outcome counts and strategy averages.</returns>
+    /// <exception cref="ArgumentNullException">The output is null.</exception>
+    /// <exception cref="ArgumentException">The output contains no simulation runs.</exception>
+    public static string FormatMarkdown(SimulationOutput output)
+    {
+        ArgumentNullException.ThrowIfNull(output);
+        if (output.Runs.Count == 0) throw new ArgumentException("At least one simulation result is required.", nameof(output));
+
+        var report = new StringBuilder();
+        report.Append("# Simulation results: ").Append(MarkdownCell(output.ScenarioId)).AppendLine();
+        report.Append("Runs: ").Append(output.Runs.Count)
+            .Append(" | Turn limit: ").Append(output.TurnLimit.ToString("0.##", CultureInfo.InvariantCulture))
+            .AppendLine().AppendLine("## Outcomes").AppendLine()
+            .AppendLine("| Outcome | Runs | Share |")
+            .AppendLine("| --- | ---: | ---: |");
+        foreach (var outcome in OutcomeOrder)
+        {
+            var count = Count(output.Runs, outcome);
+            report.Append("| ").Append(outcome).Append(" | ").Append(count).Append(" | ")
+                .Append(Percent(count, output.Runs.Count)).Append("% |").AppendLine();
+        }
+
+        report.AppendLine().AppendLine("## Strategy comparison").AppendLine()
+            .AppendLine("| Strategy | Runs | Victory (rate) | Defeat | Draw | Escape | Avg. turn | Avg. health | Avg. actions | Player action uses |")
+            .AppendLine("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |");
+        foreach (var group in output.Runs.GroupBy(result => result.PlayerStrategy).OrderBy(group => group.Key))
+        {
+            var runs = group.ToArray();
+            var victories = Count(runs, CombatOutcome.Victory);
+            var playerActions = runs.SelectMany(result => result.PlayerActionUses)
+                .GroupBy(pair => pair.Key, StringComparer.Ordinal)
+                .OrderBy(action => action.Key, StringComparer.Ordinal)
+                .Select(action => $"{MarkdownCell(action.Key)} × {action.Sum(pair => pair.Value)}");
+            report.Append("| ").Append(group.Key).Append(" | ").Append(runs.Length).Append(" | ")
+                .Append(victories).Append(" (").Append(Percent(victories, runs.Length)).Append("%) | ")
+                .Append(Count(runs, CombatOutcome.Defeat)).Append(" | ")
+                .Append(Count(runs, CombatOutcome.Draw)).Append(" | ")
+                .Append(Count(runs, CombatOutcome.Escape)).Append(" | ")
+                .Append(runs.Average(result => result.EndingTurn).ToString("F2", CultureInfo.InvariantCulture)).Append(" | ")
+                .Append(runs.Average(result => result.PlayerHealth).ToString("F2", CultureInfo.InvariantCulture)).Append(" | ")
+                .Append(runs.Average(result => result.Actions).ToString("F2", CultureInfo.InvariantCulture)).Append(" | ")
+                .Append(string.Join(", ", playerActions)).AppendLine(" |");
+        }
+        return report.ToString();
+    }
+
     /// <summary>Formats one traced AI decision, its alternatives, rationale, and predicted resolution.</summary>
     /// <param name="decision">The decision and candidate evaluations captured by the strategy.</param>
     /// <param name="characterNames">Display names keyed by runtime character identifier.</param>
@@ -93,7 +141,9 @@ public static class SimulationReport
         if (decision.Planning is { } planning)
             report.Append("  Planning: depth=").Append(planning.Depth).Append(", budget=").Append(planning.Budget)
                 .Append(", explored=").Append(planning.ExploredNodes).Append(", truncated=").Append(planning.Truncated)
-                .Append(", fallback=").Append(planning.UsedFallback).AppendLine();
+                .Append(", fallback=").Append(planning.UsedFallback)
+                .Append(", completed-depth=").Append(planning.CompletedDepth).Append(", beam=").Append(planning.BeamWidth)
+                .Append(", pruned=").Append(planning.Pruned).AppendLine();
 
         if (decision.Selected is not { } selected)
         {
@@ -303,6 +353,14 @@ public static class SimulationReport
     /// <returns>The percentage to two decimal places.</returns>
     private static string Percent(int count, int total) =>
         (100d * count / total).ToString("F2", CultureInfo.InvariantCulture);
+
+    /// <summary>Escapes a value for safe inclusion in a Markdown table cell.</summary>
+    /// <param name="value">The cell value.</param>
+    /// <returns>The value with table separators and line breaks escaped.</returns>
+    private static string MarkdownCell(string value) =>
+        value.Replace("|", "\\|", StringComparison.Ordinal)
+            .Replace("\r", " ", StringComparison.Ordinal)
+            .Replace("\n", " ", StringComparison.Ordinal);
 
     /// <summary>Creates a deterministic human-readable key for an enemy configuration.</summary>
     /// <param name="enemies">The enemy and ally placements in one scenario.</param>

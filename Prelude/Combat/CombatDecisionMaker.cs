@@ -25,7 +25,12 @@ public sealed record ScoreContribution(string Feature, long Value, int Weight, l
 public sealed record CandidateEvaluation(ActionCandidate Candidate, ActionPreview Preview, long Utility,
     int ObjectiveRank, ImmutableArray<ScoreContribution> Contributions);
 public sealed record PlanningTrace(int Depth, int Budget, int ExploredNodes, bool Truncated, bool UsedFallback,
-    StrategyId AlliedContinuation, StrategyId OpposingContinuation);
+    StrategyId AlliedContinuation, StrategyId OpposingContinuation)
+{
+    public int CompletedDepth { get; init; }
+    public int BeamWidth { get; init; }
+    public bool Pruned { get; init; }
+}
 public sealed record DecisionTrace(string ActorId, StrategyId Strategy, IReadOnlyList<CandidateEvaluation> Candidates,
     ActionCandidate? Selected, string[] Limitations)
 {
@@ -116,7 +121,8 @@ public static class CombatDecisionMaker
     {
         var state = ActionPreview.Capture(new(new ActionData { Damage = new DamageProfile() }, "", [], []), resolver);
         return System.Text.Json.JsonSerializer.Serialize(new { resolver.Combat.Timeline.CurrentTurn, resolver.Combat.Outcome,
-            state.Characters, state.Schedule, Memory = resolver.Behavior.Save() });
+            state.Characters, state.Schedule, resolver.Combat.VictoryObjectives, resolver.Combat.DefeatObjectives,
+            Memory = resolver.Behavior.Save() });
     }
 
     private static StrategyId Effective(CombatActionResolver resolver, string actorId, BehaviorSnapshot snapshot)
@@ -142,7 +148,7 @@ public static class CombatDecisionMaker
 
     private static ScoredCandidate Evaluate(CombatActionResolver before, CombatActionResolver after, string actorId,
         ActionCandidate candidate, ActionOutcome outcome, BehaviorSnapshot snapshot, StrategyId strategy,
-        ThreatFacts? beforeThreat = null, ThreatFacts? afterThreat = null, bool captureTrace = true)
+        ThreatFacts? beforeThreat = null, ThreatFacts? afterThreat = null, bool captureTrace = true, bool evaluatePreparation = true)
     {
         var weights = snapshot.Effective.Weights ?? StrategyWeights.For(strategy);
         var actor = before.Characters[actorId];
@@ -202,16 +208,66 @@ public static class CombatDecisionMaker
             // An action is an opportunity, regardless of its number of equivalent targeting anchors.
             bool LivingOpponent(string key) => after.Characters.Values.Any(character => character.Team != actor.Team && character.Health.Health > 0 && key.StartsWith(character.Id + "/", StringComparison.Ordinal));
             Add("opposing-actions-denied", beforeThreat.Actions.Except(afterThreat.Actions).Count(LivingOpponent), weights.Denial);
-            Add("opposing-actions-enabled", -afterThreat.Actions.Except(beforeThreat.Actions).Count(LivingOpponent), weights.Denial);
+            // Newly legal choices are not necessarily additional harm. Exposure is scored above from actual damage threats.
         }
+        // A complete authored objective is worth 10,000 by default. Partial
+        // progress is normalized by recipient Health at this decision boundary,
+        // rather than rewarding incidental damage to unrelated combatants.
+        void Objectives(ImmutableArray<CombatConditionData> conditions, string label, int sign)
+        {
+            for (var index = 0; index < conditions.Length; index++)
+            {
+                var condition = conditions[index];
+                var targets = before.Characters.Values.Where(character => condition.Kind switch
+                {
+                    CombatConditionKind.PlayerDefeated => character.IsPlayer,
+                    CombatConditionKind.AllEnemiesDefeated => character.Team == CombatTeam.Enemies,
+                    CombatConditionKind.CharacterDefeated => character.Id == condition.CharacterId,
+                    _ => false,
+                }).ToArray();
+                if (targets.Length == 0) continue;
+                var progress = targets.Sum(character => character.Health.Health <= 0 ? 0L
+                    : Math.Clamp(((long)character.Health.Health - after.Characters[character.Id].Health.Health)
+                        * 1000 / character.Health.Health, 0L, 1000L)) / targets.Length;
+                Add($"objective-{label}-progress:{index}", sign * progress, weights.ObjectiveProgress);
+            }
+        }
+        var victorySign = actor.Team == CombatTeam.Enemies ? -1 : 1;
+        Objectives(before.Combat.VictoryObjectives, "victory", victorySign);
+        Objectives(before.Combat.DefeatObjectives, "defeat", -victorySign);
         Add("schedule-opportunities", ScheduleAdvantage(before, after, actorId, candidate.Action.TurnCost), weights.Denial);
         Add("allied-actions-enabled", beforeThreat is not null && afterThreat is not null
             ? afterThreat.AlliedActions.Except(beforeThreat.AlliedActions).Count()
             : EnabledActions(after, actor.Team).Except(EnabledActions(before, actor.Team)).Count(), weights.Support);
+        if (evaluatePreparation && candidate.Kind == CandidateKind.ItemLayout && !after.Combat.HasEnded)
+        {
+            // Value preparation by the best immediate consequence it makes achievable,
+            // including the follow-up cost. Losing that opportunity is equally undesirable.
+            // These probes do not predict survival until the next decision boundary.
+            Add("prepared-action-value", PreparedActionValue(after, actorId, snapshot, strategy)
+                - PreparedActionValue(before, actorId, snapshot, strategy), 1);
+        }
         Add("time-centiturns", -(long)Math.Round(candidate.Action.TurnCost * 100d, MidpointRounding.AwayFromZero), weights.Time);
         // Time is expressed in centiturns; the declared weight is per Turn, avoiding float tie comparisons.
         return new(candidate, captureTrace ? ActionPreview.Capture(outcome, after) : null, utility,
             ObjectiveRank(after.Combat.Outcome, actor.Team), captureTrace ? contributions.ToImmutable() : []);
+    }
+    private static long PreparedActionValue(CombatActionResolver resolver, string actorId,
+        BehaviorSnapshot snapshot, StrategyId strategy)
+    {
+        var probe = resolver.CopyForSimulation();
+        probe.Combat.OpenThreatProbe(actorId);
+        long best = 0;
+        foreach (var candidate in CandidateGeneration.Enumerate(probe, actorId, includeLayouts: false))
+        {
+            if (candidate.Action.Id is "wait" or "escape") continue;
+            var next = probe.CopyForSimulation();
+            var outcome = next.Commit(actorId, candidate);
+            var score = Evaluate(probe, next, actorId, candidate, outcome, snapshot, strategy,
+                captureTrace: false, evaluatePreparation: false);
+            if (score.ObjectiveRank > 0) best = Math.Max(best, score.Utility);
+        }
+        return best;
     }
     private static int ObjectiveRank(CombatOutcome? outcome, CombatTeam team) => outcome switch
     {
@@ -304,54 +360,119 @@ public static class CombatDecisionMaker
         return result;
     }
 
+    private sealed record SearchNode(CombatActionResolver Resolver, ActionCandidate Root,
+        ActionOutcome RootOutcome, float TurnCost, ScoredCandidate Score);
+
     private static PlanningTrace Plan(CombatActionResolver resolver, string actorId, BehaviorSnapshot snapshot,
         IReadOnlyList<ActionCandidate> candidates, List<ScoredCandidate> evaluations)
     {
         var settings = snapshot.Effective;
         var nodes = 0;
         var truncated = false;
-        foreach (var candidate in candidates)
+        var pruned = false;
+        var completedDepth = 0;
+        var frontier = new List<SearchNode>();
+        var completed = new List<SearchNode>();
+
+        ScoredCandidate Score(CombatActionResolver state, ActionCandidate root, ActionOutcome outcome, float cost)
         {
-            if (nodes >= settings.NodeBudget) { truncated = true; break; }
-            nodes++;
-            var copy = resolver.CopyForSimulation();
-            var outcome = copy.Commit(actorId, candidate);
-            var complete = true;
-            for (var depth = 1; depth < settings.DecisionDepth && !copy.Combat.HasEnded; depth++)
+            // Compare net consequences and every controlled Turn spent, rather than
+            // summing intermediate damage/eliminations or charging only the root action.
+            var evaluation = Evaluate(resolver, state, actorId,
+                root with { Action = root.Action with { TurnCost = cost } }, outcome, snapshot, settings.Fallback,
+                captureTrace: resolver.CaptureCandidateTraces, evaluatePreparation: false);
+            return evaluation with { Candidate = root };
+        }
+        bool Spend(int amount = 1)
+        {
+            if (amount > settings.NodeBudget - nodes) { truncated = true; return false; }
+            nodes += amount;
+            return true;
+        }
+        bool Advance(SearchNode node)
+        {
+            var copy = node.Resolver;
+            while (!copy.Combat.HasEnded && copy.Combat.ActiveCombatant?.Id != actorId)
             {
-                while (!copy.Combat.HasEnded && copy.Combat.ActiveCombatant is null)
+                if (copy.Combat.ActiveCombatant is not { } actor)
                 {
-                    if (nodes >= settings.NodeBudget) { complete = false; truncated = true; break; }
-                    nodes++;
+                    if (!Spend()) return false;
                     copy.Combat.Process(1);
                     if (!copy.Combat.HasEnded && copy.Combat.ActiveCombatant is null && copy.Combat.Timeline.Preview(1).Count == 0)
                         throw new InvalidOperationException("Planning encounter has no pending occurrence or terminal outcome.");
+                    continue;
                 }
-                if (!complete) break;
-                if (copy.Combat.HasEnded) break;
-                if (copy.Combat.ActiveCombatant is not { } actor)
-                    throw new InvalidOperationException("Planning encounter has no pending decision or terminal outcome.");
-                var continuation = actor.Team == resolver.Characters[actorId].Team ? settings.Continuation : settings.OpposingContinuation;
-                var continuationSnapshot = copy.Behavior.Snapshot(actor.Id, new(continuation));
-                ScoredCandidate? best = null;
-                foreach (var choice in CandidateGeneration.Enumerate(copy, actor.Id))
-                {
-                    if (nodes >= settings.NodeBudget) { complete = false; truncated = true; break; }
-                    nodes++;
-                    var next = copy.CopyForSimulation();
-                    var nextOutcome = next.Commit(actor.Id, choice);
-                    var evaluation = Evaluate(copy, next, actor.Id, choice, nextOutcome, continuationSnapshot, continuation,
-                        captureTrace: false);
-                    if (best is null || evaluation.ObjectiveRank > best.ObjectiveRank || evaluation.ObjectiveRank == best.ObjectiveRank && evaluation.Utility > best.Utility)
-                        best = evaluation;
-                }
-                if (!complete) break;
-                if (best is null) copy.Combat.SubmitNoLegalAction(); else copy.Commit(actor.Id, best.Candidate);
+                var continuation = actor.Team == resolver.Characters[actorId].Team
+                    ? settings.Continuation : settings.OpposingContinuation;
+                var choices = CandidateGeneration.Enumerate(copy, actor.Id);
+                if (!Spend(Math.Max(1, choices.Count))) return false;
+                // Use the same immediate evaluator as actual combat, including threats
+                // and preparation; never recursively invoke Analytical.
+                var decision = Decide(copy, actor.Id, new(continuation));
+                if (decision.Selected is { } selection) copy.Commit(actor.Id, selection);
+                else copy.Combat.SubmitNoLegalAction();
             }
-            if (complete) evaluations.Add(Evaluate(resolver, copy, actorId, candidate, outcome, snapshot, settings.Fallback,
-                captureTrace: resolver.CaptureCandidateTraces));
-            if (truncated) break;
+            return true;
         }
+        for (var depth = 1; depth <= settings.DecisionDepth; depth++)
+        {
+            var layer = new List<SearchNode>();
+            if (depth == 1)
+            {
+                foreach (var candidate in candidates)
+                {
+                    if (!Spend()) break;
+                    var copy = resolver.CopyForSimulation();
+                    var outcome = copy.Commit(actorId, candidate);
+                    layer.Add(new(copy, candidate, outcome, candidate.Action.TurnCost,
+                        Score(copy, candidate, outcome, candidate.Action.TurnCost)));
+                }
+            }
+            else
+            {
+                foreach (var parent in frontier)
+                {
+                    if (parent.Resolver.Combat.HasEnded) { layer.Add(parent); continue; }
+                    var choices = CandidateGeneration.Enumerate(parent.Resolver, actorId);
+                    if (choices.Count == 0)
+                    {
+                        if (!Spend()) break;
+                        var copy = parent.Resolver.CopyForSimulation();
+                        copy.Combat.SubmitNoLegalAction();
+                        layer.Add(parent with { Resolver = copy });
+                    }
+                    foreach (var choice in choices)
+                    {
+                        if (!Spend()) break;
+                        var copy = parent.Resolver.CopyForSimulation();
+                        copy.Commit(actorId, choice);
+                        var cost = parent.TurnCost + choice.Action.TurnCost;
+                        layer.Add(new(copy, parent.Root, parent.RootOutcome, cost,
+                            Score(copy, parent.Root, parent.RootOutcome, cost)));
+                    }
+                    if (truncated) break;
+                }
+            }
+            // Never compare a prefix of a deeper layer against shallower alternatives.
+            if (truncated || layer.Count == 0) break;
+            var retained = layer.OrderByDescending(node => node.Score.ObjectiveRank)
+                .ThenByDescending(node => node.Score.Utility).Take(settings.BeamWidth).ToList();
+            pruned |= retained.Count < layer.Count;
+            var next = new List<SearchNode>();
+            foreach (var node in retained)
+            {
+                if (!Advance(node)) break;
+                next.Add(node with { Score = Score(node.Resolver, node.Root, node.RootOutcome, node.TurnCost) });
+            }
+            if (truncated) break;
+            frontier = next;
+            completed = next;
+            completedDepth = depth;
+            if (frontier.All(node => node.Resolver.Combat.HasEnded)) break;
+        }
+        foreach (var group in completed.GroupBy(node => node.Root.Key, StringComparer.Ordinal))
+            evaluations.Add(group.OrderByDescending(node => node.Score.ObjectiveRank)
+                .ThenByDescending(node => node.Score.Utility).First().Score);
         var fallback = evaluations.Count == 0 && candidates.Count > 0;
         if (fallback)
         {
@@ -365,6 +486,7 @@ public static class CombatDecisionMaker
                     threats, Threats(copy, actorId, threatCache), resolver.CaptureCandidateTraces));
             }
         }
-        return new(settings.DecisionDepth, settings.NodeBudget, nodes, truncated, fallback, settings.Continuation, settings.OpposingContinuation);
+        return new(settings.DecisionDepth, settings.NodeBudget, nodes, truncated, fallback, settings.Continuation, settings.OpposingContinuation)
+        { CompletedDepth = completedDepth, BeamWidth = settings.BeamWidth, Pruned = pruned };
     }
 }

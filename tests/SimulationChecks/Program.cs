@@ -2,6 +2,7 @@ using NexusRealms.Prelude.Combat;
 using NexusRealms.Prelude.Database;
 using NexusRealms.Prelude.DataModel;
 using NexusRealms.Prelude.Simulator;
+using System.Text.Json;
 
 static void Check(bool condition, string message)
 {
@@ -40,7 +41,33 @@ Check(first.PlayerStrategy == state.PlayerStrategy.Strategy, "Run must record th
 Check(first.EnemyConfiguration.Length == ((CombatScenario)storyline.Nodes[storyline.StartNodeId]).Characters.Length,
     "Run must record the scenario's character configuration.");
 Check(first.PlayerActionUses.Values.Sum() > 0, "Run must record player action usage.");
+Check(first.PlayerActionResults.Length > 0 && first.PlayerActionResults.All(result =>
+        !string.IsNullOrWhiteSpace(result.ActionId) && !string.IsNullOrWhiteSpace(result.TargetId) && result.Uses > 0),
+    "Run must record aggregated player action results by stable target identifier.");
+Check(first.PlayerFocus >= 0 && first.PlayerConsumables.All(item => item.Quantity >= 0),
+    "Run must record ending player resources.");
+Check(first.DecidingActionId is not null && first.DecidingActionSourceId is not null,
+    "Run must record stable deciding-action identifiers.");
 Check(!string.IsNullOrWhiteSpace(first.TerminalCondition), "Run must record its terminal condition.");
+var outputJson = JsonSerializer.Serialize(new SimulationOutput(state.CurrentStoryNodeId, SimulationRunner.TurnLimit,
+    SimulationPlayerConfiguration.FromState(state), first.EnemyConfiguration, [first]));
+using (var outputDocument = JsonDocument.Parse(outputJson))
+{
+    var root = outputDocument.RootElement;
+    Check(root.GetProperty("ScenarioId").GetString() == state.CurrentStoryNodeId
+        && root.GetProperty("TurnLimit").GetSingle() == SimulationRunner.TurnLimit
+        && root.GetProperty("PlayerConfiguration").GetProperty("Items").GetArrayLength() > 0
+        && root.GetProperty("PlayerConfiguration").GetProperty("ItemLayout").GetProperty("Right hand").GetString() == "starting-sword"
+        && root.GetProperty("PlayerConfiguration").GetProperty("ActionIds").EnumerateArray()
+            .Any(actionId => actionId.GetString() == "RightHandStrike")
+        && root.GetProperty("EnemyConfiguration").GetArrayLength() == first.EnemyConfiguration.Length,
+        "Simulation output must store shared scenario and player configuration at the top level.");
+    var runJson = root.GetProperty("Runs")[0];
+    Check(runJson.TryGetProperty("EndingTurn", out _) && !runJson.TryGetProperty("Turn", out _)
+        && !runJson.TryGetProperty("EnemyConfiguration", out _)
+        && runJson.TryGetProperty("PlayerActionResults", out _),
+        "Run JSON must use EndingTurn, include action results, and omit shared enemy configuration.");
+}
 var immediateDefeat = SimulationRunner.Run(storyline, state with { Health = 0 }, 42);
 Check(immediateDefeat.Outcome == CombatOutcome.Defeat && immediateDefeat.TerminalCondition == "PlayerDefeated"
     && immediateDefeat.DecidingAction is null, "Initial defeat must be attributed to the player objective, not an action.");
@@ -72,7 +99,7 @@ var harmless = storyline.Characters.ToDictionary(pair => pair.Key, pair => pair.
     Actions = [new() { Damage = new DamageProfile() }],
 });
 var draw = SimulationRunner.Run(authored, harmless, state.CreateGameState(), 42);
-Check(draw.Outcome == CombatOutcome.Draw && draw.Turn == 100, "Full encounter did not draw at Turn 100.");
+Check(draw.Outcome == CombatOutcome.Draw && draw.EndingTurn == 100, "Full encounter did not draw at Turn 100.");
 Check(state.PlayerStrategy.Strategy == StrategyId.Aggressive, "Simulation must default to a named deterministic policy.");
 Check(state.PlayerStrategies.Length == Enum.GetValues<StrategyId>().Length - 1
     && !state.PlayerStrategies.Contains(StrategyId.Protective), "Default strategy cycle must include each player-supported policy.");
@@ -114,6 +141,14 @@ Check(report.Contains("Analytical\t1\t1\t0\t0\t50.00", StringComparison.Ordinal)
     && report.Contains("Throw [starting-rocks]\tVictory\t0\t0\t0\t1\t0", StringComparison.Ordinal)
     && report.Contains("Player strategy x enemy configuration x deciding action:", StringComparison.Ordinal),
     "Simulation report must include strategy rates, usage distributions, and strategy/action cross-tabs.");
+var markdownReport = SimulationReport.FormatMarkdown(new SimulationOutput(state.CurrentStoryNodeId,
+    SimulationRunner.TurnLimit, SimulationPlayerConfiguration.FromState(state), first.EnemyConfiguration, reportSamples));
+Check(markdownReport.Contains("## Outcomes", StringComparison.Ordinal)
+    && markdownReport.Contains("## Strategy comparison", StringComparison.Ordinal)
+    && markdownReport.Contains("| Strategy | Runs | Victory (rate) |", StringComparison.Ordinal)
+    && markdownReport.Contains("Avg. turn", StringComparison.Ordinal)
+    && markdownReport.Contains("Throw [starting-rocks] × 4", StringComparison.Ordinal),
+    "Markdown report must summarize outcomes and compare strategies with action-use totals.");
 // Complete item-specific Throw choices are covered by AiDecisionChecks.
 try
 {
@@ -121,4 +156,22 @@ try
     throw new Exception("Missing scenario was accepted.");
 }
 catch (ArgumentException) { }
+// General objective-aware search must discover the ranged route in the authored encounter.
+foreach (var replaySeed in new[] { 879543284, 879543289, 42 })
+{
+    var analyticalState = state with { PlayerStrategy = new(StrategyId.Analytical) };
+    DecisionTrace? opening = null;
+    var analyticalResult = SimulationRunner.Run(storyline, analyticalState, replaySeed,
+        trace: trace => { if (trace.ActorId == "player") opening ??= trace; });
+    Check(analyticalResult.Outcome == CombatOutcome.Victory && analyticalResult.PlayerHealth > 0,
+        "Analytical must discover a winning route through the authored required-character objective.");
+    Check(analyticalResult.PlayerActionResults.Length == 1
+        && analyticalResult.PlayerActionResults[0].ActionId == "Throw"
+        && analyticalResult.PlayerActionResults[0].TargetId == NexusRealms.Prelude.Database.Chapter1.Part1.AlleywayThug2.Id.Value
+        && analyticalResult.PlayerActionResults[0].Uses == 3,
+        "The regression encounter must be solved by three effective ranged attacks on its required target.");
+    Check(opening?.Planning is { UsedFallback: false, Truncated: false, CompletedDepth: 3 }
+        && opening.Candidates.Any(candidate => candidate.Candidate.Key == opening.Selected?.Key && candidate.ObjectiveRank == 2),
+        "Analytical must forecast the winning sequence before committing its opening action.");
+}
 Console.WriteLine("Simulation checks passed.");

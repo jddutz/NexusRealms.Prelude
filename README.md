@@ -21,10 +21,15 @@ observation assumptions, memory, diagnostics and acceptance checks.
 The simulator cycles through configurable player strategies instead of repeating
 one policy or choosing random actions; `playerStrategies` in the state file can
 limit the cycle. By default, it runs once per configured strategy; explicit run
-counts repeat the cycle with additional seeds. Reports and per-run JSON retain
-strategy, outcome, decisive action, and action-use details for analysis. The
-console log also traces each decision, its considered candidates and rationale,
-and the resulting effects.
+counts repeat the cycle with additional seeds. The JSON output keeps shared
+scenario, player, and enemy configuration at the top level; each run records
+ending resources, stable deciding-action identifiers, action uses, and
+aggregated action effects by target. The console log retains the detailed
+decision trace, considered candidates, rationale, and resulting effects.
+The `.scripts/RunSimulator.ps1` launcher writes a compact Markdown outcome and
+strategy comparison beside its JSON and diagnostic log. Direct simulator
+invocations can use `--report <summary.md>`; `--output <results.json>` remains
+independently optional.
 
 Story graphs implementing `IStoryGraph` in `Prelude.Database.Chapter*` namespaces are discovered automatically; their characters and nodes are validated and registered by ID at runtime. The loaded story database uses immutable graph data and frozen lookup dictionaries, while chapter definitions remain authored in C#.
 
