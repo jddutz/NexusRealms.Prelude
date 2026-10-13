@@ -22,10 +22,19 @@ Check(capturedDecision is { Selected: not null, Candidates.Count: > 0 },
 var traceText = SimulationReport.FormatDecisionTrace(capturedDecision!,
     new Dictionary<string, string> { ["player"] = "Player" },
     new Dictionary<string, string> { ["starting-sword"] = "Starting Sword" });
+var omittedEquipmentLayouts = capturedDecision!.Candidates.Count(evaluation =>
+    evaluation.Candidate.Kind == CandidateKind.ItemLayout
+    && evaluation.Candidate.Action.Id == "equipment"
+    && evaluation.Candidate.Key != capturedDecision.Selected!.Key);
 Check(traceText.Contains("Chosen:", StringComparison.Ordinal)
     && traceText.Contains("Considered actions:", StringComparison.Ordinal)
     && traceText.Contains("utility=", StringComparison.Ordinal),
     "Decision trace output must explain the selected action and alternatives.");
+Check(omittedEquipmentLayouts > 0
+    && traceText.Contains($"Considered actions: {omittedEquipmentLayouts} equipment layouts omitted", StringComparison.Ordinal)
+    && (!traceText.Contains("Equipment layout [", StringComparison.Ordinal)
+        || capturedDecision.Selected is { Kind: CandidateKind.ItemLayout, Action.Id: "equipment" }),
+    "Decision trace output must omit unselected equipment-layout alternatives.");
 Check(state.Health == 20, "Simulation mutated its starting state.");
 Check(first.PlayerStrategy == state.PlayerStrategy.Strategy, "Run must record the configured player strategy.");
 Check(first.EnemyConfiguration.Length == ((CombatScenario)storyline.Nodes[storyline.StartNodeId]).Characters.Length,

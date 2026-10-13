@@ -44,6 +44,8 @@ public static class SimulationReport
 
         string CharacterName(string id) => characterNames.GetValueOrDefault(id, id);
         string ItemName(string id) => itemNames.GetValueOrDefault(id, id);
+        bool IsEquipmentLayout(CandidateEvaluation evaluation) =>
+            evaluation.Candidate.Kind == CandidateKind.ItemLayout && evaluation.Candidate.Action.Id == "equipment";
         string CandidateName(CandidateEvaluation evaluation)
         {
             var candidate = evaluation.Candidate;
@@ -54,7 +56,7 @@ public static class SimulationReport
                     .Select(pair => $"{ItemName(pair.Key)} with {ItemName(pair.Value)}"));
                 name = $"Reload {reloads}";
             }
-            else if (candidate.Kind == CandidateKind.ItemLayout && candidate.Action.Id == "equipment")
+            else if (IsEquipmentLayout(evaluation))
             {
                 var layout = string.Join(", ", candidate.Layout.OrderBy(pair => pair.Key, StringComparer.Ordinal)
                     .Where(pair => !string.IsNullOrEmpty(pair.Value))
@@ -116,8 +118,14 @@ public static class SimulationReport
         }
         else report.Append("  Chosen: ").Append(selected.Key).AppendLine();
 
-        report.AppendLine("  Considered actions:");
-        foreach (var evaluation in ordered)
+        var considered = ordered.Where(evaluation =>
+            !IsEquipmentLayout(evaluation) || evaluation.Candidate.Key == selected.Key).ToArray();
+        var omittedEquipmentLayouts = ordered.Length - considered.Length;
+        report.Append("  Considered actions:");
+        if (omittedEquipmentLayouts > 0)
+            report.Append(' ').Append(omittedEquipmentLayouts).Append(" equipment layouts omitted");
+        report.AppendLine();
+        foreach (var evaluation in considered)
             report.Append("    ").Append(evaluation.Candidate.Key == selected.Key ? "> " : "  ")
                 .Append(CandidateName(evaluation)).Append(" | objective=").Append(evaluation.ObjectiveRank)
                 .Append(" | utility=").Append(evaluation.Utility).AppendLine();
