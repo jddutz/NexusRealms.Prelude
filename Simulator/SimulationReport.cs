@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using NexusRealms.Prelude.Combat;
 using NexusRealms.Prelude.DataModel;
 
 namespace NexusRealms.Prelude.Simulator;
@@ -26,6 +27,117 @@ public static class SimulationReport
         AppendActionUsage(report, results);
         AppendActionUseDistribution(report, results);
         AppendStrategyDecidingActions(report, results);
+        return report.ToString();
+    }
+
+    /// <summary>Formats one traced AI decision, its alternatives, rationale, and predicted resolution.</summary>
+    /// <param name="decision">The decision and candidate evaluations captured by the strategy.</param>
+    /// <param name="characterNames">Display names keyed by runtime character identifier.</param>
+    /// <param name="itemNames">Display names keyed by item identifier.</param>
+    /// <returns>A readable turn-by-turn decision block.</returns>
+    public static string FormatDecisionTrace(DecisionTrace decision, IReadOnlyDictionary<string, string> characterNames,
+        IReadOnlyDictionary<string, string> itemNames)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        ArgumentNullException.ThrowIfNull(characterNames);
+        ArgumentNullException.ThrowIfNull(itemNames);
+
+        string CharacterName(string id) => characterNames.GetValueOrDefault(id, id);
+        string ItemName(string id) => itemNames.GetValueOrDefault(id, id);
+        string CandidateName(CandidateEvaluation evaluation)
+        {
+            var candidate = evaluation.Candidate;
+            string name;
+            if (candidate.Action.Reload)
+            {
+                var reloads = string.Join(", ", candidate.Reloads.OrderBy(pair => pair.Key, StringComparer.Ordinal)
+                    .Select(pair => $"{ItemName(pair.Key)} with {ItemName(pair.Value)}"));
+                name = $"Reload {reloads}";
+            }
+            else if (candidate.Kind == CandidateKind.ItemLayout && candidate.Action.Id == "equipment")
+            {
+                var layout = string.Join(", ", candidate.Layout.OrderBy(pair => pair.Key, StringComparer.Ordinal)
+                    .Where(pair => !string.IsNullOrEmpty(pair.Value))
+                    .Select(pair => $"{pair.Key}={ItemName(pair.Value)}"));
+                name = $"Equipment layout [{layout}]";
+            }
+            else
+            {
+                name = candidate.Action.Id;
+                var itemId = candidate.ItemId ?? candidate.Action.ItemId?.Value;
+                if (itemId is not null) name += $" ({ItemName(itemId)})";
+            }
+
+            var recipients = evaluation.Preview.Outcome.Recipients;
+            if (recipients.Length > 0) name += $" -> {string.Join(", ", recipients.Select(CharacterName))}";
+            else if (candidate.TargetId is { } targetId) name += $" -> {CharacterName(targetId)}";
+            return name;
+        }
+
+        var report = new StringBuilder();
+        report.Append("Turn ").Append(decision.Turn.ToString("F2", CultureInfo.InvariantCulture))
+            .Append(" | ").Append(CharacterName(decision.ActorId))
+            .Append(" | ").Append(decision.Strategy);
+        if (decision.Behavior is { } behavior)
+            report.Append(" | mode ").Append(behavior.Mode)
+                .Append(" | history ").Append(behavior.History.Length);
+        report.AppendLine();
+
+        if (decision.Behavior is { History.Length: > 0 } snapshot)
+            foreach (var observed in snapshot.History)
+                report.Append("  Observed: ").Append(CharacterName(observed.SourceId)).Append(" used ")
+                    .Append(observed.ActionId).Append(" [").Append(string.Join(", ", observed.Classifications)).AppendLine("]");
+
+        if (decision.Planning is { } planning)
+            report.Append("  Planning: depth=").Append(planning.Depth).Append(", budget=").Append(planning.Budget)
+                .Append(", explored=").Append(planning.ExploredNodes).Append(", truncated=").Append(planning.Truncated)
+                .Append(", fallback=").Append(planning.UsedFallback).AppendLine();
+
+        if (decision.Selected is not { } selected)
+        {
+            report.AppendLine("  No legal action was selected.");
+            return report.ToString();
+        }
+
+        var ordered = decision.Candidates.OrderByDescending(entry => entry.ObjectiveRank)
+            .ThenByDescending(entry => entry.Utility).ToArray();
+        var chosen = ordered.FirstOrDefault(entry => entry.Candidate.Key == selected.Key);
+        if (chosen is not null)
+        {
+            report.Append("  Chosen: ").Append(CandidateName(chosen))
+                .Append(" | objective=").Append(chosen.ObjectiveRank)
+                .Append(" | utility=").Append(chosen.Utility).AppendLine();
+            foreach (var contribution in chosen.Contributions.OrderByDescending(entry => Math.Abs((double)entry.Utility)))
+            {
+                var utility = contribution.Feature == "time-centiturns" ? contribution.Utility / 100 : contribution.Utility;
+                report.Append("    Why: ").Append(contribution.Feature).Append(" value=").Append(contribution.Value)
+                    .Append(" weight=").Append(contribution.Weight).Append(" utility=").Append(utility).AppendLine();
+            }
+        }
+        else report.Append("  Chosen: ").Append(selected.Key).AppendLine();
+
+        report.AppendLine("  Considered actions:");
+        foreach (var evaluation in ordered)
+            report.Append("    ").Append(evaluation.Candidate.Key == selected.Key ? "> " : "  ")
+                .Append(CandidateName(evaluation)).Append(" | objective=").Append(evaluation.ObjectiveRank)
+                .Append(" | utility=").Append(evaluation.Utility).AppendLine();
+
+        if (chosen is not null)
+        {
+            foreach (var effect in chosen.Preview.Outcome.Effects)
+            {
+                report.Append("  Effect: ").Append(effect.Verb).Append(" -> ").Append(CharacterName(effect.RecipientId))
+                    .Append(" requested=").Append(effect.RequestedAmount.ToString("0.##", CultureInfo.InvariantCulture))
+                    .Append(" actual=").Append(effect.ActualChange.ToString("0.##", CultureInfo.InvariantCulture))
+                    .Append(" result=").Append(effect.Result);
+                if (!string.IsNullOrWhiteSpace(effect.Reason)) report.Append(" reason=").Append(effect.Reason);
+                report.AppendLine();
+            }
+            foreach (var recipientId in chosen.Preview.Outcome.Recipients.Distinct(StringComparer.Ordinal))
+                if (chosen.Preview.Characters.TryGetValue(recipientId, out var recipient))
+                    report.Append("  After: ").Append(CharacterName(recipientId)).Append(" health=").Append(recipient.Health)
+                        .Append(" focus=").Append(recipient.Focus).AppendLine();
+        }
         return report.ToString();
     }
 

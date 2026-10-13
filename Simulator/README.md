@@ -67,15 +67,14 @@ action semantics. Victory or defeat before the boundary takes precedence.
 Malformed encounters that exhaust an operation budget fail explicitly.
 
 The base seed is printed; run N uses base seed + N (starting at zero). Use the
-same state, seed, code, and runtime to replay results. The console report includes
-player strategy by outcome and victory rate, deciding action by outcome, player
-action totals/averages and use-count distributions, plus a strategy x enemy
-configuration x deciding-action cross-tab. A deciding action is the resolution
-that reaches a terminal condition; turn-limit draws and initial terminal states
-have no deciding action. These are associations, not causal explanations.
-Optional JSON records each run's outcome, strategy, enemy configuration, terminal
-condition, deciding action/source, action-use counts, ending turn, health, and
-operation count.
+same state, seed, code, and runtime to replay results. The console log traces each
+character decision in turn order: chosen action and target, item display name,
+candidate utility scores, selected score contributions, observed strategy history,
+planning limits, resolved effects, and post-action Health/Focus. The simulator
+enables tracing; callers that omit a trace callback do not capture candidate
+details. Optional JSON retains each run's outcome, strategy, enemy configuration,
+terminal condition, deciding action/source, action-use counts, ending turn, health,
+and operation count.
 
 Validation:
 

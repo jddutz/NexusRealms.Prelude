@@ -22,7 +22,9 @@ The simulator cycles through configurable player strategies instead of repeating
 one policy or choosing random actions; `playerStrategies` in the state file can
 limit the cycle. By default, it runs once per configured strategy; explicit run
 counts repeat the cycle with additional seeds. Reports and per-run JSON retain
-strategy, outcome, decisive action, and action-use details for analysis.
+strategy, outcome, decisive action, and action-use details for analysis. The
+console log also traces each decision, its considered candidates and rationale,
+and the resulting effects.
 
 Story graphs implementing `IStoryGraph` in `Prelude.Database.Chapter*` namespaces are discovered automatically; their characters and nodes are validated and registered by ID at runtime. The loaded story database uses immutable graph data and frozen lookup dictionaries, while chapter definitions remain authored in C#.
 

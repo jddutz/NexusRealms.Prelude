@@ -15,6 +15,17 @@ Check(startingLoadout.Inventory.Single(item => item?.Id.Value == "starting-rocks
     "Player must start with one inventory stack of five rocks.");
 var first = SimulationRunner.Run(storyline, state, 42);
 Check(first == SimulationRunner.Run(storyline, state, 42), "Seed replay or fresh-state isolation failed.");
+DecisionTrace? capturedDecision = null;
+_ = SimulationRunner.Run(storyline, state, 43, trace: decision => capturedDecision ??= decision);
+Check(capturedDecision is { Selected: not null, Candidates.Count: > 0 },
+    "A trace callback must capture the selected action and candidate evaluations.");
+var traceText = SimulationReport.FormatDecisionTrace(capturedDecision!,
+    new Dictionary<string, string> { ["player"] = "Player" },
+    new Dictionary<string, string> { ["starting-sword"] = "Starting Sword" });
+Check(traceText.Contains("Chosen:", StringComparison.Ordinal)
+    && traceText.Contains("Considered actions:", StringComparison.Ordinal)
+    && traceText.Contains("utility=", StringComparison.Ordinal),
+    "Decision trace output must explain the selected action and alternatives.");
 Check(state.Health == 20, "Simulation mutated its starting state.");
 Check(first.PlayerStrategy == state.PlayerStrategy.Strategy, "Run must record the configured player strategy.");
 Check(first.EnemyConfiguration.Length == ((CombatScenario)storyline.Nodes[storyline.StartNodeId]).Characters.Length,

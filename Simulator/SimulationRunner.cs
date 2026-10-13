@@ -123,13 +123,14 @@ public static class SimulationRunner
     /// <param name="storyline">The authored story database.</param>
     /// <param name="initial">The saved simulation starting state.</param>
     /// <param name="seed">The deterministic run seed.</param>
+    /// <param name="trace">Optional callback for each completed AI decision.</param>
     /// <returns>The completed run and its report dimensions.</returns>
-    public static SimulationResult Run(Storyline storyline, SimulationState initial, int seed)
+    public static SimulationResult Run(Storyline storyline, SimulationState initial, int seed, Action<DecisionTrace>? trace = null)
     {
         var state = initial.CreateGameState();
         if (!storyline.Nodes.TryGetValue(state.CurrentStoryNodeId, out var node) || node is not CombatScenario scenario)
             throw new ArgumentException($"'{state.CurrentStoryNodeId}' is not an authored combat scenario.");
-        return Run(scenario, storyline.Characters, state, seed, initial.AllowEscape, initial.PlayerStrategy);
+        return Run(scenario, storyline.Characters, state, seed, initial.AllowEscape, initial.PlayerStrategy, trace);
     }
 
     /// <summary>Runs a supplied combat scenario using Prelude's shared resolver and decision policies.</summary>
