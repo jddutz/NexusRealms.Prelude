@@ -122,11 +122,11 @@ Costs are commitment requirements, even when their accounting resembles Consume.
 
 ## Data model boundaries
 
-The supplied CharacterData currently contains Id, Name, StatusEffects, Health, Items, Attacks, Focus, Artwork, and Portrait. It contains no explicit Equipment, Abilities, general Actions collection, maximum Health, or scheduled Turn.
+CharacterData uses a single `Actions` collection for character capabilities; separate `Attacks` and general `Actions` collections are not used.
 
 Treat CharacterData as authored initial data. Mutable combat state holds current Health and Focus, item ownership and quantities, equipment associations, available capabilities/actions, active status instances, formation position for non-player characters, and next scheduled Turn. Reuse existing runtime ownership where these already exist rather than duplicating them in a new effects subsystem.
 
-Initial StatusEffectId entries must be expanded into runtime instances using their definitions. Plain identifiers alone cannot hold independent source, expiration, or use counts. Inspect ActionData and the scheduler before choosing concrete C# signatures or renaming Attacks; this specification does not claim their current structure.
+Initial StatusEffectId entries must be expanded into runtime instances using their definitions. Plain identifiers alone cannot hold independent source, expiration, or use counts. `CharacterData.Actions` is the single authored character repertoire; inspect `ActionData` and the scheduler for execution details.
 
 ## Resolution outcomes
 

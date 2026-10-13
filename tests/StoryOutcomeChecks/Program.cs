@@ -128,7 +128,7 @@ foreach (var thug in new[]
 {
     var sheetPath = Path.Combine(contentRoot, "Textures/Characters", thug.Artwork.Value["characters.".Length..].Replace(".png", ".json"));
     var sheet = Nexus.Graphics.AsepriteSpriteSheet.Load(sheetPath);
-    foreach (var action in thug.Attacks)
+    foreach (var action in thug.Actions)
     {
         var animation = sheet.GetAnimation(action.Animation);
         Check(!animation.Loop && animation.Frames.Count > 1 && animation.Duration.TotalSeconds > 0);

@@ -162,7 +162,7 @@ public static class SimulationRunner
             definitions[id] = definition;
             enemyConfiguration.Add(new(placement.CharacterId.Value, definition.Strategy.Strategy, placement.Team,
                 placement.Slot, placement.InitialTurn, placement.Initiative, placement.RequiredForVictory,
-                definition.Health, definition.Focus, definition.AvailableActions.Select(action => action.Id).ToArray()));
+                definition.Health, definition.Focus, definition.Actions.Select(action => action.Id).ToArray()));
             combat.Add(new(id, false, placement.InitialTurn, placement.Initiative, placement.Team, Row(placement.Slot)));
             resolver.Add(new(id, false, placement.Team, health[id], CombatLoadout.FromCharacter(definition), placement.Slot), definition.StatusEffects);
         }

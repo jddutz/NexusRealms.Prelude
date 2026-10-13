@@ -15,7 +15,7 @@ public sealed record Part1 : StoryGraph
         Portrait = new("portraits.alley_thug_1.png"),
         Items = [Combat.WeaponCatalog.Create(Combat.WeaponType.Clubs, "thug-club", "Club", "Right hand")],
         Equipment = ImmutableDictionary<string, string>.Empty.Add("Right hand", "thug-club"),
-        Attacks = [new WeaponAttackAction("club-attack", "thug-club")],
+        Actions = [new WeaponAttackAction("club-attack", "thug-club")],
     };
 
     public static readonly CharacterData AlleywayThug2 = new()
@@ -30,7 +30,7 @@ public sealed record Part1 : StoryGraph
             Combat.WeaponCatalog.CreateAmmunition(AmmunitionType.Bullet, "thug-bullets", 6),
         ],
         Equipment = ImmutableDictionary<string, string>.Empty.Add("Right hand", "thug-pistol"),
-        Attacks = [new WeaponAttackAction("pistol-attack", "thug-pistol") { ReloadAnimation = "Reload", Classifications = ["weapon", "ranged"] }],
+        Actions = [new WeaponAttackAction("pistol-attack", "thug-pistol") { ReloadAnimation = "Reload", Classifications = ["weapon", "ranged"] }],
     };
 
     public static readonly CharacterData AlleywayThug3 = new()
@@ -45,9 +45,6 @@ public sealed record Part1 : StoryGraph
         Actions =
         [
             new ThrowItemAction("rock-throw", "thug-rocks"),
-            new ActionData { Id = "rally-ally", Effects = [new RestoreEffect(2)],
-                Targeting = new(TargetShape.Single, TargetRelationship.SameTeam),
-                Costs = [new(new ResourceSubject(ResourceKind.Focus), 1)], Classifications = ["restoration"] },
             new ActionData { Id = "distract", Effects = [new DelayEffect(1)], Targeting = new(TargetShape.Single, TargetRelationship.OpposingTeam) },
         ],
     };

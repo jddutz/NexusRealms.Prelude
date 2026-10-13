@@ -24,7 +24,7 @@ public sealed record ExampleStrike : EffectAction
 ```
 
 This is an authoring example, not a new balanced ability. `CharacterData.Actions`
-declares character capabilities; null adapts legacy `Attacks`. `AbilityData.Actions`
+declares the character's complete capability list. `AbilityData.Actions`
 declares capabilities unlocked by that progression node. `CombatLoadout.Learn`
 records the learned ability and registers its action classes with a required
 ability condition. All required abilities, owned items, and equipment associations

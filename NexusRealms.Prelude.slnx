@@ -1,5 +1,5 @@
 <Solution>
   <Project Path="Prelude/Prelude.csproj" />
-  <Project Path="Prelude/Simulator/Simulator.csproj" />
+  <Project Path="Simulator/Simulator.csproj" />
   <Project Path="tests/AiDecisionChecks/AiDecisionChecks.csproj" />
 </Solution>

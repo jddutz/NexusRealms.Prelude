@@ -1,6 +1,6 @@
 $nap = Join-Path $PSScriptRoot "..\..\Nexus\src\AssetPipeline\bin\Debug\net10.0\nap.exe"
-$i = Join-Path $PSScriptRoot ".assets\nap.yaml"
-$o = Join-Path $PSScriptRoot ".content"
+$i = Join-Path $PSScriptRoot "..\.assets\nap.yaml"
+$o = Join-Path $PSScriptRoot "..\.content"
 
 & $nap --output $o clean
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

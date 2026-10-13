@@ -42,10 +42,14 @@ Check(pump.Outcome == CombatOutcome.Draw, "Automatic processing after an action 
 var empty = (state with { Items = [], ItemLayout = [] }).CreateGameState();
 Check(empty.Loadout.Items.Count == 0 && empty.Loadout.Equipment.Count == 0, "Empty saved loadout was not restored.");
 var authored = (CombatScenario)storyline.Nodes[storyline.StartNodeId];
+Check(authored.Characters.Select(placement => storyline.Characters[placement.CharacterId])
+    .SelectMany(character => character.Actions)
+    .All(action => action.BuildEffects().All(effect => effect is not RestoreEffect)),
+    "Intro characters must not have a restoration action.");
 var harmless = storyline.Characters.ToDictionary(pair => pair.Key, pair => pair.Value with
 {
     Health = int.MaxValue,
-    Attacks = [new() { Damage = new DamageProfile() }],
+    Actions = [new() { Damage = new DamageProfile() }],
 });
 var draw = SimulationRunner.Run(authored, harmless, state.CreateGameState(), 42);
 Check(draw.Outcome == CombatOutcome.Draw && draw.Turn == 100, "Full encounter did not draw at Turn 100.");

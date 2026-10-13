@@ -2,9 +2,9 @@
 param(
     [ValidateRange(1, [int]::MaxValue)]
     [int]$Runs = 1000,
-    [string]$State = (Join-Path $PSScriptRoot 'Prelude/Simulator/examples/intro.json'),
+    [string]$State = (Join-Path $PSScriptRoot '../Simulator/examples/intro.json'),
     [Nullable[int]]$Seed,
-    [string]$OutputDirectory = (Join-Path $PSScriptRoot 'simulation-results'),
+    [string]$OutputDirectory = (Join-Path $PSScriptRoot '..\.temp\simulator-results'),
     [switch]$NoBuild
 )
 
@@ -15,7 +15,7 @@ New-Item -ItemType Directory -Path $outputPath -Force | Out-Null
 $runName = 'simulation-{0}-{1}' -f (Get-Date -Format 'yyyyMMdd-HHmmss-fff'), ([guid]::NewGuid().ToString('N').Substring(0, 8))
 $logPath = Join-Path $outputPath "$runName.log"
 $resultsPath = Join-Path $outputPath "$runName.json"
-$projectPath = Join-Path $PSScriptRoot 'Prelude/Simulator/Simulator.csproj'
+$projectPath = Join-Path $PSScriptRoot '..\Simulator\Simulator.csproj'
 $simulatorArguments = @('--state', $statePath, '--runs', "$Runs", '--output', $resultsPath)
 if ($null -ne $Seed) { $simulatorArguments += @('--seed', "$Seed") }
 

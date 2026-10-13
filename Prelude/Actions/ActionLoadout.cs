@@ -31,9 +31,9 @@ public sealed partial class CombatLoadout
             layout[InventorySlot(indexInInventory++)] = item.Id.Value;
         var loadout = FromState(definition.Items, layout, definition.Focus);
         loadout.BasicCommands = definition.BasicCommands;
-        for (var index = 0; index < definition.AvailableActions.Count; index++)
+        for (var index = 0; index < definition.Actions.Length; index++)
         {
-            var action = definition.AvailableActions[index];
+            var action = definition.Actions[index];
             if (action.Id == "attack") action = action with { Id = $"attack-{index}" };
             if (action.ItemId is not null && !action.Classifications.Contains("weapon")) action = action with { Classifications = action.Classifications.Add("weapon") };
             if (!loadout.Actions.TryAdd(action.Id, action)) throw new ArgumentException($"Duplicate action identity '{action.Id}'.");

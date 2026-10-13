@@ -9,7 +9,7 @@ From the NexusRealms directory:
 ```
 
 The script displays the console output and saves it to a timestamped `.log` file
-alongside detailed per-run `.json` results in `simulation-results/` (ignored by Git).
+alongside detailed per-run `.json` results in `.temp/simulator-results/` (ignored by Git).
 Each invocation uses a fresh seed unless `-Seed` is supplied; the summary prints
 the seed for replay. Optional `-State` and `-OutputDirectory` parameters accept
 custom paths. The script can also be invoked from another working directory.

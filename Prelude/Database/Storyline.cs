@@ -169,7 +169,7 @@ public sealed class Storyline
         foreach (var character in Characters.Values)
         {
             _ = Combat.CombatLoadout.FromCharacter(character);
-            foreach (var action in character.AvailableActions) ActionValidation.Validate(action, StatusEffects);
+            foreach (var action in character.Actions) ActionValidation.Validate(action, StatusEffects);
             foreach (var id in character.StatusEffects)
                 if (!StatusEffects.ContainsKey(id)) throw new InvalidOperationException($"Character '{character.Id}' references unknown status '{id}'.");
         }

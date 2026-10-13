@@ -9,13 +9,6 @@
             "type": "dotnet",
             "request": "launch",
             "projectPath": "${workspaceFolder}/Prelude/Prelude.csproj"
-        },
-        {
-            "name": "Debug:Simulator",
-            "type": "dotnet",
-            "request": "launch",
-            "projectPath": "${workspaceFolder}/Prelude/Simulator/Simulator.csproj",
-            "launchSettingsProfile": "Simulator"
         }
     ]
 }
