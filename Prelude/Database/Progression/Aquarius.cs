@@ -173,13 +173,13 @@ public class Aquarius
             Actions = [],
         };
 
-    public static AbilityData Tornado { get; } =
+    public static AbilityData Twister { get; } =
         new()
         {
-            Id = new(nameof(Tornado)),
-            Name = "Tornado",
+            Id = new(nameof(Twister)),
+            Name = "Twister",
             Description = "Deal 1 Crushing damage and Delay all enemies by 0.5 turns",
-            Icon = new("abilities.Tornado.png"),
+            Icon = new("abilities.Twister.png"),
             Actions = [],
         };
 
@@ -223,7 +223,7 @@ public class Aquarius
         Silence,
         SoundBarrier,
         Tailwind,
-        Tornado,
+        Twister,
         Whirlwind,
         WindShear,
     ];
@@ -232,26 +232,26 @@ public class Aquarius
         new(
             ZodiacSign.Aquarius,
             [
-                new(Bewilder.Id, DirectionEnum.South, null, -0.82f, -0.78f),
-                new(Cleanse.Id, Heal.Id, -0.41f, -0.78f),
-                new(CoolingBreeze.Id, DirectionEnum.North, null, 0.00f, -0.78f),
-                new(Dowse.Id, DirectionEnum.South, null, 0.41f, -0.78f),
-                new(EyeOfTheStorm.Id, DirectionEnum.West, null, 0.82f, -0.78f),
-                new(Fog.Id, DirectionEnum.East, null, -0.82f, -0.26f),
-                new(Gale.Id, DirectionEnum.North, null, -0.41f, -0.26f),
-                new(Headwind.Id, DirectionEnum.North, null, 0.00f, -0.26f),
-                new(Heal.Id, DirectionEnum.West, null, 0.41f, -0.26f),
-                new(Hurricane.Id, DirectionEnum.East, null, 0.82f, -0.26f),
-                new(Levitate.Id, DirectionEnum.North, null, -0.82f, 0.26f),
-                new(PressureShield.Id, DirectionEnum.East, null, -0.41f, 0.26f),
-                new(Purge.Id, DirectionEnum.West, null, 0.00f, 0.26f),
-                new(Sandstorm.Id, DirectionEnum.East, null, 0.41f, 0.26f),
-                new(Silence.Id, DirectionEnum.South, null, 0.82f, 0.26f),
-                new(SoundBarrier.Id, DirectionEnum.South, null, -0.82f, 0.78f),
-                new(Tailwind.Id, DirectionEnum.North, null, -0.41f, 0.78f),
-                new(Tornado.Id, DirectionEnum.East, null, 0.00f, 0.78f),
-                new(Whirlwind.Id, DirectionEnum.North, null, 0.41f, 0.78f),
-                new(WindShear.Id, DirectionEnum.North, null, 0.82f, 0.78f),
+                new(Bewilder.Id, Fog.Id, 0.84f, 0.70f),
+                new(Cleanse.Id, Heal.Id, 0.56f, -0.28f),
+                new(CoolingBreeze.Id, null, 0.00f, -0.42f),
+                new(Dowse.Id, Cleanse.Id, 0.56f, -0.84f),
+                new(EyeOfTheStorm.Id, Dowse.Id, 0.84f, -0.84f),
+                new(Fog.Id, Silence.Id, 0.28f, 0.42f),
+                new(Gale.Id, Tailwind.Id, -0.28f, -0.56f),
+                new(Headwind.Id, Tailwind.Id, -0.56f, -0.00f),
+                new(Heal.Id, null, 0.28f, -0.00f),
+                new(Hurricane.Id, Twister.Id, -0.84f, -0.56f),
+                new(Levitate.Id, Silence.Id, 0.14f, 0.84f),
+                new(PressureShield.Id, CoolingBreeze.Id, 0.00f, -0.84f),
+                new(Purge.Id, Cleanse.Id, 0.84f, -0.28f),
+                new(Sandstorm.Id, Fog.Id, 0.56f, 0.28f),
+                new(Silence.Id, null, 0.00f, 0.42f),
+                new(SoundBarrier.Id, Silence.Id, -0.14f, 0.84f),
+                new(Tailwind.Id, null, -0.28f, 0.00f),
+                new(Twister.Id, Gale.Id, -0.56f, -0.56f),
+                new(Whirlwind.Id, WindShear.Id, -0.84f, 0.56f),
+                new(WindShear.Id, Tailwind.Id, -0.56f, 0.56f),
             ]
         );
 }

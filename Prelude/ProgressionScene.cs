@@ -104,6 +104,7 @@ public sealed class ProgressionScene : Scene
         canvas.SetArtwork(new ImageElement
         {
             Texture = zodiacTexture,
+            Color = new Color(1f, 1f, 1f, 0.5f),
             SizingMode = ImageSizingMode.Stretch, SortOrder = -20,
             RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
         }, (float)zodiacTexture.Width / zodiacTexture.Height);
@@ -253,10 +254,7 @@ public sealed class ProgressionScene : Scene
                 Bounds.Origin.X + (Bounds.Size.X - artworkWidth) / 2f,
                 Bounds.Origin.Y + (Bounds.Size.Y - artworkHeight) / 2f,
                 artworkWidth, artworkHeight);
-            // The artwork is a quarter-size centerpiece; nodes retain the full map coordinate area.
-            var imageSize = new Vector2D<float>(artworkWidth * 0.25f, artworkHeight * 0.25f);
-            _artwork?.Arrange(new Rectangle<float>(
-                artworkBounds.Origin + (artworkBounds.Size - imageSize) / 2f, imageSize));
+            _artwork?.Arrange(artworkBounds);
             _connectors?.Arrange(Bounds);
             foreach (var (element, x, y) in _positions)
             {
