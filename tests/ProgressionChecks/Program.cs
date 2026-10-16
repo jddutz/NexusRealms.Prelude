@@ -18,12 +18,6 @@ foreach (var definition in Aquarius.Definitions)
     Check(ReferenceEquals(story.Abilities[definition.Id], definition), "Registry must use the authored Aquarius record.");
     Check(Aquarius.Graph.Abilities.Count(node => node.Id == definition.Id) == 1, "Each authored Aquarius ability must have one placement.");
 }
-foreach (var direction in Enum.GetValues<DirectionEnum>())
-{
-    var fresh = new GameState(story.StartNodeId) { Zodiac = ZodiacSign.Aquarius };
-    var root = Aquarius.Graph.Abilities.First(node => node.Direction == direction && node.Parent is null);
-    Check(ProgressionRules.CanLearn(fresh, story, root.Id), "Display direction must not gate learning by chapter.");
-}
 var outsideVisit = new GameState(NexusRealms.Prelude.Database.Chapter1.Part1.Intro.Id);
 Check(!ProgressionRules.Learn(outsideVisit, story, Aquarius.Heal.Id), "Learning requires a progression visit.");
 var noPoints = new GameState(story.StartNodeId) { Zodiac = ZodiacSign.Aquarius, AbilityPoints = 0 };
@@ -33,17 +27,23 @@ Check(!ProgressionRules.Learn(noPoints, story, Aquarius.Heal.Id)
 var layouts = new HashSet<string>();
 foreach (var graph in ProgressionGraphs.All.Values)
 {
-    Check(graph.Abilities.Select(node => node.Direction).Distinct().Count() == 4, "Four directions required.");
     layouts.Add(string.Join(";", graph.Abilities.Select(n => $"{n.X},{n.Y},{n.Parent}")));
-    foreach (var direction in Enum.GetValues<DirectionEnum>())
+    Check(graph.Abilities.Select(node => node.Id).Distinct().Count() == graph.Abilities.Length,
+        "Each ability must have one placement per graph.");
+    var fresh = new GameState(story.StartNodeId) { Zodiac = graph.Sign };
+    foreach (var node in graph.Abilities)
     {
-        Check(graph.Abilities.Count(node => node.Direction == direction) > 0, "Each branch must contain abilities.");
-        var preceding = new HashSet<AbilityId>();
-        foreach (var node in graph.Abilities.Where(node => node.Direction == direction))
+        Check(story.Abilities.ContainsKey(node.Id), "Ability must be registered.");
+        Check(ProgressionRules.CanLearn(fresh, story, node.Id) == (node.Parent is null),
+            "Only abilities without prerequisites must be learnable initially.");
+        var ancestors = new HashSet<AbilityId> { node.Id };
+        var parent = node.Parent;
+        while (parent is { } parentId)
         {
-            Check(story.Abilities.ContainsKey(node.Id), "Ability must be registered.");
-            Check(node.Parent is null || preceding.Contains(node.Parent.Value), "Parent must precede its child in the same branch.");
-            Check(preceding.Add(node.Id), "Duplicate ability.");
+            Check(ancestors.Add(parentId), "Prerequisite connections must not contain cycles.");
+            var parentNode = graph.Abilities.SingleOrDefault(candidate => candidate.Id == parentId);
+            Check(parentNode is not null, "Prerequisite must belong to the same Zodiac graph.");
+            parent = parentNode!.Parent;
         }
     }
     var state = new GameState(story.StartNodeId) { Zodiac = graph.Sign };

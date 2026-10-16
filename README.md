@@ -9,6 +9,9 @@ Abilities unlock action classes subject to their item and equipment requirements
 learning an ability and selecting an action are separate operations. See
 [action authoring](docs/Action-Effects.md) for composition and lifetime rules.
 
+Zodiac progression uses parent prerequisites, not directional groups; authored
+node order does not constrain learning.
+
 The headless `Prelude/Simulator` uses the same action resolver. Mutable `GameState`
 lives in the Prelude runtime; scenario objectives and events remain data definitions
 and are converted into runtime behavior by adapters.
