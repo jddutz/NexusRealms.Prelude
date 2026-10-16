@@ -4,6 +4,9 @@ namespace NexusRealms.Prelude;
 public sealed class OutlinedHudText : TextElement
 {
     private readonly TextElement[] _outline;
+    /// <summary>Gets or sets the distance of the outline from the text in pixels.</summary>
+    public float OutlineThickness { get; set; } = 1f;
+
     private static readonly Vector2D<float>[] Offsets =
     [
         new(-1f, 0f),
@@ -12,6 +15,7 @@ public sealed class OutlinedHudText : TextElement
         new(0f, 1f),
     ];
 
+    /// <summary>Creates HUD text with a black outline.</summary>
     public OutlinedHudText(ITextStyle style)
         : base("", style)
     {
@@ -28,6 +32,7 @@ public sealed class OutlinedHudText : TextElement
         }
     }
 
+    /// <inheritdoc/>
     public override void Arrange(Rectangle<float> bounds)
     {
         base.Arrange(bounds);
@@ -40,7 +45,7 @@ public sealed class OutlinedHudText : TextElement
             outline.VerticalAlignment = VerticalAlignment;
             outline.SortOrder = SortOrder - 1;
             outline.Measure(bounds.Size);
-            outline.Arrange(new(bounds.Origin + Offsets[i], bounds.Size));
+            outline.Arrange(new(bounds.Origin + Offsets[i] * OutlineThickness, bounds.Size));
         }
     }
 }

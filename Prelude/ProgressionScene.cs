@@ -3,10 +3,12 @@ namespace NexusRealms.Prelude;
 /// <summary>Displays the player's Zodiac graph and learns one ability per story visit.</summary>
 public sealed class ProgressionScene : Scene
 {
+    private const float AbilityElementScale = 0.5f;
     private readonly List<(AbilityId Id, AbilityButton Button)> _buttons = [];
     private readonly TextElement _status;
     private readonly TextButton _continue;
 
+    /// <summary>Creates the progression scene for the current story visit.</summary>
     public ProgressionScene(GameState state, Storyline story, ITextStyleRegistry textStyles,
         ITextureRegistry textures, ISceneManager scenes)
     {
@@ -63,7 +65,7 @@ public sealed class ProgressionScene : Scene
             var ability = story.Abilities[node.Id];
             var button = new AbilityButton(textStyles.GetOrCreate(BuiltInFonts.Bold, 13f))
             {
-                Width = 168f, Height = 158f, SortOrder = 10,
+                Width = 168f * AbilityElementScale, Height = 158f * AbilityElementScale, SortOrder = 10,
                 Padding = new(0f, 0f), RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
                 Action = _ =>
                 {
@@ -74,7 +76,7 @@ public sealed class ProgressionScene : Scene
             button.Icon = new ImageElement
             {
                 Texture = iconBackdrop,
-                Width = 128f, Height = 128f, SizingMode = ImageSizingMode.Stretch,
+                Width = 128f * AbilityElementScale, Height = 128f * AbilityElementScale, SizingMode = ImageSizingMode.Stretch,
                 HorizontalAlignment = AlignHorizontal.Center,
                 VerticalAlignment = AlignVertical.Top,
                 Margins = new(0f, 0f, 3f, 0f),
@@ -82,14 +84,14 @@ public sealed class ProgressionScene : Scene
             button.Frame = new ImageElement
             {
                 Texture = textures.GetOrCreate(new ContentId("ui.item_frame.png")),
-                Width = 128f, Height = 128f, SizingMode = ImageSizingMode.Stretch,
+                Width = 128f * AbilityElementScale, Height = 128f * AbilityElementScale, SizingMode = ImageSizingMode.Stretch,
                 SortOrder = 13, RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
             };
             button.Icon.Children.Add(button.Frame);
             button.Glyph = new ImageElement
             {
                 Texture = textures.GetOrCreate(ability.Icon),
-                Width = 128f, Height = 128f, SizingMode = ImageSizingMode.Fit,
+                Width = 128f * AbilityElementScale, Height = 128f * AbilityElementScale, SizingMode = ImageSizingMode.Fit,
                 HorizontalAlignment = AlignHorizontal.Center, VerticalAlignment = AlignVertical.Center,
                 SortOrder = 12, RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
             };
@@ -159,10 +161,17 @@ public sealed class ProgressionScene : Scene
 
     private sealed class AbilityButton : TextButton
     {
+        /// <summary>Gets the ability name caption.</summary>
         public OutlinedHudText Caption { get; }
+
+        /// <summary>Gets or sets the frame surrounding the ability glyph.</summary>
         public ImageElement Frame { get; set; } = null!;
+
+        /// <summary>Gets or sets the ability glyph.</summary>
         public ImageElement Glyph { get; set; } = null!;
         private float _slotSize = 128f;
+
+        /// <summary>Updates the icon and button dimensions to match the available slot size.</summary>
         public void SetSlotSize(float size)
         {
             _slotSize = size;
@@ -171,24 +180,32 @@ public sealed class ProgressionScene : Scene
             Frame.Width = Frame.Height = size;
             Glyph.Width = Glyph.Height = size;
         }
+
+        /// <summary>Creates an ability button with a caption.</summary>
         public AbilityButton(ITextStyle style)
         {
             Caption = new OutlinedHudText(style)
             {
                 Width = 168f, Height = 23f, SortOrder = 15,
+                OutlineThickness = 1.5f,
                 RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
             };
             Children.Add(Caption);
         }
+
+        /// <inheritdoc/>
         public override Vector2D<float> Measure(Vector2D<float> constraint)
         {
             Caption.Measure(new Vector2D<float>(168f, 23f));
             return base.Measure(constraint);
         }
+
+        /// <inheritdoc/>
         public override void Arrange(Rectangle<float> bounds)
         {
             base.Arrange(bounds);
-            Caption.Arrange(new Rectangle<float>(Bounds.Origin.X, Bounds.Origin.Y + _slotSize + 7f, Bounds.Size.X, 23f));
+            Caption.Arrange(new Rectangle<float>(Bounds.Origin.X + (Bounds.Size.X - 168f) / 2f,
+                Bounds.Origin.Y + _slotSize + 7f * AbilityElementScale, 168f, 23f));
         }
     }
 
@@ -216,7 +233,8 @@ public sealed class ProgressionScene : Scene
         }
         public override Vector2D<float> Measure(Vector2D<float> constraint)
         {
-            var slotSize = Math.Clamp((constraint.Y - Margins.Top - Margins.Bottom) / 4f - 30f, 48f, 128f);
+            var slotSize = Math.Clamp((constraint.Y - Margins.Top - Margins.Bottom) / 4f - 30f, 48f, 128f)
+                * AbilityElementScale;
             foreach (var (element, _, _) in _positions)
             {
                 if (element is AbilityButton ability) ability.SetSlotSize(slotSize);
