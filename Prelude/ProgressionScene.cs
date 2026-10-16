@@ -104,7 +104,7 @@ public sealed class ProgressionScene : Scene
         canvas.SetArtwork(new ImageElement
         {
             Texture = zodiacTexture,
-            Color = new Color(1f, 1f, 1f, 0.5f),
+            Color = new Color(1f, 1f, 1f, 0.25f),
             SizingMode = ImageSizingMode.Stretch, SortOrder = -20,
             RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
         }, (float)zodiacTexture.Width / zodiacTexture.Height);
