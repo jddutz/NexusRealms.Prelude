@@ -25,7 +25,7 @@ public sealed class Storyline
     /// <summary>
     /// Gets the identifier of the first node in the story.
     /// </summary>
-    public StoryNodeId StartNodeId { get; } = "ch1_progression_1";
+    public StoryNodeId StartNodeId { get; } = Chapter1.Part1.Begin.Id;
 
     /// <summary>
     /// Gets the identifier of the final node in the story.

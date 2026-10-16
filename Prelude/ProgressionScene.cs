@@ -1,6 +1,6 @@
 namespace NexusRealms.Prelude;
 
-/// <summary>Displays the player's Zodiac graph and learns one ability per story visit.</summary>
+/// <summary>Displays the player's Zodiac graph and learns abilities using available points.</summary>
 public sealed class ProgressionScene : Scene
 {
     private const float AbilityElementScale = 0.5f;
@@ -152,18 +152,20 @@ public sealed class ProgressionScene : Scene
             foreach (var (id, button) in _buttons)
             {
                 var learned = state.Loadout.LearnedAbilities.Contains(id);
-                button.IsEnabled = ProgressionRules.CanLearn(state, story, id);
+                var canLearn = ProgressionRules.CanLearn(state, story, id);
+                button.IsEnabled = canLearn;
+                button.Glyph.Color = new Color(1f, 1f, 1f, learned || canLearn ? 1f : 0.25f);
                 button.Caption.Text = story.Abilities[id].Name;
                 button.Frame.Texture = textures.GetOrCreate(new ContentId(learned
                     ? "ui.item_frame_selected.png" : "ui.item_frame.png"));
                 button.Caption.Color = learned ? new Color(0.4f, 0.9f, 0.6f, 1f)
-                    : ProgressionRules.CanLearn(state, story, id) ? UiTheme.TextColor : new Color(0.4f, 0.4f, 0.45f, 1f);
+                    : canLearn ? UiTheme.TextColor : new Color(0.4f, 0.4f, 0.45f, 1f);
             }
             _status!.Text = $"Ability points: {state.AbilityPoints}. "
-                + (ProgressionRules.HasLearnedThisVisit(state, visit) ? "Ability learned. Continue when ready."
-                    : state.AbilityPoints == 0 ? "No points available."
+                + (state.AbilityPoints == 0 ? "No points available."
+                    : ProgressionRules.HasLearnedThisVisit(state, visit) ? "Learn more abilities or continue when ready."
                     : "Choose an ability (1 point). Prerequisites apply.");
-            _continue!.IsVisible = ProgressionRules.HasLearnedThisVisit(state, visit);
+            _continue!.IsVisible = ProgressionRules.CanContinue(state, visit);
         }
     }
 

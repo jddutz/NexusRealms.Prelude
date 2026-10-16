@@ -7,7 +7,14 @@ using NexusRealms.Prelude.DataModel;
 static void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
 var story = new Storyline();
 Check(ProgressionGraphs.All.Count == 12, "All Zodiac graphs must exist.");
-Check(story.Nodes.Values.OfType<ProgressNode>().Count(node => node.Id.Value?.Contains("_progression_", StringComparison.Ordinal) == true) == 20, "Twenty chapter progression visits required.");
+Check(story.StartNodeId == NexusRealms.Prelude.Database.Chapter1.Part1.Begin.Id,
+    "The story must start at the authored Chapter1.Part1.Begin node.");
+Check(story.Nodes.Values.OfType<ProgressNode>().Single().Id == story.StartNodeId,
+    "Only the intentionally authored progression visit must be registered.");
+var begin = (ProgressNode)story.Nodes[story.StartNodeId];
+Check(begin.NextNode == NexusRealms.Prelude.Database.Chapter1.Part1.Intro.Id
+    && story.Nodes[begin.NextNode] is CombatScenario,
+    "Continue must lead directly from Begin to the intro encounter.");
 Check(Aquarius.Definitions.Length == 20 && Aquarius.Graph.Abilities.Length == 20, "Aquarius must author all twenty definitions and placements.");
 Check(Aquarius.Graph.Abilities.Select(node => (node.X, node.Y)).Distinct().Count() == 20,
     "Aquarius stars must have twenty explicit distinct artwork positions.");
@@ -20,10 +27,12 @@ foreach (var definition in Aquarius.Definitions)
 }
 var outsideVisit = new GameState(NexusRealms.Prelude.Database.Chapter1.Part1.Intro.Id);
 Check(!ProgressionRules.Learn(outsideVisit, story, Aquarius.Heal.Id), "Learning requires a progression visit.");
-var noPoints = new GameState(story.StartNodeId) { Zodiac = ZodiacSign.Aquarius, AbilityPoints = 0 };
+var noPoints = new GameState(story.StartNodeId) { Zodiac = ZodiacSignId.Aquarius, AbilityPoints = 0 };
 Check(!ProgressionRules.Learn(noPoints, story, Aquarius.Heal.Id)
     && noPoints.Loadout.LearnedAbilities.Count == 0 && noPoints.CompletedProgressionNodes.Count == 0,
     "Insufficient points must reject learning without changing state.");
+Check(ProgressionRules.CanContinue(noPoints, (ProgressNode)story.Nodes[noPoints.CurrentStoryNodeId]),
+    "No points must not block continuing.");
 var layouts = new HashSet<string>();
 foreach (var graph in ProgressionGraphs.All.Values)
 {
@@ -48,25 +57,41 @@ foreach (var graph in ProgressionGraphs.All.Values)
     }
     var state = new GameState(story.StartNodeId) { Zodiac = graph.Sign };
     Check(state.AbilityPoints == 20, "Players start with twenty ability points.");
-    for (var visit = 0; visit < 20; visit++)
+    Check(!ProgressionRules.CanContinue(state, begin), "Cannot skip learning with points available.");
+    Check(!ProgressionRules.CanLearn(state, story, "missing"), "Unknown ability cannot be learned.");
+    var firstAbility = graph.Abilities.First(n => ProgressionRules.CanLearn(state, story, n.Id));
+    Check(ProgressionRules.Learn(state, story, firstAbility.Id), "Available ability must be learnable.");
+    Check(state.AbilityPoints == 19, "Learning must spend exactly one point.");
+    Check(!ProgressionRules.Learn(state, story, firstAbility.Id), "An ability cannot be learned twice.");
+    Check(state.AbilityPoints == 19, "Rejected learning must not spend points.");
+    Check(ProgressionRules.CanContinue(state, begin), "Learning must enable Continue.");
+    state.CurrentStoryNodeId = begin.NextNode;
+    Check(state.CurrentStoryNodeId == NexusRealms.Prelude.Database.Chapter1.Part1.Intro.Id,
+        "Continue must advance to the authored intro, not another progression visit.");
+    Check(!ProgressionRules.CanContinue(state, begin), "The old visit cannot advance the story twice.");
+    Check(!ProgressionRules.CanLearn(state, story, firstAbility.Id), "Learning is unavailable in combat.");
+    var singleVisit = new GameState(story.StartNodeId) { Zodiac = graph.Sign };
+    for (var learnedCount = 0; learnedCount < graph.Abilities.Length; learnedCount++)
     {
-        var chapter = visit / 4 + 1;
-        Check(((ProgressNode)story.Nodes[state.CurrentStoryNodeId]).Chapter == chapter, "Wrong chapter order.");
-        var currentVisit = (ProgressNode)story.Nodes[state.CurrentStoryNodeId];
-        Check(!ProgressionRules.CanContinue(state, currentVisit), "Cannot skip learning.");
-        Check(!ProgressionRules.CanLearn(state, story, "missing"), "Unknown ability cannot be learned.");
-        var available = graph.Abilities.First(n => ProgressionRules.CanLearn(state, story, n.Id));
-        Check(ProgressionRules.Learn(state, story, available.Id), "Available ability must be learnable.");
-        Check(state.AbilityPoints == 19 - visit, "Learning must spend exactly one point.");
-        Check(!ProgressionRules.Learn(state, story, available.Id), "Visit cannot grant twice.");
-        Check(state.AbilityPoints == 19 - visit, "Rejected learning must not spend points.");
-        Check(!ProgressionRules.CanLearn(state, story, available.Id), "Reopening must preserve state.");
-        Check(ProgressionRules.CanContinue(state, currentVisit), "Learned visit must allow continuing.");
-        state.CurrentStoryNodeId = currentVisit.NextNode;
+        foreach (var node in graph.Abilities)
+        {
+            var expected = !singleVisit.Loadout.LearnedAbilities.Contains(node.Id)
+                && (node.Parent is null || singleVisit.Loadout.LearnedAbilities.Contains(node.Parent.Value));
+            Check(ProgressionRules.CanLearn(singleVisit, story, node.Id) == expected,
+                "Availability must refresh after each purchase in the same visit.");
+        }
+        var available = graph.Abilities.First(node => ProgressionRules.CanLearn(singleVisit, story, node.Id));
+        Check(ProgressionRules.Learn(singleVisit, story, available.Id), "Multiple purchases per visit must succeed.");
+        Check(singleVisit.AbilityPoints == 19 - learnedCount, "Each purchase must spend exactly one point.");
     }
-    Check(story.Nodes[state.CurrentStoryNodeId] is CombatScenario, "Final visit must lead to combat.");
-    Check(state.Loadout.LearnedAbilities.Count == 20, "All twenty abilities learned.");
-    Check(graph.Abilities.All(n => state.Loadout.LearnedAbilities.Contains(n.Id)), "Graph must remain usable to completion.");
+    Check(graph.Abilities.All(n => singleVisit.Loadout.LearnedAbilities.Contains(n.Id)),
+        "Every graph must remain usable to completion in one visit.");
+    singleVisit.CompletedProgressionNodes.Clear();
+    Check(ProgressionRules.CanContinue(singleVisit, begin),
+        "A visit must allow continuing after all points are spent.");
+    singleVisit.AbilityPoints = 1;
+    Check(ProgressionRules.CanContinue(singleVisit, begin),
+        "A fully learned graph must allow continuing even with points remaining.");
 }
 Check(layouts.Count == 12, "Zodiac layouts must differ.");
-Console.WriteLine("All twelve Zodiac graphs, unlocks, prerequisites, visit limits, chapter routes, and final combat checks passed.");
+Console.WriteLine("All twelve Zodiac graphs, unlocks, prerequisites, multiple purchases, and authored Begin-to-Intro route checks passed.");

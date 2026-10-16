@@ -3,22 +3,29 @@ namespace NexusRealms.Prelude.Rules;
 /// <summary>Reusable learning rules over the current game state and authored definitions.</summary>
 public static class ProgressionRules
 {
+    /// <summary>Reports whether an ability has been learned during this visit.</summary>
     public static bool HasLearnedThisVisit(GameState state, ProgressNode visit) =>
         state.CompletedProgressionNodes.Contains(visit.Id);
 
+    /// <summary>Allows continuing after learning or when no further abilities can be learned.</summary>
     public static bool CanContinue(GameState state, ProgressNode visit) =>
-        state.CurrentStoryNodeId == visit.Id && HasLearnedThisVisit(state, visit);
+        state.CurrentStoryNodeId == visit.Id && (HasLearnedThisVisit(state, visit)
+            || state.AbilityPoints <= 0
+            || Database.Progression.ProgressionGraphs.All[state.Zodiac].Abilities
+                .All(node => state.Loadout.LearnedAbilities.Contains(node.Id)));
 
+    /// <summary>Checks remaining points, the current visit, and the ability's prerequisite.</summary>
     public static bool CanLearn(GameState state, Storyline story, AbilityId id)
     {
         if (state.AbilityPoints <= 0 || !story.Nodes.TryGetValue(state.CurrentStoryNodeId, out var current)
-            || current is not ProgressNode visit || HasLearnedThisVisit(state, visit)
+            || current is not ProgressNode
             || state.Loadout.LearnedAbilities.Contains(id) || !story.Abilities.ContainsKey(id)) return false;
         var graph = Database.Progression.ProgressionGraphs.All[state.Zodiac];
         return graph.Abilities.Any(node => node.Id == id
             && (node.Parent is null || state.Loadout.LearnedAbilities.Contains(node.Parent.Value)));
     }
 
+    /// <summary>Learns an eligible ability and spends one point, allowing further purchases this visit.</summary>
     public static bool Learn(GameState state, Storyline story, AbilityId id)
     {
         if (!CanLearn(state, story, id)) return false;

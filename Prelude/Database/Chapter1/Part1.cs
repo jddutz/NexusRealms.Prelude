@@ -117,7 +117,13 @@ public sealed record Part1 : StoryGraph
         ],
     };
 
-    public static readonly StoryNode Begin = new ProgressNode { Chapter = 1, NextNode = Intro.Id };
+    /// <summary>Starts the story with ability selection before the intro encounter.</summary>
+    public static readonly StoryNode Begin = new ProgressNode
+    {
+        Id = $"{SubgraphId}_{nameof(Begin)}",
+        Chapter = 1,
+        NextNode = Intro.Id,
+    };
 
     public static readonly OutcomeNode Victory = new()
     {

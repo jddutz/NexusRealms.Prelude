@@ -4,7 +4,7 @@ public static class Leo
 {
     public static ProgressionGraph Graph { get; } =
         new(
-            ZodiacSign.Leo,
+            ZodiacSignId.Leo,
             [
                 new("north-1", null, 0.000f, -0.470f),
                 new("north-2", new AbilityId("north-1"), -0.153f, -0.640f),

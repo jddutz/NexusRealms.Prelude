@@ -10,7 +10,11 @@ learning an ability and selecting an action are separate operations. See
 [action authoring](docs/Action-Effects.md) for composition and lifetime rules.
 
 Zodiac progression uses parent prerequisites, not directional groups; authored
-node order does not constrain learning.
+node order does not constrain learning. Multiple abilities can be learned per
+visit, with availability refreshed after each purchase. Continue unlocks after
+learning an ability, or immediately when points or unlearned abilities run out.
+The story starts at `Chapter1.Part1.Begin`; Continue follows its authored
+`NextNode` directly to the intro encounter, without generated progression visits.
 
 The headless `Prelude/Simulator` uses the same action resolver. Mutable `GameState`
 lives in the Prelude runtime; scenario objectives and events remain data definitions
@@ -21,11 +25,19 @@ legal candidates, isolated previews, deterministic policies and bounded Analytic
 rollouts. See [character AI decisions](docs/AI-Decision-Making.md) for configuration,
 observation assumptions, memory, diagnostics and acceptance checks.
 
-The simulator cycles through configurable player strategies instead of repeating
-one policy or choosing random actions; `playerStrategies` in the state file can
-limit the cycle. By default, it runs once per configured strategy; explicit run
-counts repeat the cycle with additional seeds. The JSON output keeps shared
-scenario, player, and enemy configuration at the top level; each run records
+The simulator cycles through every zodiac sign and configurable player strategy
+instead of repeating one policy or choosing random actions; `playerZodiacs` and
+`playerStrategies` in the state file can limit either cycle. By default, it runs
+once per zodiac-strategy combination; explicit run counts repeat the cycle with
+additional seeds. Routine scenario validation uses just this single complete
+cycle (currently 120 runs), without `--runs`; repeated seeds are reserved for
+explicit randomness investigations. Each result records its zodiac and strategy, and the report
+compares outcomes by both dimensions. The JSON output keeps shared
+scenario and enemy configuration at the top level, with player configurations
+keyed by `ZodiacSignId`. Each player learns every ability in that sign's
+`ProgressionGraph`, plus any explicit `learnedAbilities`; normal action equipment
+and resource requirements still apply. Placeholder abilities without authored
+actions remain learned but do not create executable actions. Each run records
 ending resources, stable deciding-action identifiers, action uses, and
 aggregated action effects by target. The console log retains the detailed
 decision trace, considered candidates, rationale, and resulting effects.
@@ -33,6 +45,9 @@ The `.scripts/RunSimulator.ps1` launcher writes a compact Markdown outcome and
 strategy comparison beside its JSON and diagnostic log. Direct simulator
 invocations can use `--report <summary.md>`; `--output <results.json>` remains
 independently optional.
+
+Runtime zodiac selection and progression graph keys use `ZodiacSignId`;
+`ZodiacSign` holds descriptive character-creation data, including element and modality.
 
 Story graphs implementing `IStoryGraph` in `Prelude.Database.Chapter*` namespaces are discovered automatically; their characters and nodes are validated and registered by ID at runtime. The loaded story database uses immutable graph data and frozen lookup dictionaries, while chapter definitions remain authored in C#.
 

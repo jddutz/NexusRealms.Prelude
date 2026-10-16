@@ -9,7 +9,7 @@ try
     if (args.Contains("--help"))
     {
         Console.WriteLine("Usage: Simulator --state <file.json> [--runs <positive integer>] [--seed <integer>] [--output <results.json>] [--report <summary.md>]");
-        Console.WriteLine("Omit --runs to run once per configured player strategy.");
+        Console.WriteLine("Omit --runs to run once per configured player zodiac and strategy combination.");
         return 0;
     }
     var options = new Dictionary<string, string>();
@@ -30,9 +30,11 @@ try
     json.Converters.Add(new JsonStringEnumConverter());
     var state = JsonSerializer.Deserialize<SimulationState>(File.ReadAllText(path), json) ?? throw new ArgumentException("State must be a JSON object.");
     _ = state.PlayerStrategyForRun(0);
+    _ = state.PlayerZodiacForRun(0);
     var strategyCycle = state.PlayerStrategies
         .Select(strategy => state.PlayerStrategy with { Strategy = strategy }).ToArray();
-    var runs = requestedRuns ?? strategyCycle.Length;
+    var runsPerCycle = checked(strategyCycle.Length * state.PlayerZodiacs.Length);
+    var runs = requestedRuns ?? runsPerCycle;
     var storyline = new Storyline();
     if (!storyline.Nodes.TryGetValue(state.CurrentStoryNodeId, out var node) || node is not CombatScenario scenario)
         throw new ArgumentException($"'{state.CurrentStoryNodeId}' is not an authored combat scenario.");
@@ -46,19 +48,23 @@ try
     }
     var results = new List<SimulationResult>();
     Console.WriteLine($"Scenario: {state.CurrentStoryNodeId}; runs: {runs}; seed: {seed}; turn limit: {SimulationRunner.TurnLimit}");
+    Console.WriteLine($"Player zodiac cycle: {string.Join(", ", state.PlayerZodiacs)}");
     Console.WriteLine($"Player strategy cycle: {string.Join(", ", strategyCycle.Select(assignment => assignment.Strategy))}");
     for (var run = 0; run < runs; run++)
     {
         var runSeed = unchecked(seed + run);
         var strategy = strategyCycle[run % strategyCycle.Length];
-        Console.WriteLine($"Starting simulation {run + 1}/{runs} ({strategy.Strategy}; seed {runSeed}).");
-        results.Add(SimulationRunner.Run(storyline, state with { PlayerStrategy = strategy }, runSeed,
+        var zodiac = state.PlayerZodiacForRun(run);
+        Console.WriteLine($"Starting simulation {run + 1}/{runs} ({zodiac}; {strategy.Strategy}; seed {runSeed}).");
+        results.Add(SimulationRunner.Run(storyline, state with { Zodiac = zodiac, PlayerStrategy = strategy }, runSeed,
             decision => Console.Write(SimulationReport.FormatDecisionTrace(decision, characterNames, itemNames))));
     }
     if (options.ContainsKey("--output") || options.ContainsKey("--report"))
     {
         var simulationOutput = new SimulationOutput(state.CurrentStoryNodeId, SimulationRunner.TurnLimit,
-            SimulationPlayerConfiguration.FromState(state), results[0].EnemyConfiguration, results);
+            results.Select(result => result.PlayerZodiac).Distinct().ToDictionary(zodiac => zodiac,
+                zodiac => SimulationPlayerConfiguration.FromState(state with { Zodiac = zodiac })),
+            results[0].EnemyConfiguration, results);
         if (options.TryGetValue("--output", out var output))
             File.WriteAllText(output, JsonSerializer.Serialize(simulationOutput, json));
         if (options.TryGetValue("--report", out var report))

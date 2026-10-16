@@ -230,9 +230,9 @@ public class Aquarius
 
     public static ProgressionGraph Graph { get; } =
         new(
-            ZodiacSign.Aquarius,
+            ZodiacSignId.Aquarius,
             [
-                new(Bewilder.Id, Fog.Id, 0.84f, 0.70f),
+                new(Bewilder.Id, Fog.Id, 0.42f, 0.78f),
                 new(Cleanse.Id, Heal.Id, 0.56f, -0.28f),
                 new(CoolingBreeze.Id, null, 0.00f, -0.42f),
                 new(Dowse.Id, Cleanse.Id, 0.56f, -0.84f),

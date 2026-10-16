@@ -4,8 +4,7 @@ From the repository root:
 
 ```powershell
 .\.scripts\RunSimulator.ps1
-.\.scripts\RunSimulator.ps1 -Runs 1000
-.\.scripts\RunSimulator.ps1 -Runs 1000 -Seed 42
+.\.scripts\RunSimulator.ps1 -Seed 42
 ```
 
 The script displays the console output and saves it to a timestamped `.log` file
@@ -18,15 +17,20 @@ Use `-NoBuild` to reuse the existing build for repeated runs.
 To run directly:
 
 ```powershell
-dotnet run --project Simulator --launch-profile Simulator
+dotnet run --project .\Simulator --launch-profile Simulator
 
-dotnet run --project Simulator --no-launch-profile -- --state Simulator/examples/intro.json
-dotnet run --project Simulator --no-launch-profile -- --state Simulator/examples/intro.json --runs 1000 --seed 42 --output results.json
+dotnet run --project .\Simulator --no-launch-profile -- --state .\Simulator\examples\intro.json
+dotnet run --project .\Simulator --no-launch-profile -- --state .\Simulator\examples\intro.json --seed 42 --output results.json
 ```
 
-By default, the CLI runs once per configured player strategy: 10 runs with the
-default strategy cycle, or one run for each entry in a custom `playerStrategies` list.
-Use `-Runs` or `--runs` to request repeated cycles with additional seeds.
+By default, the CLI runs each player strategy once per progression graph:
+12 zodiac graphs x 10 player-supported strategies = 120 runs. Each player learns
+all abilities in the selected graph, plus any explicitly configured `learnedAbilities`.
+Normal equipment and resource requirements still apply; placeholder abilities
+without authored actions do not become executable actions.
+For routine scenario validation, omit `-Runs` and `--runs` to run this single
+complete matrix. Repeated cycles with additional seeds are only needed for an
+explicit investigation of randomness.
 The `Simulator` launch profile uses the same default. In VS Code, select `Debug:Simulator` to launch it.
 
 Each run reconstructs a fresh GameState and encounter. The saved
@@ -35,7 +39,8 @@ textures, or graphics device are created. The project references Prelude to reus
 its gameplay code; graphics assemblies remain transitive build dependencies.
 
 State JSON accepts `health`, `focus`, `statusEffects`, `learnedAbilities`, `allowEscape` (default
-false), `playerStrategy` (base policy settings), and `playerStrategies` (the ordered strategy cycle).
+false), `zodiac` (the starting sign for direct state use), `playerZodiacs` (the ordered zodiac cycle),
+`playerStrategy` (base policy settings), and `playerStrategies` (the ordered strategy cycle).
 The CLI cycles through all player-supported strategies by default, excluding `Protective` because
 the player has no allies. A smaller cycle can be configured, for example:
 
@@ -43,8 +48,9 @@ the player has no allies. A smaller cycle can be configured, for example:
 { "playerStrategies": ["Aggressive", "Analytical"] }
 ```
 
-Each run uses the next strategy in the configured order, wrapping around as needed; the report
-records the strategy used for every run. `playerStrategy` settings are applied to each strategy in
+Each zodiac runs through every configured strategy before advancing to the next sign.
+`playerZodiacs` defaults to all twelve signs and can restrict the graphs under investigation.
+The report records both the zodiac and strategy used for every run. `playerStrategy` settings are applied to each strategy in
 the cycle. Omit `items` and `itemLayout` to use Prelude's starting sword and stack of five rocks.
 Supply both as empty collections for an unarmed player. Custom `items` use Prelude's
 CarriedItem JSON representation (IDs are objects such as `{ "value": "sword" }`);
@@ -72,12 +78,14 @@ character decision in turn order: chosen action and target, item display name,
 candidate utility scores, selected score contributions, observed strategy history,
 planning limits, resolved effects, and post-action Health/Focus. The simulator
 enables tracing; callers that omit a trace callback do not capture candidate
-details. Optional JSON retains each run's outcome, strategy, enemy configuration,
+details. Optional JSON stores starting player configurations keyed by zodiac in
+`PlayerConfigurations`, and shared enemy configuration at the top level.
+Each run retains its outcome, zodiac, strategy,
 terminal condition, deciding action/source, action-use counts, ending turn, health,
 and operation count.
 
 Validation:
 
 ```powershell
-dotnet run --project tests/SimulationChecks
+dotnet run --project .\tests\SimulationChecks
 ```

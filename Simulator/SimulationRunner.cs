@@ -66,7 +66,7 @@ public sealed record SimulationPlayerConfiguration(int Health, int Focus, string
             loadout.BeginItemLayout().OrderBy(pair => pair.Key, StringComparer.Ordinal)
                 .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal),
             actionIds,
-            state.LearnedAbilities.Order(StringComparer.Ordinal).ToArray());
+            loadout.LearnedAbilities.Select(id => id.Value).Order(StringComparer.Ordinal).ToArray());
     }
 }
 
@@ -98,11 +98,11 @@ public sealed record SimulationActionResult(string ActionId, string TargetId, in
 /// <summary>Shared simulation metadata and the completed individual runs.</summary>
 /// <param name="ScenarioId">The authored scenario identifier.</param>
 /// <param name="TurnLimit">The exclusive timeline boundary.</param>
-/// <param name="PlayerConfiguration">The shared player starting configuration.</param>
+/// <param name="PlayerConfigurations">The resolved player starting configuration for each simulated zodiac.</param>
 /// <param name="EnemyConfiguration">The shared enemy starting configuration.</param>
 /// <param name="Runs">The individual simulated results.</param>
 public sealed record SimulationOutput(string ScenarioId, float TurnLimit,
-    SimulationPlayerConfiguration PlayerConfiguration, SimulationEnemyConfiguration[] EnemyConfiguration,
+    IReadOnlyDictionary<ZodiacSignId, SimulationPlayerConfiguration> PlayerConfigurations, SimulationEnemyConfiguration[] EnemyConfiguration,
     IReadOnlyList<SimulationResult> Runs);
 
 /// <summary>One completed combat run and the dimensions used by the simulation report.</summary>
@@ -113,6 +113,9 @@ public sealed record SimulationOutput(string ScenarioId, float TurnLimit,
 /// <param name="Actions">The number of simulation-loop operations.</param>
 public sealed record SimulationResult(int Seed, CombatOutcome Outcome, float EndingTurn, int PlayerHealth, int Actions)
 {
+    /// <summary>The zodiac sign assigned to the simulated player.</summary>
+    public ZodiacSignId PlayerZodiac { get; init; } = ZodiacSignId.Aquarius;
+
     /// <summary>The configured base strategy for the simulated player.</summary>
     public StrategyId PlayerStrategy { get; init; } = StrategyId.Aggressive;
 
@@ -155,7 +158,8 @@ public sealed record SimulationResult(int Seed, CombatOutcome Outcome, float End
         other is not null
         && Seed == other.Seed && Outcome == other.Outcome && EndingTurn == other.EndingTurn
         && PlayerHealth == other.PlayerHealth && Actions == other.Actions
-        && PlayerStrategy == other.PlayerStrategy && TerminalCondition == other.TerminalCondition
+        && PlayerZodiac == other.PlayerZodiac && PlayerStrategy == other.PlayerStrategy
+        && TerminalCondition == other.TerminalCondition
         && DecidingAction == other.DecidingAction && DecidingActionSource == other.DecidingActionSource
         && EnemyConfiguration.Length == other.EnemyConfiguration.Length
         && EnemyConfiguration.Zip(other.EnemyConfiguration).All(pair => SameConfiguration(pair.First, pair.Second))
@@ -177,6 +181,7 @@ public sealed record SimulationResult(int Seed, CombatOutcome Outcome, float End
         hash.Add(EndingTurn);
         hash.Add(PlayerHealth);
         hash.Add(Actions);
+        hash.Add(PlayerZodiac);
         hash.Add(PlayerStrategy);
         hash.Add(TerminalCondition, StringComparer.Ordinal);
         hash.Add(DecidingAction, StringComparer.Ordinal);
@@ -399,6 +404,7 @@ public static class SimulationRunner
         return new(seed, combat.Outcome ?? throw new InvalidOperationException("Encounter ended without an outcome."),
             combat.Outcome == CombatOutcome.Draw ? TurnLimit : combat.Timeline.CurrentTurn, state.Health, actions)
         {
+            PlayerZodiac = state.Zodiac,
             PlayerStrategy = assignment.Strategy,
             EnemyConfiguration = enemyConfiguration.ToArray(),
             TerminalCondition = terminalCondition ?? combat.Outcome.Value.ToString(),

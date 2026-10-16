@@ -23,6 +23,7 @@ public static class SimulationReport
 
         var report = new StringBuilder();
         AppendStrategyOutcomes(report, results);
+        AppendZodiacStrategyOutcomes(report, results);
         AppendDecidingActionOutcomes(report, results);
         AppendActionUsage(report, results);
         AppendActionUseDistribution(report, results);
@@ -74,6 +75,24 @@ public static class SimulationReport
                 .Append(runs.Average(result => result.PlayerHealth).ToString("F2", CultureInfo.InvariantCulture)).Append(" | ")
                 .Append(runs.Average(result => result.Actions).ToString("F2", CultureInfo.InvariantCulture)).Append(" | ")
                 .Append(string.Join(", ", playerActions)).AppendLine(" |");
+        }
+        report.AppendLine().AppendLine("## Zodiac and strategy comparison").AppendLine()
+            .AppendLine("| Zodiac | Strategy | Runs | Victory (rate) | Defeat | Draw | Escape | Avg. turn | Avg. health | Avg. actions |")
+            .AppendLine("| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |");
+        foreach (var group in output.Runs.GroupBy(result => (result.PlayerZodiac, result.PlayerStrategy))
+                     .OrderBy(group => group.Key.PlayerZodiac).ThenBy(group => group.Key.PlayerStrategy))
+        {
+            var runs = group.ToArray();
+            var victories = Count(runs, CombatOutcome.Victory);
+            report.Append("| ").Append(group.Key.PlayerZodiac).Append(" | ").Append(group.Key.PlayerStrategy)
+                .Append(" | ").Append(runs.Length).Append(" | ").Append(victories).Append(" (")
+                .Append(Percent(victories, runs.Length)).Append("%) | ")
+                .Append(Count(runs, CombatOutcome.Defeat)).Append(" | ")
+                .Append(Count(runs, CombatOutcome.Draw)).Append(" | ")
+                .Append(Count(runs, CombatOutcome.Escape)).Append(" | ")
+                .Append(runs.Average(result => result.EndingTurn).ToString("F2", CultureInfo.InvariantCulture)).Append(" | ")
+                .Append(runs.Average(result => result.PlayerHealth).ToString("F2", CultureInfo.InvariantCulture)).Append(" | ")
+                .Append(runs.Average(result => result.Actions).ToString("F2", CultureInfo.InvariantCulture)).AppendLine(" |");
         }
         return report.ToString();
     }
@@ -217,6 +236,25 @@ public static class SimulationReport
         report.AppendLine();
     }
 
+    /// <summary>Appends run counts and victory rates grouped by player zodiac and strategy.</summary>
+    /// <param name="report">The report being assembled.</param>
+    /// <param name="results">The completed simulation runs.</param>
+    private static void AppendZodiacStrategyOutcomes(StringBuilder report, IReadOnlyList<SimulationResult> results)
+    {
+        report.AppendLine("Player zodiac x strategy x outcome (run counts; victory rate):");
+        report.Append("Zodiac\tStrategy");
+        AppendOutcomeColumns(report);
+        report.AppendLine("\tVictory%");
+        foreach (var group in results.GroupBy(result => (result.PlayerZodiac, result.PlayerStrategy))
+                     .OrderBy(group => group.Key.PlayerZodiac).ThenBy(group => group.Key.PlayerStrategy))
+        {
+            report.Append(group.Key.PlayerZodiac).Append('\t').Append(group.Key.PlayerStrategy);
+            AppendOutcomeCounts(report, group);
+            report.Append('\t').Append(Percent(Count(group, CombatOutcome.Victory), group.Count())).AppendLine();
+        }
+        report.AppendLine();
+    }
+
     /// <summary>Appends terminal decisive actions grouped by encounter outcome.</summary>
     /// <param name="report">The report being assembled.</param>
     /// <param name="results">The completed simulation runs.</param>
@@ -297,21 +335,23 @@ public static class SimulationReport
     /// <param name="results">The completed simulation runs.</param>
     private static void AppendStrategyDecidingActions(StringBuilder report, IReadOnlyList<SimulationResult> results)
     {
-        report.AppendLine("Player strategy x enemy configuration x deciding action:");
-        report.AppendLine("Strategy\tEnemy configuration\tAction\tSource\tOutcome\tRuns");
+        report.AppendLine("Player zodiac x strategy x enemy configuration x deciding action:");
+        report.AppendLine("Zodiac\tStrategy\tEnemy configuration\tAction\tSource\tOutcome\tRuns");
         foreach (var group in results.GroupBy(result => (
+                     Zodiac: result.PlayerZodiac,
                      Strategy: result.PlayerStrategy,
                      Enemy: EnemyConfigurationKey(result.EnemyConfiguration),
                      Action: result.DecidingAction ?? "(none)",
                      Source: result.DecidingActionSource ?? "(none)",
                      result.Outcome))
-                 .OrderBy(group => group.Key.Strategy)
+                 .OrderBy(group => group.Key.Zodiac)
+                 .ThenBy(group => group.Key.Strategy)
                  .ThenBy(group => group.Key.Enemy, StringComparer.Ordinal)
                  .ThenBy(group => group.Key.Action, StringComparer.Ordinal)
                  .ThenBy(group => group.Key.Source, StringComparer.Ordinal)
                  .ThenBy(group => group.Key.Outcome))
         {
-            report.Append(group.Key.Strategy).Append('\t').Append(group.Key.Enemy).Append('\t')
+            report.Append(group.Key.Zodiac).Append('\t').Append(group.Key.Strategy).Append('\t').Append(group.Key.Enemy).Append('\t')
                 .Append(group.Key.Action).Append('\t').Append(group.Key.Source).Append('\t')
                 .Append(group.Key.Outcome).Append('\t').Append(group.Count()).AppendLine();
         }

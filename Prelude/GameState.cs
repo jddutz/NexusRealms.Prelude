@@ -6,7 +6,8 @@ public sealed class GameState
 
     public StoryNodeId CurrentStoryNodeId { get; set; }
     public CombatOutcome? LastCombatOutcome { get; set; }
-    public ZodiacSign Zodiac { get; init; } = ZodiacSign.Aquarius;
+    /// <summary>The selected zodiac's stable identity, used to resolve its progression graph.</summary>
+    public ZodiacSignId Zodiac { get; init; } = ZodiacSignId.Aquarius;
     public HashSet<StoryNodeId> CompletedProgressionNodes { get; } = [];
 
     /// <summary>Gets the player's portrait texture.</summary>

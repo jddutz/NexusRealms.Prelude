@@ -3,7 +3,8 @@ namespace NexusRealms.Prelude.Database.Progression;
 /// <summary>The twelve immutable Zodiac graphs consumed by progression scenes.</summary>
 public static class ProgressionGraphs
 {
-    public static FrozenDictionary<ZodiacSign, ProgressionGraph> All { get; } =
+    /// <summary>The authored progression graph for each stable zodiac identity.</summary>
+    public static FrozenDictionary<ZodiacSignId, ProgressionGraph> All { get; } =
         new[]
         {
             Aries.Graph,

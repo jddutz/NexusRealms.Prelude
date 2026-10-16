@@ -13,11 +13,30 @@ var storyline = new Storyline();
 var state = new SimulationState { CurrentStoryNodeId = NexusRealms.Prelude.Database.Chapter1.Part1.Intro.Id.Value };
 var aquariusState = state with { LearnedAbilities = ["Heal", "Bewilder"] };
 var aquariusLoadout = aquariusState.CreateGameState().Loadout;
-Check(aquariusLoadout.LearnedAbilities.Count == 2 && aquariusLoadout.Actions.Count == 0,
-    "Aquarius placeholders must restore learning without inventing executable actions.");
+var aquariusGraph = NexusRealms.Prelude.Database.Progression.ProgressionGraphs.All[ZodiacSignId.Aquarius];
+Check(aquariusLoadout.LearnedAbilities.SetEquals(aquariusGraph.Abilities.Select(node => node.Id))
+    && aquariusLoadout.Actions.Count == 0,
+    "All Aquarius graph abilities must be learned without inventing executable placeholder actions.");
 var aquariusConfiguration = SimulationPlayerConfiguration.FromState(aquariusState);
-Check(aquariusConfiguration.LearnedAbilities.SequenceEqual(new[] { "Bewilder", "Heal" }),
-    "Simulation configuration must report stable learned ability identities.");
+Check(aquariusConfiguration.LearnedAbilities.SequenceEqual(aquariusGraph.Abilities.Select(node => node.Id.Value)
+        .Order(StringComparer.Ordinal)),
+    "Simulation configuration must report every resolved graph ability in stable order.");
+foreach (var zodiac in Enum.GetValues<ZodiacSignId>())
+{
+    var signState = state with { Zodiac = zodiac };
+    var graph = NexusRealms.Prelude.Database.Progression.ProgressionGraphs.All[zodiac];
+    var loadout = signState.CreateGameState().Loadout;
+    Check(loadout.LearnedAbilities.SetEquals(graph.Abilities.Select(node => node.Id)),
+        $"{zodiac} must learn exactly its own graph's full ability set.");
+    Check(loadout.Actions.Keys.ToHashSet(StringComparer.Ordinal).SetEquals(graph.Abilities
+            .SelectMany(node => Abilities.All[node.Id].Actions).Select(action => action.Id)),
+        $"{zodiac} must register every action unlocked by its graph.");
+    Check(signState.CreateGameState().Zodiac == zodiac,
+        $"{zodiac} must be applied to the runtime player.");
+}
+var additionalState = state with { LearnedAbilities = ["slash"] };
+Check(additionalState.CreateGameState().Loadout.LearnedAbilities.Contains(new("slash")),
+    "Explicit learned abilities must supplement the graph.");
 Check(SimulationRunner.Run(storyline, aquariusState, 42).PlayerActionUses.Keys
     .All(id => id != "Heal" && id != "Bewilder"), "Unimplemented abilities must not become simulator actions.");
 var startingLoadout = state.CreateGameState().Loadout;
@@ -59,20 +78,25 @@ Check(first.DecidingActionId is not null && first.DecidingActionSourceId is not 
     "Run must record stable deciding-action identifiers.");
 Check(!string.IsNullOrWhiteSpace(first.TerminalCondition), "Run must record its terminal condition.");
 var outputJson = JsonSerializer.Serialize(new SimulationOutput(state.CurrentStoryNodeId, SimulationRunner.TurnLimit,
-    SimulationPlayerConfiguration.FromState(state), first.EnemyConfiguration, [first]));
+    new Dictionary<ZodiacSignId, SimulationPlayerConfiguration>
+    {
+        [state.Zodiac] = SimulationPlayerConfiguration.FromState(state),
+    }, first.EnemyConfiguration, [first]));
 using (var outputDocument = JsonDocument.Parse(outputJson))
 {
     var root = outputDocument.RootElement;
+    var playerConfiguration = root.GetProperty("PlayerConfigurations").GetProperty(nameof(ZodiacSignId.Aquarius));
     Check(root.GetProperty("ScenarioId").GetString() == state.CurrentStoryNodeId
         && root.GetProperty("TurnLimit").GetSingle() == SimulationRunner.TurnLimit
-        && root.GetProperty("PlayerConfiguration").GetProperty("Items").GetArrayLength() > 0
-        && root.GetProperty("PlayerConfiguration").GetProperty("ItemLayout").GetProperty("Right hand").GetString() == "starting-sword"
-        && root.GetProperty("PlayerConfiguration").GetProperty("ActionIds").EnumerateArray()
+        && playerConfiguration.GetProperty("Items").GetArrayLength() > 0
+        && playerConfiguration.GetProperty("ItemLayout").GetProperty("Right hand").GetString() == "starting-sword"
+        && playerConfiguration.GetProperty("ActionIds").EnumerateArray()
             .Any(actionId => actionId.GetString() == "RightHandStrike")
         && root.GetProperty("EnemyConfiguration").GetArrayLength() == first.EnemyConfiguration.Length,
         "Simulation output must store shared scenario and player configuration at the top level.");
     var runJson = root.GetProperty("Runs")[0];
     Check(runJson.TryGetProperty("EndingTurn", out _) && !runJson.TryGetProperty("Turn", out _)
+        && runJson.GetProperty("PlayerZodiac").GetInt32() == (int)ZodiacSignId.Aquarius
         && !runJson.TryGetProperty("EnemyConfiguration", out _)
         && runJson.TryGetProperty("PlayerActionResults", out _),
         "Run JSON must use EndingTurn, include action results, and omit shared enemy configuration.");
@@ -110,13 +134,42 @@ var harmless = storyline.Characters.ToDictionary(pair => pair.Key, pair => pair.
 var draw = SimulationRunner.Run(authored, harmless, state.CreateGameState(), 42);
 Check(draw.Outcome == CombatOutcome.Draw && draw.EndingTurn == 100, "Full encounter did not draw at Turn 100.");
 Check(state.PlayerStrategy.Strategy == StrategyId.Aggressive, "Simulation must default to a named deterministic policy.");
+Check(state.PlayerZodiacs.SequenceEqual(Enum.GetValues<ZodiacSignId>()),
+    "Default zodiac cycle must include every zodiac sign.");
 Check(state.PlayerStrategies.Length == Enum.GetValues<StrategyId>().Length - 1
     && !state.PlayerStrategies.Contains(StrategyId.Protective), "Default strategy cycle must include each player-supported policy.");
-var limitedState = state with { PlayerStrategies = [StrategyId.Analytical, StrategyId.Cautious] };
+var limitedState = state with
+{
+    PlayerZodiacs = [ZodiacSignId.Aries, ZodiacSignId.Taurus],
+    PlayerStrategies = [StrategyId.Analytical, StrategyId.Cautious],
+};
 Check(limitedState.PlayerStrategyForRun(0).Strategy == StrategyId.Analytical
     && limitedState.PlayerStrategyForRun(1).Strategy == StrategyId.Cautious
     && limitedState.PlayerStrategyForRun(2).Strategy == StrategyId.Analytical,
     "Configured player strategies must cycle in order.");
+Check(Enumerable.Range(0, 4).Select(limitedState.PlayerZodiacForRun)
+        .SequenceEqual([ZodiacSignId.Aries, ZodiacSignId.Aries, ZodiacSignId.Taurus, ZodiacSignId.Taurus]),
+    "Configured zodiac signs must each cycle across all configured strategies.");
+var zodiacResult = SimulationRunner.Run(storyline, state with { Zodiac = ZodiacSignId.Pisces }, 42);
+Check(zodiacResult.PlayerZodiac == ZodiacSignId.Pisces,
+    "Simulation results must record the zodiac assigned to the player.");
+Check(first != first with { PlayerZodiac = ZodiacSignId.Pisces },
+    "Result equality must distinguish zodiac identities.");
+var cycleLength = state.PlayerZodiacs.Length * state.PlayerStrategies.Length;
+var combinations = Enumerable.Range(0, cycleLength)
+    .Select(index => (state.PlayerZodiacForRun(index), state.PlayerStrategyForRun(index).Strategy)).ToArray();
+Check(combinations.Distinct().Count() == cycleLength
+    && state.PlayerZodiacForRun(cycleLength) == state.PlayerZodiacForRun(0),
+    "A full cycle must cover every zodiac-strategy combination exactly once before wrapping.");
+foreach (var invalidZodiacs in new ZodiacSignId[][] { [], [ZodiacSignId.Aries, ZodiacSignId.Aries], [(ZodiacSignId)(-1)] })
+{
+    try
+    {
+        _ = (state with { PlayerZodiacs = invalidZodiacs }).PlayerZodiacForRun(0);
+        throw new Exception("Invalid zodiac cycle was accepted.");
+    }
+    catch (ArgumentException) { }
+}
 try
 {
     _ = (state with { PlayerStrategies = [StrategyId.Protective] }).PlayerStrategyForRun(0);
@@ -148,12 +201,16 @@ var reportSamples = new[]
 var report = SimulationReport.Format(reportSamples);
 Check(report.Contains("Analytical\t1\t1\t0\t0\t50.00", StringComparison.Ordinal)
     && report.Contains("Throw [starting-rocks]\tVictory\t0\t0\t0\t1\t0", StringComparison.Ordinal)
-    && report.Contains("Player strategy x enemy configuration x deciding action:", StringComparison.Ordinal),
+    && report.Contains("Player zodiac x strategy x enemy configuration x deciding action:", StringComparison.Ordinal),
     "Simulation report must include strategy rates, usage distributions, and strategy/action cross-tabs.");
 var markdownReport = SimulationReport.FormatMarkdown(new SimulationOutput(state.CurrentStoryNodeId,
-    SimulationRunner.TurnLimit, SimulationPlayerConfiguration.FromState(state), first.EnemyConfiguration, reportSamples));
+    SimulationRunner.TurnLimit, new Dictionary<ZodiacSignId, SimulationPlayerConfiguration>
+    {
+        [state.Zodiac] = SimulationPlayerConfiguration.FromState(state),
+    }, first.EnemyConfiguration, reportSamples));
 Check(markdownReport.Contains("## Outcomes", StringComparison.Ordinal)
     && markdownReport.Contains("## Strategy comparison", StringComparison.Ordinal)
+    && markdownReport.Contains("## Zodiac and strategy comparison", StringComparison.Ordinal)
     && markdownReport.Contains("| Strategy | Runs | Victory (rate) |", StringComparison.Ordinal)
     && markdownReport.Contains("Avg. turn", StringComparison.Ordinal)
     && markdownReport.Contains("Throw [starting-rocks] × 4", StringComparison.Ordinal),
