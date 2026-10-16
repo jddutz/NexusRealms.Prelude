@@ -1342,7 +1342,7 @@ public class CombatScene : Scene
             Columns = Enumerable.Repeat(GridSize.Absolute(cellWidth), columns).ToArray(),
             Rows = Enumerable.Repeat(GridSize.Absolute(cellHeight), rows).ToArray(),
         };
-        var abilityOrder = Database.Progression.ProgressionGraphs.All[_gameState.Zodiac].Branches.SelectMany(branch => branch.Abilities).Select(node => node.Ability).ToArray();
+        var abilityOrder = Database.Progression.ProgressionGraphs.All[_gameState.Zodiac].Abilities.Select(node => node.Id).ToArray();
         var selectionFrames = new Dictionary<AbilityId, ImageElement>();
         for (var index = 0; index < columns * rows; index++)
         {
@@ -1573,7 +1573,7 @@ public class CombatScene : Scene
                 _gameState.CurrentStoryNodeId = nodeId;
                 if (_storyline.Nodes[nodeId] is CombatScenario)
                     _sceneManager.LoadScene<CombatScene>();
-                else if (_storyline.Nodes[nodeId] is ProgressionNode)
+                else if (_storyline.Nodes[nodeId] is ProgressNode)
                     _sceneManager.LoadScene<ProgressionScene>();
                 else
                     _sceneManager.LoadScene<OutcomeScene>();

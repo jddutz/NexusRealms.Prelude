@@ -115,7 +115,7 @@ public sealed class Storyline
 
         foreach (var node in nodes.Values)
         {
-            if (node is ProgressionNode progression)
+            if (node is ProgressNode progression)
             {
                 if (progression.Chapter is < 1 or > 5 || !nodes.ContainsKey(progression.NextNode))
                     throw new InvalidOperationException($"Invalid progression visit '{node.Id}'.");
@@ -170,11 +170,11 @@ public sealed class Storyline
 
         Characters = characters.ToFrozenDictionary();
         Nodes = nodes.ToFrozenDictionary();
-        foreach (var status in StatusEffects.Values) ActionValidation.ValidateStatus(status);
+        foreach (var status in StatusEffects.Values) CombatRules.ValidateStatus(status);
         foreach (var character in Characters.Values)
         {
             _ = Combat.CombatLoadout.FromCharacter(character);
-            foreach (var action in character.Actions) ActionValidation.Validate(action, StatusEffects);
+            foreach (var action in character.Actions) CombatRules.Validate(action, StatusEffects);
             foreach (var id in character.StatusEffects)
                 if (!StatusEffects.ContainsKey(id)) throw new InvalidOperationException($"Character '{character.Id}' references unknown status '{id}'.");
         }
@@ -187,25 +187,25 @@ public sealed class Storyline
                 if (!abilityActions.Add(action.Id)) throw new ArgumentException($"Duplicate ability action '{action.Id}'.");
                 if (action.Requirements.Abilities.Any(id => !Abilities.ContainsKey(id)))
                     throw new ArgumentException($"Action '{action.Id}' references an unknown ability.");
-                ActionValidation.Validate(action, StatusEffects);
+                CombatRules.Validate(action, StatusEffects);
             }
         }
         foreach (var graph in Progression.ProgressionGraphs.All.Values)
         {
-            var nodes = new HashSet<AbilityId>();
+            var graphNodes = new HashSet<AbilityId>();
             foreach (var node in graph.Abilities)
-                if (!nodes.Add(node.Ability) || !Abilities.ContainsKey(node.Ability)
+                if (!graphNodes.Add(node.Id) || !Abilities.ContainsKey(node.Id)
                     || !Enum.IsDefined(node.Direction) || !float.IsFinite(node.X) || !float.IsFinite(node.Y))
-                    throw new ArgumentException($"Invalid progression node '{node.Ability}'.");
+                    throw new ArgumentException($"Invalid progression node '{node.Id}'.");
             foreach (var node in graph.Abilities)
             {
-                var ancestors = new HashSet<AbilityId> { node.Ability };
+                var ancestors = new HashSet<AbilityId> { node.Id };
                 var parent = node.Parent;
                 while (parent is { } id)
                 {
-                    var predecessor = graph.Abilities.FirstOrDefault(candidate => candidate.Ability == id);
-                    if (predecessor is null || predecessor.Direction != node.Direction || !ancestors.Add(id))
-                        throw new ArgumentException($"Invalid progression prerequisite for '{node.Ability}'.");
+                    var predecessor = graph.Abilities.FirstOrDefault(candidate => candidate.Id == id);
+                    if (predecessor is null || !ancestors.Add(id))
+                        throw new ArgumentException($"Invalid progression prerequisite for '{node.Id}'.");
                     parent = predecessor.Parent;
                 }
             }
@@ -219,7 +219,7 @@ public sealed class Storyline
                 if (!float.IsFinite(occurrence.Turn) || occurrence.Turn < 0) throw new ArgumentException("Invalid authored event Turn.");
                 var recipients = Enumerable.Range(0, scenario.Characters.Length).Select(index => $"encounter-{index}").Append("player").ToHashSet();
                 if (!recipients.Contains(occurrence.SourceId) || !recipients.Contains(occurrence.RecipientId)) throw new ArgumentException("Authored event references an unresolved character.");
-                ActionValidation.Validate(occurrence.Action, StatusEffects);
+                CombatRules.Validate(occurrence.Action, StatusEffects);
             }
         }
     }

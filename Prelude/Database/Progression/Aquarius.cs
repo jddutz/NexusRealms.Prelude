@@ -2,254 +2,232 @@ namespace NexusRealms.Prelude.Database.Progression;
 
 public class Aquarius
 {
-    /// <summary>Executable definitions, added as each ability's combat rules are agreed.
-    /// Entries override progression presentation placeholders by ability ID.</summary>
-    public static ImmutableArray<AbilityData> Definitions => [];
+    public static AbilityData Bewilder { get; } = new()
+    {
+        Id = new(nameof(Bewilder)),
+        Name = "Bewilder",
+        Description = "Renders the target incapable of using Focus for one turn",
+        Icon = new("abilities.Bewilder.png"),
+        Actions = [],
+    };
 
-    public static AbilityNode Bewilder =>
-        new(
-            "Bewilder",
-            "Renders the target incapable of using Focus for one turn",
-            DirectionEnum.South,
-            new AbilityId(nameof(Bewilder)),
-            null,
-            0f,
-            0f
-        );
+    public static AbilityData Cleanse { get; } = new()
+    {
+        Id = new(nameof(Cleanse)),
+        Name = "Cleanse",
+        Description = "Reduces the duration all negative status effect by 1 turn",
+        Icon = new("abilities.Cleanse.png"),
+        Actions = [],
+    };
 
-    public static AbilityNode Cleanse =>
-        new(
-            "Cleanse",
-            "Reduces the duration all negative status effect by 1 turn",
-            DirectionEnum.West,
-            new AbilityId(nameof(Cleanse)),
-            null,
-            0f,
-            0f
-        );
+    public static AbilityData CoolingBreeze { get; } = new()
+    {
+        Id = new(nameof(CoolingBreeze)),
+        Name = "Cooling Breeze",
+        Description = "Negates all Fire damage for 1 turn",
+        Icon = new("abilities.CoolingBreeze.png"),
+        Actions = [],
+    };
 
-    public static AbilityNode CoolingBreeze =>
-        new(
-            "Cooling Breeze",
-            "Negates all Fire damage for 1 turn",
-            DirectionEnum.North,
-            new AbilityId(nameof(CoolingBreeze)),
-            null,
-            0f,
-            0f
-        );
+    public static AbilityData Dowse { get; } = new()
+    {
+        Id = new(nameof(Dowse)),
+        Name = "Dowse",
+        Description = "Gain 1 Focus instantly",
+        Icon = new("abilities.Dowse.png"),
+        Actions = [],
+    };
 
-    public static AbilityNode Dowse =>
-        new(
-            "Dowse",
-            "Gain 1 Focus instantly",
-            DirectionEnum.South,
-            new AbilityId(nameof(Dowse)),
-            null,
-            0f,
-            0f
-        );
+    public static AbilityData EyeOfTheStorm { get; } = new()
+    {
+        Id = new(nameof(EyeOfTheStorm)),
+        Name = "Eye of the Storm",
+        Description = "Replace normal Focus gain with 1, 1, 2, 3, 5, 8 over six turns",
+        Icon = new("abilities.EyeOfTheStorm.png"),
+        Actions = [],
+    };
 
-    public static AbilityNode EyeOfTheStorm =>
-        new(
-            "Eye of the Storm",
-            "Replace normal Focus gain with 1, 1, 2, 3, 5, 8 over six turns",
-            DirectionEnum.West,
-            new AbilityId(nameof(EyeOfTheStorm)),
-            null,
-            0f,
-            0f
-        );
+    public static AbilityData Fog { get; } = new()
+    {
+        Id = new(nameof(Fog)),
+        Name = "Fog",
+        Description = "Applies Blind to all enemies",
+        Icon = new("abilities.Fog.png"),
+        Actions = [],
+    };
 
-    public static AbilityNode Fog =>
-        new(
-            "Fog",
-            "Applies Blind to all enemies",
-            DirectionEnum.East,
-            new AbilityId(nameof(Fog)),
-            null,
-            0f,
-            0f
-        );
+    public static AbilityData Gale { get; } = new()
+    {
+        Id = new(nameof(Gale)),
+        Name = "Gale",
+        Description = "Push all enemies back one row",
+        Icon = new("abilities.Gale.png"),
+        Actions = [],
+    };
 
-    public static AbilityNode Gale =>
-        new(
-            "Gale",
-            "Push all enemies back one row",
-            DirectionEnum.North,
-            new AbilityId(nameof(Gale)),
-            null,
-            0f,
-            0f
-        );
+    public static AbilityData Headwind { get; } = new()
+    {
+        Id = new(nameof(Headwind)),
+        Name = "Headwind",
+        Description = "Slow the target enemy for 1 turn",
+        Icon = new("abilities.Headwind.png"),
+        Actions = [],
+    };
 
-    public static AbilityNode Headwind =>
-        new(
-            "Headwind",
-            "Slow the target enemy for 1 turn",
-            DirectionEnum.North,
-            new AbilityId(nameof(Headwind)),
-            null,
-            0f,
-            0f
-        );
+    public static AbilityData Heal { get; } = new()
+    {
+        Id = new(nameof(Heal)),
+        Name = "Heal",
+        Description = "Restore 3 Health",
+        Icon = new("abilities.Heal.png"),
+        Actions = [],
+    };
 
-    public static AbilityNode Heal =>
-        new(
-            "Heal",
-            "Restore 3 Health",
-            DirectionEnum.West,
-            new AbilityId(nameof(Heal)),
-            null,
-            0f,
-            0f
-        );
+    public static AbilityData Hurricane { get; } = new()
+    {
+        Id = new(nameof(Hurricane)),
+        Name = "Hurricane",
+        Description = "Deal 1 Crushing and 1 Electrical damage to all enemies",
+        Icon = new("abilities.Hurricane.png"),
+        Actions = [],
+    };
 
-    public static AbilityNode Hurricane =>
-        new(
-            "Hurricane",
-            "Deal 1 Crushing and 1 Electrical damage to all enemies",
-            DirectionEnum.East,
-            new AbilityId(nameof(Hurricane)),
-            null,
-            0f,
-            0f
-        );
+    public static AbilityData Levitate { get; } = new()
+    {
+        Id = new(nameof(Levitate)),
+        Name = "Levitate",
+        Description = "Float above the enemy out of melee range (gain +1 Elevation)",
+        Icon = new("abilities.Levitate.png"),
+        Actions = [],
+    };
 
-    public static AbilityNode Levitate =>
-        new(
-            "Levitate",
-            "Float above the enemy out of melee range (gain +1 Elevation)",
-            DirectionEnum.North,
-            new AbilityId(nameof(Levitate)),
-            null,
-            0f,
-            0f
-        );
+    public static AbilityData PressureShield { get; } = new()
+    {
+        Id = new(nameof(PressureShield)),
+        Name = "Pressure Shield",
+        Description = "Reduces incoming physical damage by 1",
+        Icon = new("abilities.PressureShield.png"),
+        Actions = [],
+    };
 
-    public static AbilityNode PressureShield =>
-        new(
-            "Pressure Shield",
-            "Reduces incoming physical damage by 1",
-            DirectionEnum.East,
-            new AbilityId(nameof(PressureShield)),
-            null,
-            0f,
-            0f
-        );
+    public static AbilityData Purge { get; } = new()
+    {
+        Id = new(nameof(Purge)),
+        Name = "Purge",
+        Description = "Removes all status positive and negative status effects",
+        Icon = new("abilities.Purge.png"),
+        Actions = [],
+    };
 
-    public static AbilityNode Purge =>
-        new(
-            "Purge",
-            "Removes all status positive and negative status effects",
-            DirectionEnum.West,
-            new AbilityId(nameof(Purge)),
-            null,
-            0f,
-            0f
-        );
+    public static AbilityData Sandstorm { get; } = new()
+    {
+        Id = new(nameof(Sandstorm)),
+        Name = "Sandstorm",
+        Description = "Inflicts 1 Slashing damage and Blind to all enemies",
+        Icon = new("abilities.Sandstorm.png"),
+        Actions = [],
+    };
 
-    public static AbilityNode Sandstorm =>
-        new(
-            "Sandstorm",
-            "Inflicts 1 Slashing damage and Blind to all enemies",
-            DirectionEnum.East,
-            new AbilityId(nameof(Sandstorm)),
-            null,
-            0f,
-            0f
-        );
+    public static AbilityData Silence { get; } = new()
+    {
+        Id = new(nameof(Silence)),
+        Name = "Silence",
+        Description = "Prevents the target enemy from using magic for 1 turn",
+        Icon = new("abilities.Silence.png"),
+        Actions = [],
+    };
 
-    public static AbilityNode Silence =>
-        new(
-            "Silence",
-            "Prevents the target enemy from using magic for 1 turn",
-            DirectionEnum.South,
-            new AbilityId(nameof(Silence)),
-            null,
-            0f,
-            0f
-        );
+    public static AbilityData SoundBarrier { get; } = new()
+    {
+        Id = new(nameof(SoundBarrier)),
+        Name = "Sound Barrier",
+        Description = "Prevent all enemies on the back rank from using magical abilities for one turn",
+        Icon = new("abilities.SoundBarrier.png"),
+        Actions = [],
+    };
 
-    public static AbilityNode SoundBarrier =>
-        new(
-            "Sound Barrier",
-            "Prevent all enemies on the back rank from using magical abilities for one turn",
-            DirectionEnum.South,
-            new AbilityId(nameof(SoundBarrier)),
-            null,
-            0f,
-            0f
-        );
+    public static AbilityData Tailwind { get; } = new()
+    {
+        Id = new(nameof(Tailwind)),
+        Name = "Tailwind",
+        Description = "Push all enemies ahead one row",
+        Icon = new("abilities.Tailwind.png"),
+        Actions = [],
+    };
 
-    public static AbilityNode Tailwind =>
-        new(
-            "Tailwind",
-            "Push all enemies ahead one row",
-            DirectionEnum.North,
-            new AbilityId(nameof(Tailwind)),
-            null,
-            0f,
-            0f
-        );
+    public static AbilityData Tornado { get; } = new()
+    {
+        Id = new(nameof(Tornado)),
+        Name = "Tornado",
+        Description = "Deal 1 Crushing damage and Delay all enemies by 0.5 turns",
+        Icon = new("abilities.Tornado.png"),
+        Actions = [],
+    };
 
-    public static AbilityNode Tornado =>
-        new(
-            "Tornado",
-            "Deal 1 Crushing damage and Delay all enemies by 0.5 turns",
-            DirectionEnum.East,
-            new AbilityId(nameof(Tornado)),
-            null,
-            0f,
-            0f
-        );
+    public static AbilityData Whirlwind { get; } = new()
+    {
+        Id = new(nameof(Whirlwind)),
+        Name = "Whirlwind",
+        Description = "Attack all enemies in the front row",
+        Icon = new("abilities.Whirlwind.png"),
+        Actions = [],
+    };
 
-    public static AbilityNode Whirlwind =>
-        new(
-            "Whirlwind",
-            "Attack all enemies in the front row",
-            DirectionEnum.North,
-            new AbilityId(nameof(Whirlwind)),
-            null,
-            0f,
-            0f
-        );
+    public static AbilityData WindShear { get; } = new()
+    {
+        Id = new(nameof(WindShear)),
+        Name = "Wind Shear",
+        Description = "Slow all enemies in the front row for 1 turn",
+        Icon = new("abilities.WindShear.png"),
+        Actions = [],
+    };
 
-    public static AbilityNode WindShear =>
-        new(
-            "Wind Shear",
-            "Slow all enemies in the front row for 1 turn",
-            DirectionEnum.North,
-            new AbilityId(nameof(WindShear)),
-            null,
-            0f,
-            0f
-        );
+    /// <summary>Authored ability definitions, independent of progression placement.</summary>
+    public static ImmutableArray<AbilityData> Definitions { get; } =
+    [
+        Bewilder,
+        Cleanse,
+        CoolingBreeze,
+        Dowse,
+        EyeOfTheStorm,
+        Fog,
+        Gale,
+        Headwind,
+        Heal,
+        Hurricane,
+        Levitate,
+        PressureShield,
+        Purge,
+        Sandstorm,
+        Silence,
+        SoundBarrier,
+        Tailwind,
+        Tornado,
+        Whirlwind,
+        WindShear,
+    ];
 
-    public static ProgressionGraph Graph =>
-        new(
-            ZodiacSign.Aquarius,
-            [
-                Bewilder,
-                Cleanse,
-                CoolingBreeze,
-                Dowse,
-                EyeOfTheStorm,
-                Fog,
-                Gale,
-                Headwind,
-                Heal,
-                Hurricane,
-                Levitate,
-                PressureShield,
-                Purge,
-                Sandstorm,
-                Silence,
-                SoundBarrier,
-                Tailwind,
-                Tornado,
-                Whirlwind,
-                WindShear,
-            ]
-        );
+    public static ProgressionGraph Graph { get; } = new(ZodiacSign.Aquarius,
+    [
+        new(Bewilder.Id, DirectionEnum.South, null, 0f, 0f),
+        new(Cleanse.Id, DirectionEnum.West, null, 0f, 0f),
+        new(CoolingBreeze.Id, DirectionEnum.North, null, 0f, 0f),
+        new(Dowse.Id, DirectionEnum.South, null, 0f, 0f),
+        new(EyeOfTheStorm.Id, DirectionEnum.West, null, 0f, 0f),
+        new(Fog.Id, DirectionEnum.East, null, 0f, 0f),
+        new(Gale.Id, DirectionEnum.North, null, 0f, 0f),
+        new(Headwind.Id, DirectionEnum.North, null, 0f, 0f),
+        new(Heal.Id, DirectionEnum.West, null, 0f, 0f),
+        new(Hurricane.Id, DirectionEnum.East, null, 0f, 0f),
+        new(Levitate.Id, DirectionEnum.North, null, 0f, 0f),
+        new(PressureShield.Id, DirectionEnum.East, null, 0f, 0f),
+        new(Purge.Id, DirectionEnum.West, null, 0f, 0f),
+        new(Sandstorm.Id, DirectionEnum.East, null, 0f, 0f),
+        new(Silence.Id, DirectionEnum.South, null, 0f, 0f),
+        new(SoundBarrier.Id, DirectionEnum.South, null, 0f, 0f),
+        new(Tailwind.Id, DirectionEnum.North, null, 0f, 0f),
+        new(Tornado.Id, DirectionEnum.East, null, 0f, 0f),
+        new(Whirlwind.Id, DirectionEnum.North, null, 0f, 0f),
+        new(WindShear.Id, DirectionEnum.North, null, 0f, 0f),
+    ]);
 }

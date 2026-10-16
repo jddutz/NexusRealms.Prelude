@@ -61,8 +61,8 @@ public sealed class CombatSystem
     public bool EvaluateOutcome()
     {
         if (HasEnded) return true;
-        if (DefeatConditions.Any(condition => condition(this))) End(CombatOutcome.Defeat);
-        else if (VictoryConditions.Length > 0 && VictoryConditions.All(condition => condition(this))) End(CombatOutcome.Victory);
+        if (DefeatRules.IsDefeat(this)) End(CombatOutcome.Defeat);
+        else if (VictoryRules.IsVictory(this)) End(CombatOutcome.Victory);
         else if (IsCombatOver?.Invoke(this) == true) End();
         return HasEnded;
     }

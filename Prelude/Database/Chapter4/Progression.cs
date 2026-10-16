@@ -8,10 +8,10 @@ public sealed record Progression : StoryGraph
         End = "ch4_progression_4";
         Nodes =
         [
-            new ProgressionNode { Id = "ch4_progression_1", Chapter = 4, NextNode = "ch4_progression_2" },
-            new ProgressionNode { Id = "ch4_progression_2", Chapter = 4, NextNode = "ch4_progression_3" },
-            new ProgressionNode { Id = "ch4_progression_3", Chapter = 4, NextNode = "ch4_progression_4" },
-            new ProgressionNode { Id = "ch4_progression_4", Chapter = 4, NextNode = "ch5_progression_1" },
+            new ProgressNode { Id = "ch4_progression_1", Chapter = 4, NextNode = "ch4_progression_2" },
+            new ProgressNode { Id = "ch4_progression_2", Chapter = 4, NextNode = "ch4_progression_3" },
+            new ProgressNode { Id = "ch4_progression_3", Chapter = 4, NextNode = "ch4_progression_4" },
+            new ProgressNode { Id = "ch4_progression_4", Chapter = 4, NextNode = "ch5_progression_1" },
         ];
     }
 }

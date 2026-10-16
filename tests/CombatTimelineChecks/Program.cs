@@ -1,3 +1,4 @@
+using NexusRealms.Prelude.Rules;
 using NexusRealms.Prelude.DataModel;
 using NexusRealms.Prelude.Combat;
 
@@ -509,8 +510,8 @@ healthOutcome.Add(new("player", true));
 healthOutcome.Add(new("enemy", false, turn: 0.25f, team: CombatTeam.Enemies));
 var playerAlive = true;
 healthOutcome.IsCombatantAlive = id => id != "player" || playerAlive;
-healthOutcome.VictoryConditions = [CombatConditions.AllEnemiesDefeated];
-healthOutcome.DefeatConditions = [CombatConditions.PlayerDefeated];
+healthOutcome.VictoryConditions = [VictoryRules.AllEnemiesDefeated];
+healthOutcome.DefeatConditions = [DefeatRules.PlayerDefeated];
 healthOutcome.DecideAction = (_, _) => new(0.5f, (_, _) => playerAlive = false);
 healthOutcome.Process();
 healthOutcome.SubmitAction(new(1f, (_, _) => { }));
@@ -521,7 +522,7 @@ var leaderCombat = new CombatSystem();
 leaderCombat.Add(new("player", true));
 leaderCombat.Add(new("leader", false, turn: 2f, team: CombatTeam.Enemies));
 leaderCombat.Add(new("guard", false, turn: 2f, team: CombatTeam.Enemies));
-leaderCombat.VictoryConditions = [CombatConditions.CharacterDefeated("leader")];
+leaderCombat.VictoryConditions = [DefeatRules.CharacterDefeated("leader")];
 leaderCombat.Process();
 leaderCombat.SubmitAction(new(1f, (system, _) => system.Remove("leader")));
 Check(leaderCombat.Outcome == CombatOutcome.Victory && leaderCombat.Contains("guard"));

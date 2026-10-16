@@ -13,7 +13,10 @@ public sealed record Part1 : StoryGraph
         Name = "Alleyway Thug #1",
         Artwork = new("characters.alley_thug_1.png"),
         Portrait = new("portraits.alley_thug_1.png"),
-        Items = [Combat.WeaponCatalog.Create(Combat.WeaponType.Clubs, "thug-club", "Club", "Right hand")],
+        Items =
+        [
+            Combat.WeaponCatalog.Create(Combat.WeaponType.Clubs, "thug-club", "Club", "Right hand"),
+        ],
         Equipment = ImmutableDictionary<string, string>.Empty.Add("Right hand", "thug-club"),
         Actions = [new WeaponAttackAction("club-attack", "thug-club")],
     };
@@ -26,11 +29,23 @@ public sealed record Part1 : StoryGraph
         Portrait = new("portraits.alley_thug_2.png"),
         Items =
         [
-            Combat.WeaponCatalog.Create(Combat.WeaponType.Pistol, "thug-pistol", "Pistol", "Right hand"),
+            Combat.WeaponCatalog.Create(
+                Combat.WeaponType.Pistol,
+                "thug-pistol",
+                "Pistol",
+                "Right hand"
+            ),
             Combat.WeaponCatalog.CreateAmmunition(AmmunitionType.Bullet, "thug-bullets", 6),
         ],
         Equipment = ImmutableDictionary<string, string>.Empty.Add("Right hand", "thug-pistol"),
-        Actions = [new WeaponAttackAction("pistol-attack", "thug-pistol") { ReloadAnimation = "Reload", Classifications = ["weapon", "ranged"] }],
+        Actions =
+        [
+            new WeaponAttackAction("pistol-attack", "thug-pistol")
+            {
+                ReloadAnimation = "Reload",
+                Classifications = ["weapon", "ranged"],
+            },
+        ],
     };
 
     public static readonly CharacterData AlleywayThug3 = new()
@@ -39,13 +54,36 @@ public sealed record Part1 : StoryGraph
         Name = "Alleyway Thug #3",
         Artwork = new("characters.alley_thug_3.png"),
         Portrait = new("portraits.alley_thug_3.png"),
-        Items = [Combat.WeaponCatalog.Create(Combat.WeaponType.Rock, "thug-rocks", "Rock", "Right hand") with { Quantity = 3 }],
+        Items =
+        [
+            Combat.WeaponCatalog.Create(
+                Combat.WeaponType.Rock,
+                "thug-rocks",
+                "Rock",
+                "Right hand"
+            ) with
+            {
+                Quantity = 3,
+            },
+        ],
         Strategy = new(StrategyId.Protective) { ProtectAllies = true },
-        StrategyTransitions = [new("last-stand", new(StrategyConditionKind.HealthAtMost, Health: 2), new(StrategyId.Aggressive))],
+        StrategyTransitions =
+        [
+            new(
+                "last-stand",
+                new(StrategyConditionKind.HealthAtMost, Health: 2),
+                new(StrategyId.Aggressive)
+            ),
+        ],
         Actions =
         [
             new ThrowItemAction("rock-throw", "thug-rocks"),
-            new ActionData { Id = "distract", Effects = [new DelayEffect(1)], Targeting = new(TargetShape.Single, TargetRelationship.OpposingTeam) },
+            new ActionData
+            {
+                Id = "distract",
+                Effects = [new DelayEffect(1)],
+                Targeting = new(TargetShape.Single, TargetRelationship.OpposingTeam),
+            },
         ],
     };
 
@@ -79,6 +117,8 @@ public sealed record Part1 : StoryGraph
         ],
     };
 
+    public static readonly StoryNode Begin = new ProgressNode { Chapter = 1, NextNode = Intro.Id };
+
     public static readonly OutcomeNode Victory = new()
     {
         Id = $"{SubgraphId}_Victory",
@@ -102,9 +142,9 @@ public sealed record Part1 : StoryGraph
     {
         Characters = [AlleywayThug1, AlleywayThug2, AlleywayThug3];
 
-        Nodes = [Intro, Victory, Defeat, Escape];
+        Nodes = [Begin, Intro, Victory, Defeat, Escape];
 
-        Start = Intro.Id;
+        Start = Begin.Id;
         End = StoryNodeId.Invalid;
     }
 }

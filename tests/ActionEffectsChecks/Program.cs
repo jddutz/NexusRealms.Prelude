@@ -1,3 +1,4 @@
+using NexusRealms.Prelude.Rules;
 using System.Collections.Immutable;
 using NexusRealms.Prelude;
 using NexusRealms.Prelude.Actions;
@@ -162,8 +163,8 @@ f.Resolve("player", new RemoveEffect(new RemoveEquipment("Right hand")));
 Check(!f.Resolver.CanCommit("player", learned, "enemy") && f.Player.Loadout.LearnedAbilities.Contains(ability.Id), "Equipment loss disables action without unlearning progression.");
 Reject(() => f.Resolver.Register(new ExampleAction("negative", new DamageEffect(DamageType.General, -1))), "Negative effect validation.");
 Reject(() => f.Resolver.Register(new ExampleAction("missing", new ApplyEffect("unknown", new()))), "Unresolved status validation.");
-Reject(() => ActionValidation.Persistence(new(StatusClock.RecipientTurnStart, 1.5f)), "Ambiguous duration validation.");
-Reject(() => ActionValidation.ValidateStatus(Status("invalid", new ModifyEffect(new(EffectVerb.Negate), NumericalField.DamageAmount, 2))), "Unsupported numerical field validation.");
+Reject(() => CombatRules.Persistence(new(StatusClock.RecipientTurnStart, 1.5f)), "Ambiguous duration validation.");
+Reject(() => CombatRules.ValidateStatus(Status("invalid", new ModifyEffect(new(EffectVerb.Negate), NumericalField.DamageAmount, 2))), "Unsupported numerical field validation.");
 f = New();
 outcome = f.Resolve("player", new TransferEffect("enemy", new ResourceSubject(ResourceKind.Focus), 2));
 Check(f.Player.Loadout.Focus == 0 && f.Enemy.Loadout.Focus == 2 && outcome.Effects.Single().ActualChange == 2, "Focus transfer must conserve the full amount.");
@@ -205,6 +206,18 @@ Check(finalHealth == 11 && replay.Enemy.Health.Health == finalHealth, "Authored 
 Check(!typeof(CharacterData).Assembly.GetTypes().Where(type => type.Namespace == typeof(CharacterData).Namespace)
     .SelectMany(type => type.GetProperties()).Any(property => property.PropertyType.Namespace is { } ns && ns.StartsWith("NexusRealms.Prelude.Combat", StringComparison.Ordinal)),
     "DataModel must not expose combat runtime classes.");
+var healingTarget = new DamageReceiver(18);
+Check(HealingRules.Restore(healingTarget, 5, 20) == 2 && healingTarget.Health == 20,
+    "Shared healing must cap at maximum Health and report the actual increase.");
+Check(HealingRules.Restore(healingTarget, 5, 15) == 0 && healingTarget.Health == 20,
+    "Healing must never reduce Health already above its cap.");
+healingTarget.Health = 0;
+Check(HealingRules.Restore(healingTarget, 10, 20) == 0 && healingTarget.Health == 0,
+    "Healing must not resurrect defeated characters.");
+healingTarget.Health = int.MaxValue - 1;
+Check(HealingRules.Restore(healingTarget, double.MaxValue) == 1 && healingTarget.Health == int.MaxValue,
+    "Healing must saturate without integer overflow.");
+Reject(() => HealingRules.Restore(healingTarget, double.NaN), "Nonfinite healing must be rejected.");
 Console.WriteLine("Action effects acceptance and lifecycle checks passed.");
 
 /// <summary>A named action class can compose any ordered typed effects.</summary>

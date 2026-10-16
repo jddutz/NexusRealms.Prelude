@@ -19,3 +19,5 @@ global using NexusRealms.Prelude.Actions;
 global using NexusRealms.Prelude.Database;
 global using NexusRealms.Prelude.DataModel;
 global using Silk.NET.Maths;
+
+global using NexusRealms.Prelude.Rules;

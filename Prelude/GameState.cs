@@ -23,6 +23,17 @@ public sealed class GameState
             _gameSpeed = value;
         }
     }
+    private int _abilityPoints = 20;
+    /// <summary>Unspent progression points; learning an ability costs one point.</summary>
+    public int AbilityPoints
+    {
+        get => _abilityPoints;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
+            _abilityPoints = value;
+        }
+    }
     public int Health { get; set; } = 20;
     public int Focus { get => Loadout.Focus; init => Loadout.Focus = value; }
 }

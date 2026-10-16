@@ -1,7 +1,7 @@
-namespace NexusRealms.Prelude.Actions;
+namespace NexusRealms.Prelude.Rules;
 
 /// <summary>Rejects unsupported fields, ambiguous clocks, and malformed typed operations before commitment.</summary>
-public static class ActionValidation
+public static class CombatRules
 {
     /// <summary>Validates a complete action definition and its ordered dependencies.</summary>
     public static void Validate(ActionData action, IReadOnlyDictionary<StatusEffectId, StatusEffectData> statuses)

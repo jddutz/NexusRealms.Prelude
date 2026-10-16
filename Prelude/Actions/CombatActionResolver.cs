@@ -19,7 +19,7 @@ public sealed class CombatActionResolver
         Combat = combat;
         combat.Resolver = this;
         _statuses = statuses.ToDictionary();
-        foreach (var definition in _statuses.Values) ActionValidation.ValidateStatus(definition);
+        foreach (var definition in _statuses.Values) CombatRules.ValidateStatus(definition);
         combat.TurnStarted += OnTurnStarted;
         Behavior = new(this);
     }
@@ -69,7 +69,7 @@ public sealed class CombatActionResolver
         if (character.MaximumHealth is < 0 || character.Loadout.Focus < 0) throw new ArgumentException("Invalid initial character resources.");
         if (character.Position is { } position && _characters.Values.Any(other => other.Team == character.Team && other.Position == position))
             throw new ArgumentException("Formation position is occupied.");
-        foreach (var rule in character.Rules) ActionValidation.ValidateEffect(rule, true, _statuses);
+        foreach (var rule in character.Rules) CombatRules.ValidateEffect(rule, true, _statuses);
         var initial = (initialStatuses ?? []).ToArray();
         foreach (var id in initial) if (!_statuses.ContainsKey(id)) throw new ArgumentException($"Unknown initial status '{id}'.");
         _characters.Add(character.Id, character);
@@ -85,7 +85,7 @@ public sealed class CombatActionResolver
     /// <summary>Validates and registers an authored action class.</summary>
     public void Register(ActionData action)
     {
-        ActionValidation.Validate(action, _statuses);
+        CombatRules.Validate(action, _statuses);
         ActionCatalog[action.Id] = action;
     }
 
@@ -389,10 +389,8 @@ public sealed class CombatActionResolver
             {
                 resolved = Modified(recipient, restore, NumericalField.RestoreAmount, restore.Amount, attribution);
                 // Restore does not define resurrection. Dead characters remain dead and unscheduled.
-                if (recipient.Health.Health == 0) { reason = "Restore does not resurrect an incapacitated character."; break; }
-                var after = (int)Math.Min(recipient.MaximumHealth ?? int.MaxValue, recipient.Health.Health + resolved);
-                after = Math.Max(after, recipient.Health.Health);
-                actual = after - recipient.Health.Health; recipient.Health.Health = after;
+                if (!HealingRules.CanRestore(recipient.Health)) { reason = "Restore does not resurrect an incapacitated character."; break; }
+                actual = HealingRules.Restore(recipient.Health, resolved, recipient.MaximumHealth);
                 break;
             }
             case DelayEffect delay:
@@ -545,7 +543,7 @@ public sealed class CombatActionResolver
     /// <summary>Validates definitions and resolves capability references before any mutation.</summary>
     private void ValidateContext(ActionData action)
     {
-        ActionValidation.Validate(action, _statuses);
+        CombatRules.Validate(action, _statuses);
         foreach (var grant in action.BuildEffects().OfType<GrantEffect>())
             if (grant.Subject is GrantCapability capability && !ActionCatalog.ContainsKey(capability.ActionId)) throw new ArgumentException($"Unknown action capability '{capability.ActionId}'.");
     }
