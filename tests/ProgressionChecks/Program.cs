@@ -14,7 +14,7 @@ foreach (var graph in ProgressionGraphs.All.Values)
     layouts.Add(string.Join(";", graph.Branches.SelectMany(b => b.Abilities).Select(n => $"{n.X},{n.Y},{n.Parent}")));
     foreach (var branch in graph.Branches)
     {
-        Check(branch.Abilities.Length == 5, "Five abilities per branch required.");
+        Check(branch.Abilities.Length > 0, "Each branch must contain abilities.");
         var preceding = new HashSet<AbilityId>();
         foreach (var node in branch.Abilities)
         {

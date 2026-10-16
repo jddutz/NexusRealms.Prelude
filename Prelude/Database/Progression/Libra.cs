@@ -2,7 +2,7 @@ namespace NexusRealms.Prelude.Database.Progression;
 
 public static class Libra
 {
-    public static ProgressionGraph Graph { get; } = new(ZodiacSign.Libra,
+    public static ProgressionGraph Graph { get; } = ProgressionGraph.FromBranches(ZodiacSign.Libra,
     [
         new(ProgressionBranch.North,
         [

@@ -1,50 +1,137 @@
 {
   "Textures": {
     "Content": {
-      "effects.arrow_01.png": {
-        "FilePath": "Textures/Effects/arrow_01.ktx2"
+      "abilities.ArcaneBolt.png": {
+        "FilePath": "Textures/Abilities/ArcaneBolt.ktx2"
       },
-      "effects.arrow_02.png": {
-        "FilePath": "Textures/Effects/arrow_02.ktx2"
+      "abilities.Attack.png": {
+        "FilePath": "Textures/Abilities/Attack.ktx2"
       },
-      "effects.blocked.png": {
-        "FilePath": "Textures/Effects/blocked.ktx2"
+      "abilities.Bewilder.png": {
+        "FilePath": "Textures/Abilities/Bewilder.ktx2"
       },
-      "effects.impact_01.png": {
-        "FilePath": "Textures/Effects/impact_01.ktx2"
+      "abilities.BioShock.png": {
+        "FilePath": "Textures/Abilities/BioShock.ktx2"
       },
-      "effects.impact_02.png": {
-        "FilePath": "Textures/Effects/impact_02.ktx2"
+      "abilities.Cleanse.png": {
+        "FilePath": "Textures/Abilities/Cleanse.ktx2"
       },
-      "effects.impact_03.png": {
-        "FilePath": "Textures/Effects/impact_03.ktx2"
+      "abilities.CoolingBreeze.png": {
+        "FilePath": "Textures/Abilities/CoolingBreeze.ktx2"
       },
-      "effects.impact_04.png": {
-        "FilePath": "Textures/Effects/impact_04.ktx2"
+      "abilities.Dowse.png": {
+        "FilePath": "Textures/Abilities/Dowse.ktx2"
       },
-      "effects.ranged_01.png": {
-        "FilePath": "Textures/Effects/ranged_01.ktx2"
+      "abilities.EyeOfTheStorm.png": {
+        "FilePath": "Textures/Abilities/EyeOfTheStorm.ktx2"
       },
-      "effects.ranged_02.png": {
-        "FilePath": "Textures/Effects/ranged_02.ktx2"
+      "abilities.FastForward.png": {
+        "FilePath": "Textures/Abilities/FastForward.ktx2"
       },
-      "effects.ranged_03.png": {
-        "FilePath": "Textures/Effects/ranged_03.ktx2"
+      "abilities.Fireball.png": {
+        "FilePath": "Textures/Abilities/Fireball.ktx2"
       },
-      "effects.ranged_04.png": {
-        "FilePath": "Textures/Effects/ranged_04.ktx2"
+      "abilities.Fog.png": {
+        "FilePath": "Textures/Abilities/Fog.ktx2"
       },
-      "effects.slash_01.png": {
-        "FilePath": "Textures/Effects/slash_01.ktx2"
+      "abilities.Gale.png": {
+        "FilePath": "Textures/Abilities/Gale.ktx2"
       },
-      "effects.slash_02.png": {
-        "FilePath": "Textures/Effects/slash_02.ktx2"
+      "abilities.Headwind.png": {
+        "FilePath": "Textures/Abilities/Headwind.ktx2"
       },
-      "effects.slash_03.png": {
-        "FilePath": "Textures/Effects/slash_03.ktx2"
+      "abilities.Heal.png": {
+        "FilePath": "Textures/Abilities/Heal.ktx2"
       },
-      "effects.slash_04.png": {
-        "FilePath": "Textures/Effects/slash_04.ktx2"
+      "abilities.Heart.png": {
+        "FilePath": "Textures/Abilities/Heart.ktx2"
+      },
+      "abilities.Hurricane.png": {
+        "FilePath": "Textures/Abilities/Hurricane.ktx2"
+      },
+      "abilities.IceShards.png": {
+        "FilePath": "Textures/Abilities/IceShards.ktx2"
+      },
+      "abilities.LavaBurst.png": {
+        "FilePath": "Textures/Abilities/LavaBurst.ktx2"
+      },
+      "abilities.Levitate.png": {
+        "FilePath": "Textures/Abilities/Levitate.ktx2"
+      },
+      "abilities.Lightning.png": {
+        "FilePath": "Textures/Abilities/Lightning.ktx2"
+      },
+      "abilities.Lightning2.png": {
+        "FilePath": "Textures/Abilities/Lightning2.ktx2"
+      },
+      "abilities.Luck.png": {
+        "FilePath": "Textures/Abilities/Luck.ktx2"
+      },
+      "abilities.MagicShield.png": {
+        "FilePath": "Textures/Abilities/MagicShield.ktx2"
+      },
+      "abilities.Mind.png": {
+        "FilePath": "Textures/Abilities/Mind.ktx2"
+      },
+      "abilities.PoisonCloud.png": {
+        "FilePath": "Textures/Abilities/PoisonCloud.ktx2"
+      },
+      "abilities.PressureShield.png": {
+        "FilePath": "Textures/Abilities/PressureShield.ktx2"
+      },
+      "abilities.Purge.png": {
+        "FilePath": "Textures/Abilities/Purge.ktx2"
+      },
+      "abilities.Sandstorm.png": {
+        "FilePath": "Textures/Abilities/Sandstorm.ktx2"
+      },
+      "abilities.Shield.png": {
+        "FilePath": "Textures/Abilities/Shield.ktx2"
+      },
+      "abilities.Silence.png": {
+        "FilePath": "Textures/Abilities/Silence.ktx2"
+      },
+      "abilities.SolarFlare.png": {
+        "FilePath": "Textures/Abilities/SolarFlare.ktx2"
+      },
+      "abilities.SoundBarrier.png": {
+        "FilePath": "Textures/Abilities/SoundBarrier.ktx2"
+      },
+      "abilities.Strength.png": {
+        "FilePath": "Textures/Abilities/Strength.ktx2"
+      },
+      "abilities.Tailwind.png": {
+        "FilePath": "Textures/Abilities/Tailwind.ktx2"
+      },
+      "abilities.Target.png": {
+        "FilePath": "Textures/Abilities/Target.ktx2"
+      },
+      "abilities.TidalWave.png": {
+        "FilePath": "Textures/Abilities/TidalWave.ktx2"
+      },
+      "abilities.Tornado.png": {
+        "FilePath": "Textures/Abilities/Tornado.ktx2"
+      },
+      "abilities.Void.png": {
+        "FilePath": "Textures/Abilities/Void.ktx2"
+      },
+      "abilities.Vortex.png": {
+        "FilePath": "Textures/Abilities/Vortex.ktx2"
+      },
+      "abilities.Water.png": {
+        "FilePath": "Textures/Abilities/Water.ktx2"
+      },
+      "abilities.Whirlwind.png": {
+        "FilePath": "Textures/Abilities/Whirlwind.ktx2"
+      },
+      "abilities.WhiteFlame.png": {
+        "FilePath": "Textures/Abilities/WhiteFlame.ktx2"
+      },
+      "abilities.WindShear.png": {
+        "FilePath": "Textures/Abilities/WindShear.ktx2"
+      },
+      "abilities.WingedBoots.png": {
+        "FilePath": "Textures/Abilities/WingedBoots.ktx2"
       },
       "actions.fist.png": {
         "FilePath": "Textures/Actions/fist.ktx2"
@@ -55,29 +142,14 @@
       "actions.wait.png": {
         "FilePath": "Textures/Actions/wait.ktx2"
       },
-      "shadow": {
-        "FilePath": "Textures/shadow.ktx2"
+      "backgrounds.harbor_district_dockside_dusk.png": {
+        "FilePath": "Textures/Backgrounds/harbor_district_dockside_dusk.ktx2"
       },
-      "square_shadow": {
-        "FilePath": "Textures/square_shadow.ktx2"
+      "backgrounds.harbor_district_dockside_night.png": {
+        "FilePath": "Textures/Backgrounds/harbor_district_dockside_night.ktx2"
       },
-      "zodiac_signs": {
-        "FilePath": "Textures/zodiac_signs.ktx2"
-      },
-      "abilities.basic_abilities.png": {
-        "FilePath": "Textures/Abilities/basic_abilities.ktx2"
-      },
-      "abilities.basic_spells.png": {
-        "FilePath": "Textures/Abilities/basic_spells.ktx2"
-      },
-      "background.harbor_district_dockside_dusk.png": {
-        "FilePath": "Textures/Background/HarborDistrict/harbor_district_dockside_dusk.ktx2"
-      },
-      "background.harbor_district_dockside_night.png": {
-        "FilePath": "Textures/Background/HarborDistrict/harbor_district_dockside_night.ktx2"
-      },
-      "background.market_daytime.png": {
-        "FilePath": "Textures/Background/Market/market_daytime.ktx2"
+      "backgrounds.market_daytime.png": {
+        "FilePath": "Textures/Backgrounds/market_daytime.ktx2"
       },
       "characters.alley_thug_1.png": {
         "FilePath": "Textures/Characters/alley_thug_1.ktx2",
@@ -238,107 +310,56 @@
       "portraits.warden_male.png": {
         "FilePath": "Textures/Characters/Portraits/warden_male.ktx2"
       },
+      "effectIcons.arrow_01.png": {
+        "FilePath": "Textures/EffectIcons/arrow_01.ktx2"
+      },
+      "effectIcons.arrow_02.png": {
+        "FilePath": "Textures/EffectIcons/arrow_02.ktx2"
+      },
+      "effectIcons.blocked.png": {
+        "FilePath": "Textures/EffectIcons/blocked.ktx2"
+      },
+      "effectIcons.impact_01.png": {
+        "FilePath": "Textures/EffectIcons/impact_01.ktx2"
+      },
+      "effectIcons.impact_02.png": {
+        "FilePath": "Textures/EffectIcons/impact_02.ktx2"
+      },
+      "effectIcons.impact_03.png": {
+        "FilePath": "Textures/EffectIcons/impact_03.ktx2"
+      },
+      "effectIcons.impact_04.png": {
+        "FilePath": "Textures/EffectIcons/impact_04.ktx2"
+      },
+      "effectIcons.ranged_01.png": {
+        "FilePath": "Textures/EffectIcons/ranged_01.ktx2"
+      },
+      "effectIcons.ranged_02.png": {
+        "FilePath": "Textures/EffectIcons/ranged_02.ktx2"
+      },
+      "effectIcons.ranged_03.png": {
+        "FilePath": "Textures/EffectIcons/ranged_03.ktx2"
+      },
+      "effectIcons.ranged_04.png": {
+        "FilePath": "Textures/EffectIcons/ranged_04.ktx2"
+      },
+      "effectIcons.slash_01.png": {
+        "FilePath": "Textures/EffectIcons/slash_01.ktx2"
+      },
+      "effectIcons.slash_02.png": {
+        "FilePath": "Textures/EffectIcons/slash_02.ktx2"
+      },
+      "effectIcons.slash_03.png": {
+        "FilePath": "Textures/EffectIcons/slash_03.ktx2"
+      },
+      "effectIcons.slash_04.png": {
+        "FilePath": "Textures/EffectIcons/slash_04.ktx2"
+      },
       "items.items_basic.png": {
         "FilePath": "Textures/Items/items_basic.ktx2"
       },
       "items.rock.png": {
         "FilePath": "Textures/Items/rock.ktx2"
-      },
-      "weapons.axe_01.png": {
-        "FilePath": "Textures/Items/Weapons/axe_01.ktx2"
-      },
-      "weapons.axe_02.png": {
-        "FilePath": "Textures/Items/Weapons/axe_02.ktx2"
-      },
-      "weapons.axe_03.png": {
-        "FilePath": "Textures/Items/Weapons/axe_03.ktx2"
-      },
-      "weapons.axe_04.png": {
-        "FilePath": "Textures/Items/Weapons/axe_04.ktx2"
-      },
-      "weapons.axe_05.png": {
-        "FilePath": "Textures/Items/Weapons/axe_05.ktx2"
-      },
-      "weapons.bow_01.png": {
-        "FilePath": "Textures/Items/Weapons/bow_01.ktx2"
-      },
-      "weapons.bow_02.png": {
-        "FilePath": "Textures/Items/Weapons/bow_02.ktx2"
-      },
-      "weapons.bow_03.png": {
-        "FilePath": "Textures/Items/Weapons/bow_03.ktx2"
-      },
-      "weapons.club_01.png": {
-        "FilePath": "Textures/Items/Weapons/club_01.ktx2"
-      },
-      "weapons.club_02.png": {
-        "FilePath": "Textures/Items/Weapons/club_02.ktx2"
-      },
-      "weapons.crossbow_01.png": {
-        "FilePath": "Textures/Items/Weapons/crossbow_01.ktx2"
-      },
-      "weapons.flail_01.png": {
-        "FilePath": "Textures/Items/Weapons/flail_01.ktx2"
-      },
-      "weapons.flail_02.png": {
-        "FilePath": "Textures/Items/Weapons/flail_02.ktx2"
-      },
-      "weapons.hammer_01.png": {
-        "FilePath": "Textures/Items/Weapons/hammer_01.ktx2"
-      },
-      "weapons.knife_01.png": {
-        "FilePath": "Textures/Items/Weapons/knife_01.ktx2"
-      },
-      "weapons.knife_02.png": {
-        "FilePath": "Textures/Items/Weapons/knife_02.ktx2"
-      },
-      "weapons.knife_03.png": {
-        "FilePath": "Textures/Items/Weapons/knife_03.ktx2"
-      },
-      "weapons.knife_04.png": {
-        "FilePath": "Textures/Items/Weapons/knife_04.ktx2"
-      },
-      "weapons.knife_05.png": {
-        "FilePath": "Textures/Items/Weapons/knife_05.ktx2"
-      },
-      "weapons.mace_01.png": {
-        "FilePath": "Textures/Items/Weapons/mace_01.ktx2"
-      },
-      "weapons.mace_02.png": {
-        "FilePath": "Textures/Items/Weapons/mace_02.ktx2"
-      },
-      "weapons.pistol_01.png": {
-        "FilePath": "Textures/Items/Weapons/pistol_01.ktx2"
-      },
-      "weapons.pistol_02.png": {
-        "FilePath": "Textures/Items/Weapons/pistol_02.ktx2"
-      },
-      "weapons.pistol_03.png": {
-        "FilePath": "Textures/Items/Weapons/pistol_03.ktx2"
-      },
-      "weapons.sling_01.png": {
-        "FilePath": "Textures/Items/Weapons/sling_01.ktx2"
-      },
-      "weapons.sword_01.png": {
-        "FilePath": "Textures/Items/Weapons/sword_01.ktx2"
-      },
-      "weapons.sword_02.png": {
-        "FilePath": "Textures/Items/Weapons/sword_02.ktx2"
-      },
-      "weapons.sword_03.png": {
-        "FilePath": "Textures/Items/Weapons/sword_03.ktx2"
-      },
-      "weapons.sword_04.png": {
-        "FilePath": "Textures/Items/Weapons/sword_04.ktx2"
-      },
-      "weapons.sword_05.png": {
-        "FilePath": "Textures/Items/Weapons/sword_05.ktx2"
-      },
-      "weapons.sword_06.png": {
-        "FilePath": "Textures/Items/Weapons/sword_06.ktx2"
-      },
-      "weapons.sword_07.png": {
-        "FilePath": "Textures/Items/Weapons/sword_07.ktx2"
       },
       "ui.invalid_selection.png": {
         "FilePath": "Textures/UI/invalid_selection.ktx2",
@@ -675,6 +696,111 @@
       },
       "stats.target.png": {
         "FilePath": "Textures/UI/Status/target.ktx2"
+      },
+      "weapons.axe_01.png": {
+        "FilePath": "Textures/Weapons/axe_01.ktx2"
+      },
+      "weapons.axe_02.png": {
+        "FilePath": "Textures/Weapons/axe_02.ktx2"
+      },
+      "weapons.axe_03.png": {
+        "FilePath": "Textures/Weapons/axe_03.ktx2"
+      },
+      "weapons.axe_04.png": {
+        "FilePath": "Textures/Weapons/axe_04.ktx2"
+      },
+      "weapons.axe_05.png": {
+        "FilePath": "Textures/Weapons/axe_05.ktx2"
+      },
+      "weapons.bow_01.png": {
+        "FilePath": "Textures/Weapons/bow_01.ktx2"
+      },
+      "weapons.bow_02.png": {
+        "FilePath": "Textures/Weapons/bow_02.ktx2"
+      },
+      "weapons.bow_03.png": {
+        "FilePath": "Textures/Weapons/bow_03.ktx2"
+      },
+      "weapons.club_01.png": {
+        "FilePath": "Textures/Weapons/club_01.ktx2"
+      },
+      "weapons.club_02.png": {
+        "FilePath": "Textures/Weapons/club_02.ktx2"
+      },
+      "weapons.crossbow_01.png": {
+        "FilePath": "Textures/Weapons/crossbow_01.ktx2"
+      },
+      "weapons.flail_01.png": {
+        "FilePath": "Textures/Weapons/flail_01.ktx2"
+      },
+      "weapons.flail_02.png": {
+        "FilePath": "Textures/Weapons/flail_02.ktx2"
+      },
+      "weapons.hammer_01.png": {
+        "FilePath": "Textures/Weapons/hammer_01.ktx2"
+      },
+      "weapons.knife_01.png": {
+        "FilePath": "Textures/Weapons/knife_01.ktx2"
+      },
+      "weapons.knife_02.png": {
+        "FilePath": "Textures/Weapons/knife_02.ktx2"
+      },
+      "weapons.knife_03.png": {
+        "FilePath": "Textures/Weapons/knife_03.ktx2"
+      },
+      "weapons.knife_04.png": {
+        "FilePath": "Textures/Weapons/knife_04.ktx2"
+      },
+      "weapons.knife_05.png": {
+        "FilePath": "Textures/Weapons/knife_05.ktx2"
+      },
+      "weapons.mace_01.png": {
+        "FilePath": "Textures/Weapons/mace_01.ktx2"
+      },
+      "weapons.mace_02.png": {
+        "FilePath": "Textures/Weapons/mace_02.ktx2"
+      },
+      "weapons.pistol_01.png": {
+        "FilePath": "Textures/Weapons/pistol_01.ktx2"
+      },
+      "weapons.pistol_02.png": {
+        "FilePath": "Textures/Weapons/pistol_02.ktx2"
+      },
+      "weapons.pistol_03.png": {
+        "FilePath": "Textures/Weapons/pistol_03.ktx2"
+      },
+      "weapons.sling_01.png": {
+        "FilePath": "Textures/Weapons/sling_01.ktx2"
+      },
+      "weapons.sword_01.png": {
+        "FilePath": "Textures/Weapons/sword_01.ktx2"
+      },
+      "weapons.sword_02.png": {
+        "FilePath": "Textures/Weapons/sword_02.ktx2"
+      },
+      "weapons.sword_03.png": {
+        "FilePath": "Textures/Weapons/sword_03.ktx2"
+      },
+      "weapons.sword_04.png": {
+        "FilePath": "Textures/Weapons/sword_04.ktx2"
+      },
+      "weapons.sword_05.png": {
+        "FilePath": "Textures/Weapons/sword_05.ktx2"
+      },
+      "weapons.sword_06.png": {
+        "FilePath": "Textures/Weapons/sword_06.ktx2"
+      },
+      "weapons.sword_07.png": {
+        "FilePath": "Textures/Weapons/sword_07.ktx2"
+      },
+      "shadow": {
+        "FilePath": "Textures/shadow.ktx2"
+      },
+      "square_shadow": {
+        "FilePath": "Textures/square_shadow.ktx2"
+      },
+      "zodiac_signs": {
+        "FilePath": "Textures/zodiac_signs.ktx2"
       }
     }
   },

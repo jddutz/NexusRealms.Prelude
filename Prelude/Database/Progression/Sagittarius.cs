@@ -2,7 +2,7 @@ namespace NexusRealms.Prelude.Database.Progression;
 
 public static class Sagittarius
 {
-    public static ProgressionGraph Graph { get; } = new(ZodiacSign.Sagittarius,
+    public static ProgressionGraph Graph { get; } = ProgressionGraph.FromBranches(ZodiacSign.Sagittarius,
     [
         new(ProgressionBranch.North,
         [

@@ -50,6 +50,13 @@ public sealed partial class CombatLoadout
     /// <summary>Learns one progression node and registers the actions it unlocks.</summary>
     public void Learn(AbilityData ability)
     {
+        ArgumentNullException.ThrowIfNull(ability);
+        if (LearnedAbilities.Contains(ability.Id)) return;
+        var identities = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var action in ability.Actions)
+            if (string.IsNullOrWhiteSpace(action.Id) || !identities.Add(action.Id)
+                || Actions.ContainsKey(action.Id) || Find(action.Id) is not null)
+                throw new ArgumentException($"Ability '{ability.Id}' conflicts with action '{action.Id}'.", nameof(ability));
         LearnedAbilities.Add(ability.Id);
         foreach (var action in ability.Actions)
         {

@@ -2,7 +2,7 @@ namespace NexusRealms.Prelude.Database.Progression;
 
 public static class Gemini
 {
-    public static ProgressionGraph Graph { get; } = new(ZodiacSign.Gemini,
+    public static ProgressionGraph Graph { get; } = ProgressionGraph.FromBranches(ZodiacSign.Gemini,
     [
         new(ProgressionBranch.North,
         [

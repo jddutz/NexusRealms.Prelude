@@ -11,6 +11,15 @@ static void Check(bool condition, string message)
 
 var storyline = new Storyline();
 var state = new SimulationState { CurrentStoryNodeId = NexusRealms.Prelude.Database.Chapter1.Part1.Intro.Id.Value };
+var aquariusState = state with { LearnedAbilities = ["Heal", "Bewilder"] };
+var aquariusLoadout = aquariusState.CreateGameState().Loadout;
+Check(aquariusLoadout.LearnedAbilities.Count == 2 && aquariusLoadout.Actions.Count == 0,
+    "Aquarius placeholders must restore learning without inventing executable actions.");
+var aquariusConfiguration = SimulationPlayerConfiguration.FromState(aquariusState);
+Check(aquariusConfiguration.LearnedAbilities.SequenceEqual(new[] { "Bewilder", "Heal" }),
+    "Simulation configuration must report stable learned ability identities.");
+Check(SimulationRunner.Run(storyline, aquariusState, 42).PlayerActionUses.Keys
+    .All(id => id != "Heal" && id != "Bewilder"), "Unimplemented abilities must not become simulator actions.");
 var startingLoadout = state.CreateGameState().Loadout;
 Check(startingLoadout.Inventory.Single(item => item?.Id.Value == "starting-rocks")?.Quantity == 5,
     "Player must start with one inventory stack of five rocks.");

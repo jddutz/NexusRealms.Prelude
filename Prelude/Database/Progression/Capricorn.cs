@@ -2,7 +2,7 @@ namespace NexusRealms.Prelude.Database.Progression;
 
 public static class Capricorn
 {
-    public static ProgressionGraph Graph { get; } = new(ZodiacSign.Capricorn,
+    public static ProgressionGraph Graph { get; } = ProgressionGraph.FromBranches(ZodiacSign.Capricorn,
     [
         new(ProgressionBranch.North,
         [

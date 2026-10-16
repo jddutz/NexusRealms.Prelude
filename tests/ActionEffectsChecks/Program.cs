@@ -148,6 +148,16 @@ var unlock = new ExampleAction("unlocked", new DamageEffect(DamageType.General, 
 var ability = new AbilityData { Id = "progression", Name = "Progression", Description = "Test", Icon = new("unused"), Actions = [unlock] };
 f.Player.Loadout.Learn(ability); var learned = f.Player.Loadout.Actions[unlock.Id]; f.Resolver.Register(learned);
 Check(f.Resolver.CanCommit("player", learned, "enemy"), "Ability and equipped item unlock an action.");
+f.Player.Loadout.Learn(ability);
+Check(f.Player.Loadout.Commands.Count(command => command.Id.Value == unlock.Id) == 1
+    && f.Player.Loadout.Actions[unlock.Id].Requirements.Abilities.Count(id => id == ability.Id) == 1,
+    "Repeated learning must not duplicate commands or prerequisites.");
+var conflictingAbility = ability with { Id = "conflicting" };
+Reject(() => f.Player.Loadout.Learn(conflictingAbility), "Conflicting unlocks must be rejected.");
+Check(!f.Player.Loadout.LearnedAbilities.Contains(conflictingAbility.Id), "Rejected learning must not mutate progression.");
+var committedUnlock = f.Resolver.Commit("player", learned, "enemy");
+Check(f.Enemy.Health.Health == 19 && committedUnlock.Action.Id == unlock.Id
+    && committedUnlock.Effects.Single().ActualChange == 1, "Learned capability must resolve through shared combat effects.");
 f.Resolve("player", new RemoveEffect(new RemoveEquipment("Right hand")));
 Check(!f.Resolver.CanCommit("player", learned, "enemy") && f.Player.Loadout.LearnedAbilities.Contains(ability.Id), "Equipment loss disables action without unlearning progression.");
 Reject(() => f.Resolver.Register(new ExampleAction("negative", new DamageEffect(DamageType.General, -1))), "Negative effect validation.");

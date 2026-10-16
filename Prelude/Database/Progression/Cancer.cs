@@ -2,7 +2,7 @@ namespace NexusRealms.Prelude.Database.Progression;
 
 public static class Cancer
 {
-    public static ProgressionGraph Graph { get; } = new(ZodiacSign.Cancer,
+    public static ProgressionGraph Graph { get; } = ProgressionGraph.FromBranches(ZodiacSign.Cancer,
     [
         new(ProgressionBranch.North,
         [

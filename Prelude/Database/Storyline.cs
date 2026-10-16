@@ -178,8 +178,38 @@ public sealed class Storyline
             foreach (var id in character.StatusEffects)
                 if (!StatusEffects.ContainsKey(id)) throw new InvalidOperationException($"Character '{character.Id}' references unknown status '{id}'.");
         }
+        var abilityActions = new HashSet<string>(StringComparer.Ordinal);
         foreach (var ability in Abilities.Values)
-            foreach (var action in ability.Actions) ActionValidation.Validate(action, StatusEffects);
+        {
+            if (string.IsNullOrWhiteSpace(ability.Id.Value)) throw new ArgumentException("Ability identity is required.");
+            foreach (var action in ability.Actions)
+            {
+                if (!abilityActions.Add(action.Id)) throw new ArgumentException($"Duplicate ability action '{action.Id}'.");
+                if (action.Requirements.Abilities.Any(id => !Abilities.ContainsKey(id)))
+                    throw new ArgumentException($"Action '{action.Id}' references an unknown ability.");
+                ActionValidation.Validate(action, StatusEffects);
+            }
+        }
+        foreach (var graph in Progression.ProgressionGraphs.All.Values)
+        {
+            var nodes = new HashSet<AbilityId>();
+            foreach (var node in graph.Abilities)
+                if (!nodes.Add(node.Ability) || !Abilities.ContainsKey(node.Ability)
+                    || !Enum.IsDefined(node.Direction) || !float.IsFinite(node.X) || !float.IsFinite(node.Y))
+                    throw new ArgumentException($"Invalid progression node '{node.Ability}'.");
+            foreach (var node in graph.Abilities)
+            {
+                var ancestors = new HashSet<AbilityId> { node.Ability };
+                var parent = node.Parent;
+                while (parent is { } id)
+                {
+                    var predecessor = graph.Abilities.FirstOrDefault(candidate => candidate.Ability == id);
+                    if (predecessor is null || predecessor.Direction != node.Direction || !ancestors.Add(id))
+                        throw new ArgumentException($"Invalid progression prerequisite for '{node.Ability}'.");
+                    parent = predecessor.Parent;
+                }
+            }
+        }
         foreach (var scenario in Nodes.Values.OfType<CombatScenario>())
         {
             _ = scenario.BuildVictoryConditions();
