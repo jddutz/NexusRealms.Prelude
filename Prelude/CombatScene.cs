@@ -1453,27 +1453,9 @@ public class CombatScene : Scene
 
     private ImageElement CreateZodiacImage()
     {
-        // Authored bounds for the twelve signs, in zodiac order. This sheet is
-        // irregularly spaced, so equal-sized grid cells would cut off the artwork.
-        Rectangle<int>[] signs =
-        [
-            new(0, 0, 375, 315),
-            new(420, 0, 380, 315),
-            new(803, 0, 393, 340),
-            new(1200, 0, 364, 315),
-            new(0, 323, 425, 334),
-            new(445, 323, 366, 369),
-            new(830, 323, 360, 344),
-            new(1200, 323, 364, 344),
-            new(0, 638, 435, 368),
-            new(435, 661, 381, 345),
-            new(825, 662, 377, 344),
-            new(1202, 666, 362, 340),
-        ];
         var image = new ImageElement
         {
-            Texture = _textures.GetOrCreate(new ContentId("zodiac_signs")),
-            SourceRegion = signs[(int)_gameState.Zodiac],
+            Texture = _textures.GetOrCreate(new ContentId($"zodiac.{_gameState.Zodiac}.png")),
             Width = 68f,
             Height = 68f,
             HorizontalAlignment = AlignHorizontal.Right,

@@ -3,7 +3,7 @@ namespace NexusRealms.Prelude;
 /// <summary>Displays the player's Zodiac graph and learns one ability per story visit.</summary>
 public sealed class ProgressionScene : Scene
 {
-    private readonly List<(AbilityId Id, TextButton Button)> _buttons = [];
+    private readonly List<(AbilityId Id, AbilityButton Button)> _buttons = [];
     private readonly TextElement _status;
     private readonly TextButton _continue;
 
@@ -21,11 +21,10 @@ public sealed class ProgressionScene : Scene
         var connectorPixels = new Color[connectorSize * connectorSize];
         var connectors = new ImageElement
         {
-            SizingMode = ImageSizingMode.Stretch,
+            SizingMode = ImageSizingMode.Stretch, SortOrder = -10,
             RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
         };
         canvas.SetConnectors(connectors);
-        var roots = new (float X, float Y)[] { (0f, -0.23f), (0.23f, 0f), (0f, 0.23f), (-0.23f, 0f) };
         TextElement Label(string text) => new(text, style)
         {
             Color = UiTheme.TextColor, Height = 30f, Width = 200f,
@@ -52,39 +51,60 @@ public sealed class ProgressionScene : Scene
                             connectorPixels[(y + dy) * connectorSize + x + dx] = new Color(0.5f, 0.65f, 0.85f, 1f);
             }
         }
-        foreach (var direction in Enum.GetValues<DirectionEnum>())
+        var iconBackdrop = new Texture(new ContentId("ability-slot-backdrop"), 1, 1,
+            [new Color(0f, 0f, 0f, 0.94f)]);
+        foreach (var node in graph.Abilities)
         {
-            var root = roots[(int)direction];
-            Edge(0f, 0f, root.X, root.Y);
-            var rootLabel = Label(direction.ToString().ToUpperInvariant());
-            rootLabel.Width = 65f;
-            canvas.Add(rootLabel, root.X, root.Y);
-            foreach (var node in graph.Abilities.Where(node => node.Direction == direction))
+            if (node.Parent is { } parentId)
             {
-                var parent = graph.Abilities.FirstOrDefault(candidate => candidate.Id == node.Parent);
-                Edge(parent?.X ?? root.X, parent?.Y ?? root.Y, node.X, node.Y);
-                var button = Button(story.Abilities[node.Id].Name, () =>
+                var parent = graph.Abilities.Single(candidate => candidate.Id == parentId);
+                Edge(parent.X, parent.Y, node.X, node.Y);
+            }
+            var ability = story.Abilities[node.Id];
+            var button = new AbilityButton(textStyles.GetOrCreate(BuiltInFonts.Bold, 13f))
+            {
+                Width = 168f, Height = 158f, SortOrder = 10,
+                Padding = new(0f, 0f), RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+                Action = _ =>
                 {
                     ProgressionRules.Learn(state, story, node.Id);
                     Refresh();
-                }, 100f);
-                _buttons.Add((node.Id, button));
-                canvas.Add(button, node.X, node.Y);
-            }
+                },
+            };
+            button.Icon = new ImageElement
+            {
+                Texture = iconBackdrop,
+                Width = 128f, Height = 128f, SizingMode = ImageSizingMode.Stretch,
+                HorizontalAlignment = AlignHorizontal.Center,
+                VerticalAlignment = AlignVertical.Top,
+                Margins = new(0f, 0f, 3f, 0f),
+            };
+            button.Frame = new ImageElement
+            {
+                Texture = textures.GetOrCreate(new ContentId("ui.item_frame.png")),
+                Width = 128f, Height = 128f, SizingMode = ImageSizingMode.Stretch,
+                SortOrder = 13, RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+            };
+            button.Icon.Children.Add(button.Frame);
+            button.Glyph = new ImageElement
+            {
+                Texture = textures.GetOrCreate(ability.Icon),
+                Width = 128f, Height = 128f, SizingMode = ImageSizingMode.Fit,
+                HorizontalAlignment = AlignHorizontal.Center, VerticalAlignment = AlignVertical.Center,
+                SortOrder = 12, RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+            };
+            button.Icon.Children.Add(button.Glyph);
+            _buttons.Add((node.Id, button));
+            canvas.Add(button, node.X, node.Y);
         }
         connectors.Texture = new Texture(new ContentId("progression-connectors"), connectorSize, connectorSize, connectorPixels);
-        Rectangle<int>[] regions =
-        [
-            new(0, 0, 375, 315), new(420, 0, 380, 315), new(803, 0, 393, 340), new(1200, 0, 364, 315),
-            new(0, 323, 425, 334), new(445, 323, 366, 369), new(830, 323, 360, 344), new(1200, 323, 364, 344),
-            new(0, 638, 435, 368), new(435, 661, 381, 345), new(825, 662, 377, 344), new(1202, 666, 362, 340),
-        ];
-        canvas.Add(new ImageElement
+        var zodiacTexture = textures.GetOrCreate(new ContentId($"zodiac.{state.Zodiac}.png"));
+        canvas.SetArtwork(new ImageElement
         {
-            Texture = textures.GetOrCreate(new ContentId("zodiac_signs")), SourceRegion = regions[(int)state.Zodiac],
-            Width = 70f, Height = 70f, SizingMode = ImageSizingMode.Fit, SortOrder = 3,
+            Texture = zodiacTexture,
+            SizingMode = ImageSizingMode.Stretch, SortOrder = -20,
             RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
-        }, 0f, 0f);
+        }, (float)zodiacTexture.Width / zodiacTexture.Height);
         var title = Label($"Chapter {visit.Chapter} — {state.Zodiac}");
         title.Width = 400f;
         title.VerticalAlignment = AlignVertical.Top;
@@ -107,7 +127,14 @@ public sealed class ProgressionScene : Scene
         Children.Add(title);
         Children.Add(_status);
         Children.Add(_continue);
-        Children.Add(new View { Camera = MainCamera, LayerMask = Nexus.Graphics.RenderLayers.DefaultUI });
+        var uiView = new View
+        {
+            Camera = MainCamera, LayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+            PreserveDrawOrder = true,
+        };
+        uiView.ViewComponent.EnableDepthTest = false;
+        uiView.ViewComponent.EnableDepthWrite = false;
+        Children.Add(uiView);
         Refresh();
 
         void Refresh()
@@ -116,8 +143,10 @@ public sealed class ProgressionScene : Scene
             {
                 var learned = state.Loadout.LearnedAbilities.Contains(id);
                 button.IsEnabled = ProgressionRules.CanLearn(state, story, id);
-                button.Label = (learned ? "+ " : "") + story.Abilities[id].Name;
-                button.TextColor = learned ? new Color(0.4f, 0.9f, 0.6f, 1f)
+                button.Caption.Text = story.Abilities[id].Name;
+                button.Frame.Texture = textures.GetOrCreate(new ContentId(learned
+                    ? "ui.item_frame_selected.png" : "ui.item_frame.png"));
+                button.Caption.Color = learned ? new Color(0.4f, 0.9f, 0.6f, 1f)
                     : ProgressionRules.CanLearn(state, story, id) ? UiTheme.TextColor : new Color(0.4f, 0.4f, 0.45f, 1f);
             }
             _status!.Text = $"Ability points: {state.AbilityPoints}. "
@@ -128,10 +157,53 @@ public sealed class ProgressionScene : Scene
         }
     }
 
+    private sealed class AbilityButton : TextButton
+    {
+        public OutlinedHudText Caption { get; }
+        public ImageElement Frame { get; set; } = null!;
+        public ImageElement Glyph { get; set; } = null!;
+        private float _slotSize = 128f;
+        public void SetSlotSize(float size)
+        {
+            _slotSize = size;
+            Height = size + 30f;
+            Icon!.Width = Icon.Height = size;
+            Frame.Width = Frame.Height = size;
+            Glyph.Width = Glyph.Height = size;
+        }
+        public AbilityButton(ITextStyle style)
+        {
+            Caption = new OutlinedHudText(style)
+            {
+                Width = 168f, Height = 23f, SortOrder = 15,
+                RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+            };
+            Children.Add(Caption);
+        }
+        public override Vector2D<float> Measure(Vector2D<float> constraint)
+        {
+            Caption.Measure(new Vector2D<float>(168f, 23f));
+            return base.Measure(constraint);
+        }
+        public override void Arrange(Rectangle<float> bounds)
+        {
+            base.Arrange(bounds);
+            Caption.Arrange(new Rectangle<float>(Bounds.Origin.X, Bounds.Origin.Y + _slotSize + 7f, Bounds.Size.X, 23f));
+        }
+    }
+
     private sealed class GraphCanvas : Element
     {
         private readonly List<(Element Element, float X, float Y)> _positions = [];
         private ImageElement? _connectors;
+        private ImageElement? _artwork;
+        private float _artworkAspectRatio = 1f;
+        public void SetArtwork(ImageElement artwork, float aspectRatio)
+        {
+            _artwork = artwork;
+            _artworkAspectRatio = aspectRatio;
+            Children.Add(artwork);
+        }
         public void SetConnectors(ImageElement connectors)
         {
             _connectors = connectors;
@@ -142,17 +214,38 @@ public sealed class ProgressionScene : Scene
             Children.Add(element);
             _positions.Add((element, x, y));
         }
-        public override Vector2D<float> Measure(Vector2D<float> constraint) => constraint;
+        public override Vector2D<float> Measure(Vector2D<float> constraint)
+        {
+            var slotSize = Math.Clamp((constraint.Y - Margins.Top - Margins.Bottom) / 4f - 30f, 48f, 128f);
+            foreach (var (element, _, _) in _positions)
+            {
+                if (element is AbilityButton ability) ability.SetSlotSize(slotSize);
+                element.Measure(new Vector2D<float>(element.Width ?? 100f, element.Height ?? 30f));
+            }
+            _connectors?.Measure(constraint);
+            _artwork?.Measure(constraint);
+            return constraint;
+        }
         public override void Arrange(Rectangle<float> bounds)
         {
             base.Arrange(bounds);
+            var artworkWidth = MathF.Min(Bounds.Size.X, Bounds.Size.Y * _artworkAspectRatio);
+            var artworkHeight = artworkWidth / _artworkAspectRatio;
+            var artworkBounds = new Rectangle<float>(
+                Bounds.Origin.X + (Bounds.Size.X - artworkWidth) / 2f,
+                Bounds.Origin.Y + (Bounds.Size.Y - artworkHeight) / 2f,
+                artworkWidth, artworkHeight);
+            // The artwork is a quarter-size centerpiece; nodes retain the full map coordinate area.
+            var imageSize = new Vector2D<float>(artworkWidth * 0.25f, artworkHeight * 0.25f);
+            _artwork?.Arrange(new Rectangle<float>(
+                artworkBounds.Origin + (artworkBounds.Size - imageSize) / 2f, imageSize));
             _connectors?.Arrange(Bounds);
             foreach (var (element, x, y) in _positions)
             {
                 var width = element.Width ?? 100f;
                 var height = element.Height ?? 30f;
                 element.Arrange(new Rectangle<float>(Bounds.Origin.X + Bounds.Size.X * (x + 1f) / 2f - width / 2f,
-                    Bounds.Origin.Y + Bounds.Size.Y * (y + 1f) / 2f - height / 2f, width, height));
+                    Bounds.Origin.Y + Bounds.Size.Y * (y + 1f) / 2f - (height - 30f) / 2f - 3f, width, height));
             }
         }
     }

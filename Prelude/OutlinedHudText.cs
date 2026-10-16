@@ -39,6 +39,7 @@ public sealed class OutlinedHudText : TextElement
             outline.HorizontalAlignment = HorizontalAlignment;
             outline.VerticalAlignment = VerticalAlignment;
             outline.SortOrder = SortOrder - 1;
+            outline.Measure(bounds.Size);
             outline.Arrange(new(bounds.Origin + Offsets[i], bounds.Size));
         }
     }

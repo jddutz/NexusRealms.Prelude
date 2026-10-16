@@ -793,14 +793,14 @@
       "weapons.sword_07.png": {
         "FilePath": "Textures/Weapons/sword_07.ktx2"
       },
+      "zodiac.Aquarius.png": {
+        "FilePath": "Textures/Zodiac/Aquarius.ktx2"
+      },
       "shadow": {
         "FilePath": "Textures/shadow.ktx2"
       },
       "square_shadow": {
         "FilePath": "Textures/square_shadow.ktx2"
-      },
-      "zodiac_signs": {
-        "FilePath": "Textures/zodiac_signs.ktx2"
       }
     }
   },

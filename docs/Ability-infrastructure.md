@@ -21,7 +21,7 @@ When adding an ability, define targeting and relationship explicitly: defaults p
 
 The existing primitives do not yet express relative row pushes, elevation, a sequence of per-turn Focus gains, reducing durations of already active statuses, or restrictions selected by Focus cost. Front/back-row-only selection also needs an explicit rule beyond the current general row targeting shape. These should receive shared primitives and tests when the relevant ability is defined; do not encode them as simulator-only callbacks.
 
-Aquarius layout coordinates and prerequisites are still placeholders. No ability balance, branch order, duration interpretation, or combat behavior is inferred from its prose description.
+Aquarius has twenty explicitly authored positions over the water-bearer artwork. Prerequisites remain unset until agreed. No ability balance, branch order, duration interpretation, or combat behavior is inferred from its prose description.
 
 ## Verification
 
@@ -32,3 +32,5 @@ Run `dotnet run --project Tests/ProgressionChecks`, `dotnet run --project Tests/
 `NexusRealms.Prelude.Rules` contains static reusable rules. `ProgressionRules` checks and applies learning; `CombatRules` validates authored actions, effects, costs, and status definitions; `HealingRules` applies capped restoration without resurrection; `VictoryRules` and `DefeatRules` build and evaluate encounter objectives. `ScenarioRules` binds authored scenarios to runtime objectives. The combat resolver and scheduler retain runtime orchestration and call these rules.
 
 Rules receive state and definitions explicitly. `GameState` is already a DI singleton per running game and owns its loadout and completed visits. Simulator runs construct independent states. `ProgressionScene` handles navigation after `ProgressionRules.CanContinue` succeeds; there is no progression session object.
+
+Artwork coordinates range from (-1,-1) at top-left to (1,1) at bottom-right. The icon center anchors to that position; captions sit below it. Only explicit Parent links draw connections. Direction does not affect placement. Parent belongs to AbilityNode; prerequisite depth is derived from that chain and is independent of visual coordinates.

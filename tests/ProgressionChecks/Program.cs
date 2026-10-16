@@ -9,6 +9,10 @@ var story = new Storyline();
 Check(ProgressionGraphs.All.Count == 12, "All Zodiac graphs must exist.");
 Check(story.Nodes.Values.OfType<ProgressNode>().Count(node => node.Id.Value?.Contains("_progression_", StringComparison.Ordinal) == true) == 20, "Twenty chapter progression visits required.");
 Check(Aquarius.Definitions.Length == 20 && Aquarius.Graph.Abilities.Length == 20, "Aquarius must author all twenty definitions and placements.");
+Check(Aquarius.Graph.Abilities.Select(node => (node.X, node.Y)).Distinct().Count() == 20,
+    "Aquarius stars must have twenty explicit distinct artwork positions.");
+Check(Aquarius.Graph.Abilities.All(node => node.X is >= -1 and <= 1 && node.Y is >= -1 and <= 1),
+    "Aquarius stars must lie within the artwork coordinate space.");
 foreach (var definition in Aquarius.Definitions)
 {
     Check(ReferenceEquals(story.Abilities[definition.Id], definition), "Registry must use the authored Aquarius record.");
