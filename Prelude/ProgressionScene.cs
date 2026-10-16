@@ -4,6 +4,7 @@ namespace NexusRealms.Prelude;
 public sealed class ProgressionScene : Scene
 {
     private const float AbilityElementScale = 0.5f;
+    private const float AbilityIconSize = 84f;
     private readonly List<(AbilityId Id, AbilityButton Button)> _buttons = [];
     private readonly TextElement _status;
     private readonly TextButton _continue;
@@ -65,7 +66,7 @@ public sealed class ProgressionScene : Scene
             var ability = story.Abilities[node.Id];
             var button = new AbilityButton(textStyles.GetOrCreate(BuiltInFonts.Bold, 13f))
             {
-                Width = 168f * AbilityElementScale, Height = 158f * AbilityElementScale, SortOrder = 10,
+                Width = 168f * AbilityElementScale, Height = AbilityIconSize + 30f, SortOrder = 10,
                 Padding = new(0f, 0f), RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
                 Action = _ =>
                 {
@@ -75,23 +76,29 @@ public sealed class ProgressionScene : Scene
             };
             button.Icon = new ImageElement
             {
-                Texture = iconBackdrop,
-                Width = 128f * AbilityElementScale, Height = 128f * AbilityElementScale, SizingMode = ImageSizingMode.Stretch,
+                Width = AbilityIconSize, Height = AbilityIconSize, SizingMode = ImageSizingMode.Stretch,
                 HorizontalAlignment = AlignHorizontal.Center,
                 VerticalAlignment = AlignVertical.Top,
                 Margins = new(0f, 0f, 3f, 0f),
             };
+            button.Icon.Children.Add(new ImageElement
+            {
+                Texture = iconBackdrop,
+                Width = 78f, Height = 78f, SizingMode = ImageSizingMode.Stretch,
+                HorizontalAlignment = AlignHorizontal.Center, VerticalAlignment = AlignVertical.Center,
+                SortOrder = 11, RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
+            });
             button.Frame = new ImageElement
             {
                 Texture = textures.GetOrCreate(new ContentId("ui.item_frame.png")),
-                Width = 128f * AbilityElementScale, Height = 128f * AbilityElementScale, SizingMode = ImageSizingMode.Stretch,
+                Width = AbilityIconSize, Height = AbilityIconSize, SizingMode = ImageSizingMode.Stretch,
                 SortOrder = 13, RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
             };
             button.Icon.Children.Add(button.Frame);
             button.Glyph = new ImageElement
             {
                 Texture = textures.GetOrCreate(ability.Icon),
-                Width = 128f * AbilityElementScale, Height = 128f * AbilityElementScale, SizingMode = ImageSizingMode.Fit,
+                Width = AbilityIconSize, Height = AbilityIconSize, SizingMode = ImageSizingMode.Fit,
                 HorizontalAlignment = AlignHorizontal.Center, VerticalAlignment = AlignVertical.Center,
                 SortOrder = 12, RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
             };
@@ -170,7 +177,7 @@ public sealed class ProgressionScene : Scene
 
         /// <summary>Gets or sets the ability glyph.</summary>
         public ImageElement Glyph { get; set; } = null!;
-        private float _slotSize = 128f;
+        private float _slotSize = AbilityIconSize;
 
         /// <summary>Updates the icon and button dimensions to match the available slot size.</summary>
         public void SetSlotSize(float size)
@@ -234,11 +241,9 @@ public sealed class ProgressionScene : Scene
         }
         public override Vector2D<float> Measure(Vector2D<float> constraint)
         {
-            var slotSize = Math.Clamp((constraint.Y - Margins.Top - Margins.Bottom) / 4f - 30f, 48f, 128f)
-                * AbilityElementScale;
             foreach (var (element, _, _) in _positions)
             {
-                if (element is AbilityButton ability) ability.SetSlotSize(slotSize);
+                if (element is AbilityButton ability) ability.SetSlotSize(AbilityIconSize);
                 element.Measure(new Vector2D<float>(element.Width ?? 100f, element.Height ?? 30f));
             }
             _connectors?.Measure(constraint);
