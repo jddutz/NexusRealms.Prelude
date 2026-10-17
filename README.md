@@ -50,8 +50,10 @@ strategy comparison beside its JSON and diagnostic log. Direct simulator
 invocations can use `--report <summary.md>`; `--output <results.json>` remains
 independently optional.
 
-Runtime zodiac selection and progression graph keys use `ZodiacSignId`;
-`ZodiacSign` holds descriptive character-creation data, including element and modality.
+Prelude starts with `ZodiacSelectionScene`, where the player selects one of twelve
+signs before entering the authored opening progression visit. Runtime zodiac
+selection and progression graph keys use `ZodiacSignId`; `ZodiacSign` holds
+descriptive character-creation data, including element and modality.
 
 Story graphs implementing `IStoryGraph` in `Prelude.Database.Chapter*` namespaces are discovered automatically; their characters and nodes are validated and registered by ID at runtime. The loaded story database uses immutable graph data and frozen lookup dictionaries, while chapter definitions remain authored in C#.
 

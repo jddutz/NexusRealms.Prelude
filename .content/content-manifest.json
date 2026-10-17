@@ -796,6 +796,39 @@
       "zodiac.Aquarius.png": {
         "FilePath": "Textures/Zodiac/Aquarius.ktx2"
       },
+      "zodiac.Aries.png": {
+        "FilePath": "Textures/Zodiac/Aries.ktx2"
+      },
+      "zodiac.Cancer.png": {
+        "FilePath": "Textures/Zodiac/Cancer.ktx2"
+      },
+      "zodiac.Capricorn.png": {
+        "FilePath": "Textures/Zodiac/Capricorn.ktx2"
+      },
+      "zodiac.Gemini.png": {
+        "FilePath": "Textures/Zodiac/Gemini.ktx2"
+      },
+      "zodiac.Leo.png": {
+        "FilePath": "Textures/Zodiac/Leo.ktx2"
+      },
+      "zodiac.Libra.png": {
+        "FilePath": "Textures/Zodiac/Libra.ktx2"
+      },
+      "zodiac.Pisces.png": {
+        "FilePath": "Textures/Zodiac/Pisces.ktx2"
+      },
+      "zodiac.Saggitarius.png": {
+        "FilePath": "Textures/Zodiac/Saggitarius.ktx2"
+      },
+      "zodiac.Scorpio.png": {
+        "FilePath": "Textures/Zodiac/Scorpio.ktx2"
+      },
+      "zodiac.Taurus.png": {
+        "FilePath": "Textures/Zodiac/Taurus.ktx2"
+      },
+      "zodiac.Virgo.png": {
+        "FilePath": "Textures/Zodiac/Virgo.ktx2"
+      },
       "shadow": {
         "FilePath": "Textures/shadow.ktx2"
       },

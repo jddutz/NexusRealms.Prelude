@@ -87,7 +87,9 @@ public sealed record Part1 : StoryGraph
         ],
     };
 
-    public static readonly StoryNode Intro = new CombatScenario
+    public static readonly NarrativeNode Intro = new() { };
+
+    public static readonly CombatScenario Battle1 = new()
     {
         Id = $"{SubgraphId}_{nameof(Intro)}",
         VictoryNode = $"{SubgraphId}_{nameof(Victory)}",
@@ -118,17 +120,37 @@ public sealed record Part1 : StoryGraph
     };
 
     /// <summary>Starts the story with ability selection before the intro encounter.</summary>
-    public static readonly StoryNode Begin = new ProgressNode
+    public static readonly ProgressNode Progress1 = new()
     {
-        Id = $"{SubgraphId}_{nameof(Begin)}",
+        Id = $"{SubgraphId}_{nameof(Progress1)}",
         Chapter = 1,
-        NextNode = Intro.Id,
+    };
+
+    /// <summary>Starts the story with ability selection before the intro encounter.</summary>
+    public static readonly ProgressNode Progress2 = new()
+    {
+        Id = $"{SubgraphId}_{nameof(Progress2)}",
+        Chapter = 1,
+    };
+
+    /// <summary>Starts the story with ability selection before the intro encounter.</summary>
+    public static readonly ProgressNode Progress3 = new()
+    {
+        Id = $"{SubgraphId}_{nameof(Progress3)}",
+        Chapter = 1,
+    };
+
+    /// <summary>Starts the story with ability selection before the intro encounter.</summary>
+    public static readonly ProgressNode Progress4 = new()
+    {
+        Id = $"{SubgraphId}_{nameof(Progress4)}",
+        Chapter = 1,
     };
 
     public static readonly OutcomeNode Victory = new()
     {
         Id = $"{SubgraphId}_Victory",
-        Title = "Victory",
+        NextNode = Progress1.Id,
     };
     public static readonly OutcomeNode Defeat = new()
     {
@@ -150,7 +172,7 @@ public sealed record Part1 : StoryGraph
 
         Nodes = [Begin, Intro, Victory, Defeat, Escape];
 
-        Start = Begin.Id;
+        Start = Intro.Id;
         End = StoryNodeId.Invalid;
     }
 }

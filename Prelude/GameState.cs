@@ -1,5 +1,6 @@
 namespace NexusRealms.Prelude;
 
+/// <summary>Holds the player's story progress and mutable runtime choices.</summary>
 public sealed class GameState
 {
     public GameState(StoryNodeId currentStoryNodeId) => CurrentStoryNodeId = currentStoryNodeId;
@@ -7,7 +8,7 @@ public sealed class GameState
     public StoryNodeId CurrentStoryNodeId { get; set; }
     public CombatOutcome? LastCombatOutcome { get; set; }
     /// <summary>The selected zodiac's stable identity, used to resolve its progression graph.</summary>
-    public ZodiacSignId Zodiac { get; init; } = ZodiacSignId.Aquarius;
+    public ZodiacSignId Zodiac { get; set; } = ZodiacSignId.Aquarius;
     public HashSet<StoryNodeId> CompletedProgressionNodes { get; } = [];
 
     /// <summary>Gets the player's portrait texture.</summary>
