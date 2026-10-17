@@ -123,20 +123,13 @@ public sealed record Part1 : StoryGraph
         Id = $"{SubgraphId}_{nameof(Intro)}",
         BackgroundImage = new("backgrounds.harbor_district_dockside_dusk.png"),
         ForegroundImage = new("characters.alley_thug_1.png"),
-        RichText = "Fog rolls across the harbor. [b]Three figures block the dockside path.[/b]\nOne reaches for a weapon.",
+        RichText =
+            "Fog rolls across the harbor. [b]Three figures block the dockside path.[/b]\nOne reaches for a weapon.",
         Choices =
         [
             new() { Text = "Confront the thugs", NextNode = Battle1.Id },
             new() { Text = "Leave the dockside", NextNode = $"{SubgraphId}_{nameof(Escape)}" },
         ],
-    };
-
-    /// <summary>Begins Chapter 1 with its opening progression visit.</summary>
-    public static readonly ProgressNode Begin = new()
-    {
-        Id = $"{SubgraphId}_{nameof(Begin)}",
-        Chapter = 1,
-        NextNode = Intro.Id,
     };
 
     /// <summary>Provides post-victory ability selection before the next encounter.</summary>
@@ -195,18 +188,9 @@ public sealed record Part1 : StoryGraph
     {
         Characters = [AlleywayThug1, AlleywayThug2, AlleywayThug3];
 
-        Nodes =
-        [
-            Begin,
-            Intro,
-            Battle1,
-            Progress1,
-            Victory,
-            Defeat,
-            Escape,
-        ];
+        Nodes = [Intro, Battle1, Progress1, Victory, Defeat, Escape];
 
-        Start = Begin.Id;
+        Start = Intro.Id;
         End = StoryNodeId.Invalid;
     }
 }

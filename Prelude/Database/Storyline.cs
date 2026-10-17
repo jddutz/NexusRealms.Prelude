@@ -25,7 +25,7 @@ public sealed class Storyline
     /// <summary>
     /// Gets the identifier of the first node in the story.
     /// </summary>
-    public StoryNodeId StartNodeId { get; } = Chapter1.Part1.Begin.Id;
+    public StoryNodeId StartNodeId { get; } = Chapter1.Part1.Intro.Id;
 
     /// <summary>
     /// Gets the identifier of the final node in the story.
@@ -128,7 +128,10 @@ public sealed class Storyline
 
                 foreach (var choice in narrative.Choices)
                 {
-                    if (string.IsNullOrWhiteSpace(choice.Text) || !nodes.ContainsKey(choice.NextNode))
+                    if (
+                        string.IsNullOrWhiteSpace(choice.Text)
+                        || !nodes.ContainsKey(choice.NextNode)
+                    )
                         throw new InvalidOperationException(
                             $"Narrative node '{node.Id}' has an invalid choice destination '{choice.NextNode}'."
                         );
