@@ -42,7 +42,7 @@ public sealed class AbilityActionRegistry
         new ScaffoldAbilityAction("ability:west-4"),
         new ScaffoldAbilityAction("ability:west-5"),
         new BewilderAction(),
-        new BellowAction(),
+        new WarCryAction(),
         new BluffAction(),
         new BloodlustAction(),
         new CleanseAction(),
