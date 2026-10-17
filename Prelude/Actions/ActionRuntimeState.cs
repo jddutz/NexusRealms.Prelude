@@ -24,12 +24,12 @@ public sealed class ActionCharacterState
     public CombatLoadout Loadout { get; }
     /// <summary>Authoritative non-player formation position.</summary>
     public FormationSlot? Position { get; internal set; }
-    /// <summary>Optional explicitly authored Health cap; null preserves current uncapped behavior.</summary>
-    public int? MaximumHealth { get; init; }
     /// <summary>Persistent equipment or innate rules; no implicit status-name mechanics exist.</summary>
     public IReadOnlyList<ActionEffect> Rules { get; init; } = [];
     /// <summary>Active runtime statuses in stable application order.</summary>
     public IReadOnlyList<ActiveStatus> Statuses => ActiveStatuses.AsReadOnly();
+    /// <summary>Elevation contributed by current statuses; greater than zero means airborne.</summary>
+    public long Elevation => ActiveStatuses.Sum(status => (long)status.Definition.Elevation);
     /// <summary>Resolver-owned status storage.</summary>
     internal List<ActiveStatus> ActiveStatuses { get; } = [];
     /// <summary>Completed recipient turns used by explicit turn-start expiration.</summary>
@@ -59,9 +59,11 @@ public sealed class ActiveStatus
     /// <summary>Explicit expiration and use policy.</summary>
     public StatusPersistence Persistence { get; }
     /// <summary>Exclusive absolute timeline expiration.</summary>
-    public float? ExpiresAt { get; }
+    public float? ExpiresAt { get; internal set; }
     /// <summary>Recipient turn-start count on which this instance expires.</summary>
-    public int? ExpiresOnTurnStart { get; }
+    public int? ExpiresOnTurnStart { get; internal set; }
     /// <summary>Remaining qualifying incoming actions, when bounded.</summary>
     public int? RemainingUses { get; internal set; }
+    /// <summary>Simulation-safe event identities owned by this status application.</summary>
+    internal ImmutableArray<long> FocusGainEvents { get; set; } = [];
 }

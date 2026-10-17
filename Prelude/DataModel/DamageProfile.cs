@@ -22,7 +22,7 @@ public sealed class DamageProfile
         Total = points.Values.Sum();
     }
 
-    /// <summary>Counts points in a category; General has no category.</summary>
+    /// <summary>Counts points in a category; Basic has no category.</summary>
     public int AmountIn(DamageCategory category)
     {
         if (!Enum.IsDefined(category)) throw new ArgumentOutOfRangeException(nameof(category));
@@ -31,13 +31,13 @@ public sealed class DamageProfile
 
     public static DamageProfile ForStrike(WeaponData? weapon)
     {
-        var bonus = new Dictionary<DamageType, int>(weapon?.Damage ?? new Dictionary<DamageType, int> { [DamageType.General] = 1 });
+        var bonus = new Dictionary<DamageType, int>(weapon?.Damage ?? new Dictionary<DamageType, int> { [DamageType.Basic] = 1 });
         if (weapon is { Sharp: true } && bonus.GetValueOrDefault(DamageType.Slashing) > 0)
             bonus[DamageType.Slashing] = checked(bonus[DamageType.Slashing] + 1);
         return new(bonus);
     }
 
-    /// <summary>Removes every point of the specified type, including General.</summary>
+    /// <summary>Removes every point of the specified type, including Basic.</summary>
     public DamageProfile Negate(DamageType type)
     {
         var remaining = new Dictionary<DamageType, int>(Typed);

@@ -1,206 +1,310 @@
 namespace NexusRealms.Prelude.Database.Progression;
 
-public class Aquarius
+public static class Aquarius
 {
     public static AbilityData Bewilder { get; } =
         new()
         {
             Id = new(nameof(Bewilder)),
+            ActionId = "ability:Bewilder",
             Name = "Bewilder",
-            Description = "Renders the target incapable of using Focus for one turn",
+            Description = "Renders the target incapable of using Focus for 2 turns",
             Icon = new("abilities.Bewilder.png"),
-            Actions = [],
+            TurnCost = 0.5f,
+            FocusCost = 0,
+            Targeting = new(
+                TargetShape.Single,
+                TargetRelationship.OpposingTeam,
+                TargetingFlags.Visual | TargetingFlags.Magical
+            ),
         };
 
     public static AbilityData Cleanse { get; } =
         new()
         {
             Id = new(nameof(Cleanse)),
+            ActionId = "ability:Cleanse",
             Name = "Cleanse",
-            Description = "Reduces the duration all negative status effect by 1 turn",
+            Description = "Reduces the duration of all negative status effects by 1 turn",
             Icon = new("abilities.Cleanse.png"),
-            Actions = [],
+            TurnCost = 1f,
+            FocusCost = 0,
+            Targeting = new(TargetShape.Self, Flags: TargetingFlags.Magical),
         };
 
     public static AbilityData CoolingBreeze { get; } =
         new()
         {
             Id = new(nameof(CoolingBreeze)),
+            ActionId = "ability:CoolingBreeze",
             Name = "Cooling Breeze",
-            Description = "Negates all Fire damage for 1 turn",
+            Description = "Negates all Fire damage for 3 turns",
             Icon = new("abilities.CoolingBreeze.png"),
-            Actions = [],
+            TurnCost = 1f,
+            FocusCost = 0,
+            Targeting = new(TargetShape.Self, Flags: TargetingFlags.Magical),
         };
 
     public static AbilityData Dowse { get; } =
         new()
         {
             Id = new(nameof(Dowse)),
+            ActionId = "ability:Dowse",
             Name = "Dowse",
             Description = "Gain 1 Focus instantly",
             Icon = new("abilities.Dowse.png"),
-            Actions = [],
+            TurnCost = 1f,
+            FocusCost = 0,
+            Targeting = new(TargetShape.Self, Flags: TargetingFlags.Magical),
         };
 
     public static AbilityData EyeOfTheStorm { get; } =
         new()
         {
             Id = new(nameof(EyeOfTheStorm)),
+            ActionId = "ability:EyeOfTheStorm",
             Name = "Eye of the Storm",
             Description = "Replace normal Focus gain with 1, 1, 2, 3, 5, 8 over six turns",
             Icon = new("abilities.EyeOfTheStorm.png"),
-            Actions = [],
+            TurnCost = 1f,
+            FocusCost = 0,
+            Targeting = new(TargetShape.Self, Flags: TargetingFlags.Magical),
         };
 
     public static AbilityData Fog { get; } =
         new()
         {
             Id = new(nameof(Fog)),
+            ActionId = "ability:Fog",
             Name = "Fog",
-            Description = "Applies Blind to all enemies",
+            Description = "Applies Blind to all enemies for 2 turns",
             Icon = new("abilities.Fog.png"),
-            Actions = [],
+            TurnCost = 1f,
+            FocusCost = 0,
+            Targeting = new(
+                TargetShape.All,
+                TargetRelationship.OpposingTeam,
+                TargetingFlags.Magical
+            ),
         };
 
     public static AbilityData Gale { get; } =
         new()
         {
             Id = new(nameof(Gale)),
+            ActionId = "ability:Gale",
             Name = "Gale",
             Description = "Push all enemies back one row",
             Icon = new("abilities.Gale.png"),
-            Actions = [],
+            TurnCost = 1f,
+            FocusCost = 0,
+            Targeting = new(
+                TargetShape.Cone,
+                TargetRelationship.OpposingTeam,
+                Flags: TargetingFlags.Magical
+            ),
         };
 
     public static AbilityData Headwind { get; } =
         new()
         {
             Id = new(nameof(Headwind)),
+            ActionId = "ability:Headwind",
             Name = "Headwind",
-            Description = "Slow the target enemy for 1 turn",
+            Description = "Multiply the target enemy's Turn costs by 1.5 for 3 turns",
             Icon = new("abilities.Headwind.png"),
-            Actions = [],
+            Targeting = new(
+                TargetShape.Single,
+                TargetRelationship.OpposingTeam,
+                TargetingFlags.Visual | TargetingFlags.Magical
+            ),
         };
 
     public static AbilityData Heal { get; } =
         new()
         {
             Id = new(nameof(Heal)),
+            ActionId = "ability:Heal",
             Name = "Heal",
             Description = "Restore 3 Health",
             Icon = new("abilities.Heal.png"),
-            Actions = [],
+            TurnCost = 1f,
+            FocusCost = 0,
+            Targeting = new(TargetShape.Self, Flags: TargetingFlags.Magical),
         };
 
     public static AbilityData Hurricane { get; } =
         new()
         {
             Id = new(nameof(Hurricane)),
+            ActionId = "ability:Hurricane",
             Name = "Hurricane",
-            Description = "Deal 1 Crushing and 1 Electrical damage to all enemies",
+            Description = "Deal 2 Basic and 1 Electrical damage to all enemies",
             Icon = new("abilities.Hurricane.png"),
-            Actions = [],
+            TurnCost = 1f,
+            FocusCost = 0,
+            Targeting = new(
+                TargetShape.All,
+                TargetRelationship.OpposingTeam,
+                Flags: TargetingFlags.Magical
+            ),
         };
 
     public static AbilityData Levitate { get; } =
         new()
         {
             Id = new(nameof(Levitate)),
+            ActionId = "ability:Levitate",
             Name = "Levitate",
-            Description = "Float above the enemy out of melee range (gain +1 Elevation)",
+            Description = "Gain +1 Elevation for one turn per Focus remaining after paying 1 Focus",
             Icon = new("abilities.Levitate.png"),
-            Actions = [],
+            TurnCost = 1f,
+            FocusCost = 1,
+            MinimumFocus = 2,
+            Targeting = new(TargetShape.Self, Flags: TargetingFlags.Magical),
         };
 
     public static AbilityData PressureShield { get; } =
         new()
         {
             Id = new(nameof(PressureShield)),
+            ActionId = "ability:PressureShield",
             Name = "Pressure Shield",
             Description = "Reduces incoming physical damage by 1",
             Icon = new("abilities.PressureShield.png"),
-            Actions = [],
+            TurnCost = 1f,
+            FocusCost = 1,
+            MinimumFocus = 2,
+            Targeting = new(TargetShape.Self, Flags: TargetingFlags.Magical),
         };
 
     public static AbilityData Purge { get; } =
         new()
         {
             Id = new(nameof(Purge)),
+            ActionId = "ability:Purge",
             Name = "Purge",
-            Description = "Removes all status positive and negative status effects",
+            Description = "Removes all positive and negative status effects",
             Icon = new("abilities.Purge.png"),
-            Actions = [],
+            TurnCost = 1f,
+            FocusCost = 0,
+            Targeting = new(
+                TargetShape.Single,
+                TargetRelationship.Any,
+                Flags: TargetingFlags.Magical
+            ),
         };
 
     public static AbilityData Sandstorm { get; } =
         new()
         {
             Id = new(nameof(Sandstorm)),
+            ActionId = "ability:Sandstorm",
             Name = "Sandstorm",
-            Description = "Inflicts 1 Slashing damage and Blind to all enemies",
+            Description = "Inflicts 1 Slashing damage and Blind for 2 turns to all enemies",
             Icon = new("abilities.Sandstorm.png"),
-            Actions = [],
+            TurnCost = 1f,
+            FocusCost = 0,
+            Targeting = new(
+                TargetShape.Cone,
+                TargetRelationship.OpposingTeam,
+                TargetingFlags.Magical
+            ),
         };
 
     public static AbilityData Silence { get; } =
         new()
         {
             Id = new(nameof(Silence)),
+            ActionId = "ability:Silence",
             Name = "Silence",
-            Description = "Prevents the target enemy from using magic for 1 turn",
+            Description = "Prevents the target enemy from using magical abilities for 2 turns",
             Icon = new("abilities.Silence.png"),
-            Actions = [],
+            TurnCost = 1f,
+            FocusCost = 0,
+            Targeting = new(
+                TargetShape.Single,
+                TargetRelationship.OpposingTeam,
+                TargetingFlags.Visual | TargetingFlags.Magical
+            ),
         };
 
     public static AbilityData SoundBarrier { get; } =
         new()
         {
             Id = new(nameof(SoundBarrier)),
+            ActionId = "ability:SoundBarrier",
             Name = "Sound Barrier",
             Description =
-                "Prevent all enemies on the back rank from using magical abilities for one turn",
+                "Prevents all enemies in the back row from using magical abilities for 2 turns",
             Icon = new("abilities.SoundBarrier.png"),
-            Actions = [],
+            TurnCost = 1f,
+            FocusCost = 0,
+            Targeting = new(
+                TargetShape.All,
+                TargetRelationship.OpposingTeam,
+                TargetingFlags.Magical
+            ),
         };
 
     public static AbilityData Tailwind { get; } =
         new()
         {
             Id = new(nameof(Tailwind)),
+            ActionId = "ability:Tailwind",
             Name = "Tailwind",
             Description = "Push all enemies ahead one row",
             Icon = new("abilities.Tailwind.png"),
-            Actions = [],
+            TurnCost = 1f,
+            FocusCost = 0,
+            Targeting = new(
+                TargetShape.All,
+                TargetRelationship.OpposingTeam,
+                Flags: TargetingFlags.Magical
+            ),
         };
 
     public static AbilityData Twister { get; } =
         new()
         {
             Id = new(nameof(Twister)),
+            ActionId = "ability:Twister",
             Name = "Twister",
             Description = "Deal 1 Crushing damage and Delay all enemies by 0.5 turns",
             Icon = new("abilities.Twister.png"),
-            Actions = [],
+            TurnCost = 1f,
+            FocusCost = 0,
+            Targeting = new(
+                TargetShape.All,
+                TargetRelationship.OpposingTeam,
+                TargetingFlags.Magical
+            ),
         };
 
     public static AbilityData Whirlwind { get; } =
         new()
         {
             Id = new(nameof(Whirlwind)),
+            ActionId = "ability:Whirlwind",
             Name = "Whirlwind",
             Description = "Attack all enemies in the front row",
             Icon = new("abilities.Whirlwind.png"),
-            Actions = [],
+            TurnCost = 1.5f,
+            FocusCost = 3,
+            Targeting = new(TargetShape.All, TargetRelationship.OpposingTeam),
         };
 
     public static AbilityData WindShear { get; } =
         new()
         {
             Id = new(nameof(WindShear)),
+            ActionId = "ability:WindShear",
             Name = "Wind Shear",
-            Description = "Slow all enemies in the front row for 1 turn",
+            Description = "Multiply Turn costs by 1.5 for all enemies in the front row for 3 turns",
             Icon = new("abilities.WindShear.png"),
-            Actions = [],
+            TurnCost = 1f,
+            FocusCost = 0,
+            Targeting = new(TargetShape.All, TargetRelationship.OpposingTeam, TargetingFlags.Magical),
         };
 
     /// <summary>Authored ability definitions, independent of progression placement.</summary>

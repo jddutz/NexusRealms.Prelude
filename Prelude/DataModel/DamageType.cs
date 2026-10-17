@@ -6,7 +6,7 @@ public enum DamageType
     Slashing,
     Piercing,
     Crushing,
-    General,
+    Basic,
     Fire,
     Ice,
     Lightning,
@@ -19,7 +19,7 @@ public static class DamageTypeExtensions
     public static DamageCategory? GetCategory(this DamageType type) => type switch
     {
         DamageType.Slashing or DamageType.Piercing or DamageType.Crushing => DamageCategory.Physical,
-        DamageType.General => null,
+        DamageType.Basic => null,
         DamageType.Fire or DamageType.Ice or DamageType.Lightning => DamageCategory.Elemental,
         DamageType.Poison => DamageCategory.Physical,
         _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown damage type."),

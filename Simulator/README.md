@@ -1,5 +1,8 @@
 # Combat simulation
 
+Simulation is an on-demand workflow, available through `$nexusrealms-simulate`.
+It is not a blanket requirement for ordinary code or ability changes.
+
 From the repository root:
 
 ```powershell
@@ -28,8 +31,8 @@ By default, the CLI runs each player strategy once per progression graph:
 all abilities in the selected graph, plus any explicitly configured `learnedAbilities`.
 Normal equipment and resource requirements still apply; placeholder abilities
 without authored actions do not become executable actions.
-For routine scenario validation, omit `-Runs` and `--runs` to run this single
-complete matrix. Repeated cycles with additional seeds are only needed for an
+For a requested full scenario matrix, omit `-Runs` and `--runs` to run one
+complete cycle. Repeated cycles with additional seeds are only needed for an
 explicit investigation of randomness.
 The `Simulator` launch profile uses the same default. In VS Code, select `Debug:Simulator` to launch it.
 

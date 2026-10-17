@@ -23,6 +23,7 @@ public sealed record CharacterData
     /// <summary>Gets the character's turn-order portrait texture.</summary>
     public required ContentId Portrait { get; init; }
 
+    /// <summary>Starting Health, not a maximum; healing can increase it without a gameplay cap.</summary>
     public int Health { get; init; } = 5;
     public int Focus { get; init; } = 2;
     public StatusEffectId[] StatusEffects { get; init; } = [];

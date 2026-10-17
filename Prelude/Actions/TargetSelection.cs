@@ -6,20 +6,34 @@ namespace NexusRealms.Prelude.Actions;
 /// <summary>Runtime evaluation of data-only targeting profiles.</summary>
 public static class TargetSelection
 {
+    /// <summary>Dispatches ability targeting to its runtime implementation; legacy actions use the profile.</summary>
+    public static ImmutableArray<string> SelectTargets(this ActionData action, CombatActionResolver runtime, string sourceId, string? targetId)
+        => (action is AbilityAction abilityAction ? abilityAction.SelectTargets(runtime, sourceId, targetId)
+            : action.Targeting.Select(runtime, sourceId, targetId))
+            .Where(id => runtime.CanTarget(sourceId, action, id)).ToImmutableArray();
+
     /// <summary>Selects living recipients with explicit team and formation semantics.</summary>
     public static ImmutableArray<string> Select(this TargetingProfile profile, CombatActionResolver runtime, string sourceId, string? targetId)
     {
-        if (!Enum.IsDefined(profile.Shape) || !Enum.IsDefined(profile.Relationship)) throw new ArgumentException("Unsupported targeting definition.");
+        if (!Enum.IsDefined(profile.Shape) || !Enum.IsDefined(profile.Relationship)
+            || (profile.Flags & ~(TargetingFlags.Visual | TargetingFlags.Magical)) != 0
+            || (profile.Options & ~TargetingOptions.AllTeams) != 0) throw new ArgumentException("Unsupported targeting definition.");
         var source = runtime.Characters[sourceId];
         if (profile.Shape == TargetShape.Self) return [sourceId];
-        if (profile.Shape != TargetShape.All && (targetId is null || !runtime.Characters.TryGetValue(targetId, out var target) || target.Health.Health == 0)) return [];
+        if (profile.Shape is not (TargetShape.All or TargetShape.Cone)
+            && (targetId is null || !runtime.Characters.TryGetValue(targetId, out var target) || target.Health.Health == 0)) return [];
         var anchor = targetId is not null && runtime.Characters.TryGetValue(targetId, out var selected) ? selected.Position : null;
         return runtime.Characters.Values.Where(character => character.Health.Health > 0
-            && (profile.Relationship == TargetRelationship.Any || (character.Team == source.Team) == (profile.Relationship == TargetRelationship.SameTeam))
+            && (profile.Options.HasFlag(TargetingOptions.AllTeams)
+                || profile.Relationship == TargetRelationship.Any
+                || (character.Team == source.Team) == (profile.Relationship == TargetRelationship.SameTeam))
             && (profile.Shape switch
             {
                 TargetShape.Single => character.Id == targetId,
                 TargetShape.All => true,
+                TargetShape.Cone => character.Position is FormationSlot.FrontCenter
+                    or FormationSlot.MiddleCenterLeft or FormationSlot.MiddleCenterRight
+                    or FormationSlot.BackLeft or FormationSlot.BackCenter or FormationSlot.BackRight,
                 TargetShape.Row => anchor is { } row && character.Position is { } position && Coordinates(position).Row == Coordinates(row).Row,
                 TargetShape.Column => anchor is { } column && character.Position is { } position && Coordinates(position).Column == Coordinates(column).Column,
                 TargetShape.Adjacent => anchor is { } adjacent && character.Position is { } position
@@ -29,7 +43,7 @@ public static class TargetSelection
     }
 
     /// <summary>Explicit staggered 3-4-3 coordinates for column and Manhattan-adjacent targeting.</summary>
-    private static (int Row, int Column) Coordinates(FormationSlot slot) => slot switch
+    internal static (int Row, int Column) Coordinates(FormationSlot slot) => slot switch
     {
         FormationSlot.BackLeft => (0, 0), FormationSlot.BackCenter => (0, 2), FormationSlot.BackRight => (0, 4),
         FormationSlot.MiddleLeft => (1, 0), FormationSlot.MiddleCenterLeft => (1, 1), FormationSlot.MiddleCenterRight => (1, 3), FormationSlot.MiddleRight => (1, 4),
@@ -37,4 +51,3 @@ public static class TargetSelection
         _ => throw new ArgumentOutOfRangeException(nameof(slot)),
     };
 }
-

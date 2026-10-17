@@ -50,9 +50,9 @@ Use verbs as operation names. Use nouns for parameters and state. Code may use `
 
 ### Damage and Restore
 
-Damage retains its specific Health meaning. Focus loss uses Consume, and Focus recovery uses Grant. Neither is automatically subject to damage resistance. General damage has no specialized damage type; implementation may retain the existing representation for this case.
+Damage retains its specific Health meaning. Focus loss uses Consume, and Focus recovery uses Grant. Neither is automatically subject to damage resistance. Basic damage has no specialized damage type; implementation may retain the existing representation for this case.
 
-Resolve each typed damage amount independently. Damage cannot reduce Health below zero. Restore cannot reduce Health and does not remove Status Effects. If the runtime defines maximum Health, Restore stops at that maximum. Introducing a maximum, resurrection, or removal of an incapacitated state requires an explicit rule; Restore alone does not guarantee those behaviors.
+Resolve each typed damage amount independently. Damage cannot reduce Health below zero. Restore cannot reduce Health and does not remove Status Effects. Health has no gameplay maximum; starting Health is not a cap. Restore does not resurrect or remove an incapacitated state.
 
 Record attempted damage, resolved damage, and actual Health loss separately where they differ. An attack against one remaining Health may resolve three damage but consume only one Health.
 
@@ -76,6 +76,8 @@ Filters may select a source, damage type, action classification, or an explicit 
 
 Move changes formation state, rather than merely the rendered sprite position. Validate destinations using formation occupancy and placement rules. Proposed default: an invalid or occupied destination causes no movement. Swapping, pushing occupants, or choosing another destination must be explicitly authored; the resolver must not invent a fallback.
 
+The explicit ShiftRowEffect used by Gale and Tailwind selects the nearest free slot in the adjacent row, with deterministic formation-coordinate and slot-identity tie breaking. Resolve the leading row first to permit followers to use vacated slots. Boundary and full-row recipients remain in place; each recipient shifts at most once. This behavior is specific to the relative-row operation; absolute MoveEffect still rejects an occupied destination.
+
 Move cannot target the player. It does not inherently change Turn, cancel actions, or inflict damage. Subsequent targeting uses the updated formation.
 
 ### Restrict
@@ -90,7 +92,7 @@ Modify changes a declared numerical field, such as Damage amount, Restore amount
 
 Each field must explicitly support modification. Damage type, source identity, StatusEffectId, and action identity are not numerical fields. Negate and Evade are categorical operations and cannot be strengthened by increasing an amount.
 
-Proposed initial numerical operation: signed additive adjustment only. Sum qualifying adjustments and clamp to the field's permitted range. This supplies increases and decreases without introducing multiplier order or rounding ambiguity. Multiplication, replacement, and priority overrides require a later explicit extension. Modify does not convert Row targeting into All targeting; numerical radius or target count can change only where supported.
+Proposed initial numerical operation: signed additive adjustment only. Sum qualifying adjustments and clamp to the field's permitted range. This supplies increases and decreases without introducing multiplier order or rounding ambiguity. Turn cost has an explicit extension: persistent `TurnCostMultiplierEffect` rules multiply together at commitment. Other fields do not support multiplication, replacement, or priority overrides. Modify does not convert Row targeting into All targeting; numerical radius or target count can change only where supported.
 
 ### Consume, Grant, Remove, and Transfer
 
@@ -108,7 +110,7 @@ Apply attaches a StatusEffectId and records runtime information needed by that s
 
 Every status definition declares duplicate handling: reject, refresh, replace, or stack. Reject authoring that omits this rule when duplicates are possible. Duration must name its clock and boundary, such as expiration at the start of the recipient's next Turn. Avoid an ambiguous duration of “two turns.” A next-hit rule must declare which qualifying event consumes its use, including whether an evaded action counts.
 
-Dispel removes statuses selected by identifier or explicit metadata filters. If a limit selects fewer than all matches, declare a stable selection order. Removing a status ends its future influence but does not reverse previous Damage, Restore, or movement. Natural expiration is lifecycle processing and does not require a character to perform a Dispel action.
+Dispel removes statuses selected by identifier or explicit metadata filters. An optional whole-turn DurationReduction shortens matching timed statuses instead of removing them outright; exhausted durations expire immediately, while permanent and use-only lifetimes remain unchanged. Cleanse selects the negative tag and reduces duration by one turn. If a limit selects fewer than all matches, declare a stable selection order. Removing a status ends its future influence but does not reverse previous Damage, Restore, or movement. Natural expiration is lifecycle processing and does not require a character to perform a Dispel action.
 
 ## Action composition and persistent behavior
 
@@ -138,7 +140,7 @@ The same starting state and committed action must produce the same outcome and f
 
 | Case | Required result |
 |---|---|
-| Incoming 1 General + 2 Slashing + 1 Fire; Resist Slashing by 1 | Three damage before Health clamping. |
+| Incoming 1 Basic + 2 Slashing + 1 Fire; Resist Slashing by 1 | Three damage before Health clamping. |
 | Same profile; Negate Fire | Three damage; non-damage effects still resolve. |
 | Damage + Delay + Apply against a recipient with qualifying Evade | None of those effects applies to that recipient; committed costs remain paid. |
 | Area action; one recipient evades | Remaining recipients resolve the complete action normally. |

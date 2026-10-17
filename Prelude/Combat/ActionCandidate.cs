@@ -41,7 +41,7 @@ public static class CandidateGeneration
             if (action is null) { rejected?.Add(new(definition.Id, "Owned weapon or required ammunition unavailable.")); continue; }
             // Reload is an item-layout transaction below, with every ammunition choice explicit.
             if (legacy && action.Reload) continue;
-            foreach (var target in action.Reload || action.Targeting.Shape is TargetShape.Self or TargetShape.All ? new string?[] { null } : targets)
+            foreach (var target in action.Reload || action.Targeting.Shape is TargetShape.Self or TargetShape.All or TargetShape.Cone ? new string?[] { null } : targets)
                 Add(new(action, target) { Kind = legacy ? CandidateKind.LegacyWeapon : CandidateKind.Capability, ItemId = action.ItemId?.Value });
         }
         foreach (var command in loadout.Commands.Where(command => !loadout.Actions.ContainsKey(command.Id.Value))
@@ -50,10 +50,11 @@ public static class CandidateGeneration
             if (command == CombatLoadout.Throw) continue;
             if (command.Resolve is not null) throw new InvalidOperationException($"AI command '{command.Id}' has an opaque callback; author typed effects instead.");
             var damage = command.Hand is { } hand ? DamageProfile.ForStrike(loadout.HeldItem(hand)?.Weapon) : new DamageProfile();
-            var cost = command == CombatLoadout.Wait ? resolver.Combat.WaitCost(actorId) : loadout.CommandCost(command);
+            var cost = command == CombatLoadout.Wait ? resolver.Combat.WaitCost(actorId) : loadout.BaseCommandCost(command);
             if (cost is null) continue;
             var action = new ActionData { Id = command.Id.Value, Damage = damage, TurnCost = cost.Value,
                 Classifications = command.Hand is not null ? ["weapon"] : command.Classifications.IsDefault ? [] : command.Classifications,
+                Targeting = new(Flags: command.TargetingFlags),
                 Costs = [new(new ResourceSubject(ResourceKind.Focus), command.FocusCost)] };
             foreach (var target in command.RequiresTarget ? targets : new string?[] { null })
                 Add(new(action, target) { Kind = CandidateKind.Command, ItemId = command.Hand is { } h ? loadout.HeldItem(h)?.Id.Value : null });
@@ -61,7 +62,7 @@ public static class CandidateGeneration
         foreach (var option in loadout.ThrowOptions().OrderBy(option => option.Item.Id.Value, StringComparer.Ordinal))
             foreach (var target in targets)
                 Add(new(new ActionData { Id = "Throw", Damage = option.Item.ThrowDamage!, TurnCost = CombatLoadout.Throw.TurnCost,
-                    Classifications = ["weapon"], Costs = [new(new ResourceSubject(ResourceKind.Focus), CombatLoadout.Throw.FocusCost)] }, target)
+                    Classifications = ["weapon"], Targeting = new(Flags: CombatLoadout.Throw.TargetingFlags), Costs = [new(new ResourceSubject(ResourceKind.Focus), CombatLoadout.Throw.FocusCost)] }, target)
                     { Kind = CandidateKind.Throw, ItemId = option.Item.Id.Value });
         if (actor.IsPlayer && resolver.AllowEscape && !resolver.Combat.IsEscaping)
             Add(new(new ActionData { Id = "escape", TurnCost = 1f, Damage = new DamageProfile() }, null) { Kind = CandidateKind.Escape });
@@ -96,7 +97,7 @@ public static class CandidateGeneration
             .Select(character => character.Position is { } slot ? Row(slot) : CombatRow.Front).ToHashSet();
         return new(resolver.Combat.Contains(targetId), resolver.Combat.IsAlive(targetId),
             target.Team != actor.Team ? CombatTeam.Enemies : CombatTeam.PlayerAndAllies,
-            target.Position is { } position ? Row(position) : CombatRow.Front, occupied.Contains(CombatRow.Front), occupied.Contains(CombatRow.Middle));
+            target.Position is { } position ? Row(position) : CombatRow.Front, occupied.Contains(CombatRow.Front), occupied.Contains(CombatRow.Middle), target.Elevation > 0);
     }
     private static CombatRow Row(FormationSlot slot) => slot >= FormationSlot.FrontLeft ? CombatRow.Front : slot >= FormationSlot.MiddleLeft ? CombatRow.Middle : CombatRow.Back;
 }

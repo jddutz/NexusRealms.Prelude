@@ -13,7 +13,7 @@ public sealed class Combatant(string id, bool playerControlled, float turn = 0f,
     public float Turn { get; internal set; } = turn;
 }
 
-public sealed record CombatAction(float TurnCost, Action<CombatSystem, Combatant> Resolve);
+public sealed record CombatAction(float TurnCost, Action<CombatSystem, Combatant> Resolve, bool ApplyTurnCostModifiers = true);
 
 /// <summary>Resolves occurrences until input is needed. Effects share the combatant timeline.</summary>
 public sealed class CombatSystem
@@ -24,6 +24,8 @@ public sealed class CombatSystem
     private readonly HashSet<long> _simulationEvents = [];
     internal NexusRealms.Prelude.Actions.CombatActionResolver? Resolver { get; set; }
     internal bool SuppressPump { get; set; }
+    /// <summary>Effective cost fixed for the action currently resolving, before any status mutations.</summary>
+    internal float? CommittedTurnCost { get; private set; }
     /// <summary>After effects, outcome checking, and rescheduling; before the next occurrence.</summary>
     public event Action<string>? ActionCommitted;
     public event Action<string>? ActionCommitting;
@@ -274,17 +276,20 @@ public sealed class CombatSystem
         ArgumentNullException.ThrowIfNull(action.Resolve);
         CombatTimeline.Validate(action.TurnCost);
         var actor = ActiveCombatant ?? throw new InvalidOperationException("No active combatant.");
-        var next = actor.Turn + action.TurnCost;
-        if (action.TurnCost <= 0f || !float.IsFinite(next) || next <= actor.Turn)
+        var turnCost = action.ApplyTurnCostModifiers && Resolver is not null
+            ? Resolver.EffectiveTurnCost(actor.Id, action.TurnCost) : action.TurnCost;
+        var next = actor.Turn + turnCost;
+        if (turnCost <= 0f || !float.IsFinite(next) || next <= actor.Turn)
             throw new ArgumentOutOfRangeException(nameof(action), "Cost must advance the float timeline.");
         _resolving = true;
+        CommittedTurnCost = turnCost;
         try { ActionCommitting?.Invoke(actor.Id); action.Resolve(this, actor); }
-        finally { _resolving = false; }
+        finally { _resolving = false; CommittedTurnCost = null; }
         ActiveCombatant = null;
         EvaluateOutcome();
         if (!HasEnded && _combatants.ContainsKey(actor.Id))
         {
-            next = actor.Turn + action.TurnCost;
+            next = actor.Turn + turnCost;
             CombatTimeline.Validate(next);
             if (next <= actor.Turn) throw new InvalidOperationException("Cost no longer advances the timeline.");
             actor.Turn = next;

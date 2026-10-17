@@ -6,9 +6,9 @@ namespace NexusRealms.Prelude.Combat;
 public sealed record CommandDefinition(ActionId Id, string Name, float TurnCost,
     ItemId? RequiredItem = null, string? RequiredSlot = null, bool Learned = true,
     bool Passive = false, bool RequiresTarget = true, int FocusCost = 0, Action<CombatSystem, Combatant>? Resolve = null, Func<CommandTarget, bool>? TargetRule = null, string? Icon = null, string? IconRegion = null, StrikeHand? Hand = null,
-    ImmutableArray<string> Classifications = default);
+    ImmutableArray<string> Classifications = default, TargetingFlags TargetingFlags = TargetingFlags.None);
 public enum StrikeHand { Left, Right }
-/// <summary>One hit using the held weapon's damage, or one General point when unarmed.</summary>
+/// <summary>One hit using the held weapon's damage, or one Basic point when unarmed.</summary>
 public sealed record HandStrike(StrikeHand Hand, CarriedItem? Item)
 {
     public DamageProfile DamagePoints { get; } = DamageProfile.ForStrike(Item?.Weapon);
@@ -16,7 +16,7 @@ public sealed record HandStrike(StrikeHand Hand, CarriedItem? Item)
     public CarriedItem? Ammunition { get; init; }
 }
 public sealed record CommandTarget(bool Exists, bool Alive, CombatTeam Team, CombatRow Row,
-    bool FrontOccupied = true, bool MiddleOccupied = true);
+    bool FrontOccupied = true, bool MiddleOccupied = true, bool Elevated = false);
 /// <summary>Gameplay-owned command validation and transactional equipment state.</summary>
 public sealed partial class CombatLoadout
 {
@@ -36,18 +36,25 @@ public sealed partial class CombatLoadout
     }
 
     public static readonly CommandDefinition LeftHandStrike = new("LeftHandStrike", "Left Hand Attack", 1f,
-        Icon: "actions.fist.png", Hand: StrikeHand.Left);
+        Icon: "actions.fist.png", Hand: StrikeHand.Left, TargetingFlags: TargetingFlags.Visual);
     public static readonly CommandDefinition RightHandStrike = new("RightHandStrike", "Right Hand Attack", 1f,
-        Icon: "actions.fist.png", Hand: StrikeHand.Right);
+        Icon: "actions.fist.png", Hand: StrikeHand.Right, TargetingFlags: TargetingFlags.Visual);
     public static readonly CommandDefinition Throw = new("Throw", "Throw", RightHandStrike.TurnCost,
-        Icon: "actions.throw.png", TargetRule: target => target.Team == CombatTeam.Enemies && Enum.IsDefined(target.Row));
+        Icon: "actions.throw.png", TargetingFlags: TargetingFlags.Visual, TargetRule: target => target.Team == CombatTeam.Enemies && Enum.IsDefined(target.Row));
     private readonly Dictionary<string, int> _shots = [];
     private readonly Dictionary<string, CarriedItem> _loadedAmmunition = [];
     public int ShotsRemaining(CarriedItem item) => _shots.GetValueOrDefault(item.Id.Value, item.Weapon?.Shots ?? 0);
     public bool HasShootingHands(StrikeHand hand) => HeldItem(hand) is not { Weapon.TwoHanded: true } item
         || HeldItem(hand == StrikeHand.Left ? StrikeHand.Right : StrikeHand.Left)?.Id == item.Id;
-    public float CommandCost(CommandDefinition action) => action.Hand is { } hand
+    /// <summary>Unmodified command cost, supplied to the scheduler exactly once.</summary>
+    public float BaseCommandCost(CommandDefinition action) => action.Hand is { } hand
         ? HeldItem(hand)?.Weapon?.AttackSpeed ?? action.TurnCost : action.TurnCost;
+    /// <summary>Live cost for presentation and availability checks.</summary>
+    public float CommandCost(CommandDefinition action) => PreviewTurnCost(BaseCommandCost(action));
+    /// <summary>Previews a transaction cost without applying modifiers to a free transaction.</summary>
+    public float PreviewTurnCost(float baseCost) => baseCost == 0 ? 0 : AdjustTurnCost?.Invoke(baseCost) ?? baseCost;
+    /// <summary>Resolver-bound cost preview; copied loadouts are rebound to their own simulation.</summary>
+    internal Func<float, float>? AdjustTurnCost { get; set; }
 
     // TurnCost is unused for Wait: its actual cost is calculated from the live timeline at confirmation.
     public static readonly CommandDefinition Wait = new("wait", "Wait", 0.01f,
@@ -162,7 +169,9 @@ public sealed partial class CombatLoadout
         if (action.Hand is { } hand)
         {
             if (target.Team != CombatTeam.Enemies || !Enum.IsDefined(target.Row)) return false;
-            var range = HeldItem(hand)?.Weapon?.Range ?? WeaponRange.Short;
+            var weapon = HeldItem(hand)?.Weapon;
+            var range = weapon?.Range ?? WeaponRange.Short;
+            if (target.Elevated && (weapon?.IsMelee ?? true) && range == WeaponRange.Short) return false;
             return range switch
             {
                 WeaponRange.Short => target.Row == (target.FrontOccupied ? CombatRow.Front
@@ -209,7 +218,7 @@ public sealed partial class CombatLoadout
         _resolving = true;
         try
         {
-            Submit(combat, new(a == Wait ? combat.WaitCost(actorId)!.Value : CommandCost(a), (_, _) =>
+            Submit(combat, new(a == Wait ? combat.WaitCost(actorId)!.Value : BaseCommandCost(a), (_, _) =>
             {
                 Focus -= a.FocusCost;
                 if (a.Hand is { } hand)
@@ -226,7 +235,7 @@ public sealed partial class CombatLoadout
                 }
                 a.Resolve?.Invoke(combat, combat.ActiveCombatant!);
                 resolve();
-            }));
+            }, ApplyTurnCostModifiers: a != Wait));
             return true;
         }
         finally { _resolving = false; }

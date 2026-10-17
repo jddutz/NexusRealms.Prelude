@@ -47,35 +47,44 @@ public sealed partial class CombatLoadout
     /// <summary>Currently owned action capabilities.</summary>
     public Dictionary<string, ActionData> Actions { get; } = new(StringComparer.Ordinal);
 
-    /// <summary>Learns one progression node and registers the actions it unlocks.</summary>
-    public void Learn(AbilityData ability)
+    /// <summary>Learns one progression node and registers its single referenced action.</summary>
+    public void Learn(AbilityData ability, AbilityActionRegistry? registry = null)
     {
         ArgumentNullException.ThrowIfNull(ability);
         if (LearnedAbilities.Contains(ability.Id)) return;
-        var identities = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var action in ability.Actions)
-            if (string.IsNullOrWhiteSpace(action.Id) || !identities.Add(action.Id)
-                || Actions.ContainsKey(action.Id) || Find(action.Id) is not null)
-                throw new ArgumentException($"Ability '{ability.Id}' conflicts with action '{action.Id}'.", nameof(ability));
+        var action = (registry ?? AbilityActionRegistry.Default).Resolve(ability);
+        if (string.IsNullOrWhiteSpace(action.Id) || Actions.ContainsKey(action.Id) || Find(action.Id) is not null)
+            throw new ArgumentException($"Ability '{ability.Id}' conflicts with action '{action.Id}'.", nameof(ability));
         LearnedAbilities.Add(ability.Id);
-        foreach (var action in ability.Actions)
-        {
-            var requirements = action.Requirements with { Abilities = action.Requirements.Abilities.Add(ability.Id) };
-            Actions[action.Id] = action with { Requirements = requirements };
-            AddActionCommand(Actions[action.Id]);
-        }
+        Actions.Add(action.Id, action);
+        AddActionCommand(action);
+    }
+
+    /// <summary>Derives short melee reach from typed action metadata, owned weapons or hand commands.</summary>
+    public bool IsShortMelee(ActionData action)
+    {
+        if (action.Throw || action.Reload) return false;
+        if (action is AbilityAction ability) return ability.GetMeleeRange(this) == WeaponRange.Short;
+        if (action.MeleeRange is { } reach) return reach == WeaponRange.Short;
+        if (action.ItemId is { } item)
+            return Items.Find(owned => owned.Id == item)?.Weapon is { IsMelee: true, Range: WeaponRange.Short };
+        if (Find(action.Id)?.Hand is { } hand)
+            return HeldItem(hand)?.Weapon is not { } weapon || weapon.IsMelee && weapon.Range == WeaponRange.Short;
+        return false;
     }
 
     /// <summary>Exposes an owned action through the existing HUD without treating its ability as an action.</summary>
     public void AddActionCommand(ActionData action)
     {
         if (Commands.Any(command => command.Id.Value == action.Id)) return;
-        Commands.Add(new(action.Id, action.Id, action.TurnCost,
-            RequiresTarget: action.Targeting.Shape is not (TargetShape.Self or TargetShape.All), TargetRule: _ => true));
+        Commands.Add(new(action.Id, action.Name ?? action.Id, action.TurnCost,
+            RequiresTarget: action.Targeting.Shape is not (TargetShape.Self or TargetShape.All or TargetShape.Cone), TargetRule: target => !target.Elevated || !IsShortMelee(action), Icon: action.Icon?.Value, TargetingFlags: action.Targeting.Flags));
     }
 
     /// <summary>Checks all progression, ownership, and equipment requirements against current state.</summary>
-    public bool MeetsRequirements(ActionData action) => action.Requirements.Abilities.All(LearnedAbilities.Contains)
+    public bool MeetsRequirements(ActionData action) => Focus >= action.Requirements.MinimumFocus
+        && (action is not AbilityAction ability || ability.CanUse(this))
+        && action.Requirements.Abilities.All(LearnedAbilities.Contains)
         && action.Requirements.Items.All(id => Items.Any(item => item.Id == id && item.Quantity > 0))
         && action.Requirements.Equipment.All(requirement => Equipment.TryGetValue(requirement.Slot, out var id)
             && (requirement.Item is null || id == requirement.Item.Value.Value));

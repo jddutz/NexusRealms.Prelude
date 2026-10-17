@@ -28,7 +28,7 @@ var f = new Fixture([resistance]);
 f.Add("player", true, CombatTeam.PlayerAndAllies, 20, 10);
 f.Add("enemy", false, CombatTeam.Enemies, 20, 0, FormationSlot.FrontLeft, ["resist"]);
 var high = Act("a-high", new DamageEffect(DamageType.Slashing, 6));
-var low = Act("b-low", new DamageEffect(DamageType.General, 3));
+var low = Act("b-low", new DamageEffect(DamageType.Basic, 3));
 f.Give("enemy", high, low); f.Start();
 var decision = CombatDecisionMaker.Decide(f.Resolver, "enemy");
 Check(decision.Selected?.Action.Id == high.Id, "Resistance must be evaluated on the recipient, not the actor.");
@@ -43,7 +43,7 @@ f.Resolver.Commit("enemy", decision.Selected!);
 Check(f.State("player").Health.Health == preview.Characters["player"].Health, "Preview/commitment Health mismatch.");
 
 f = new Fixture(); f.Add("player", true, CombatTeam.PlayerAndAllies, 1, 10); f.Add("enemy", false, CombatTeam.Enemies, 2, 0, FormationSlot.FrontLeft);
-var kill = Act("kill", new DamageEffect(DamageType.General, 1));
+var kill = Act("kill", new DamageEffect(DamageType.Basic, 1));
 var heal = Act("heal", new RestoreEffect(100)) with { Targeting = new(TargetShape.Self) };
 f.Give("enemy", heal, kill); f.Combat.ConfigureObjectives([new(CombatConditionKind.AllEnemiesDefeated)], [new(CombatConditionKind.PlayerDefeated)]); f.Start();
 Check(CombatDecisionMaker.Decide(f.Resolver, "enemy", new(StrategyId.Defensive)).Selected?.Action.Id == "kill", "Authored terminal objective must outrank healing.");
@@ -51,9 +51,9 @@ Check(CombatDecisionMaker.Decide(f.Resolver, "enemy", new(StrategyId.Defensive))
 // Contrasting character policies and separate ally recipients.
 f = new Fixture(); f.Add("player", true, CombatTeam.PlayerAndAllies, 20, 10); f.Add("actor", false, CombatTeam.Enemies, 1, 0, FormationSlot.FrontLeft);
 f.Add("ward", false, CombatTeam.Enemies, 1, 10, FormationSlot.FrontRight);
-f.Give("player", Act("threat", new DamageEffect(DamageType.General, 4)));
+f.Give("player", Act("threat", new DamageEffect(DamageType.Basic, 4)));
 heal = Act("restore", new RestoreEffect(4)) with { Targeting = new(TargetShape.Single, TargetRelationship.SameTeam) };
-f.Give("actor", heal, Act("attack", new DamageEffect(DamageType.General, 1))); f.Start();
+f.Give("actor", heal, Act("attack", new DamageEffect(DamageType.Basic, 1))); f.Start();
 Check(CombatDecisionMaker.Decide(f.Resolver, "actor", new(StrategyId.Protective, ["ward"])).Selected?.TargetId == "ward", "Protective must preserve its ward.");
 Check(CombatDecisionMaker.Decide(f.Resolver, "actor", new(StrategyId.Defensive)).Selected?.TargetId == "actor", "Defensive must preserve itself.");
 Check(CombatDecisionMaker.Decide(f.Resolver, "actor").Candidates.Count(entry => entry.Candidate.Action.Id == "restore") == 2, "Each healing recipient must be enumerated.");
@@ -64,38 +64,38 @@ Reject(() => CombatDecisionMaker.Decide(f.Resolver, "actor", new(StrategyId.Prot
 var irrelevant = Status("irrelevant", new RestrictEffect(new(Classification: "unavailable")));
 var applicable = Status("applicable", new RestrictEffect(new(Classification: "spell")));
 f = new Fixture([irrelevant, applicable]); f.Add("player", true, CombatTeam.PlayerAndAllies, 20, 10); f.Add("actor", false, CombatTeam.Enemies, 20, 0, FormationSlot.FrontLeft);
-f.Give("player", Act("spell", new DamageEffect(DamageType.General, 4)) with { Classifications = ["spell"] });
+f.Give("player", Act("spell", new DamageEffect(DamageType.Basic, 4)) with { Classifications = ["spell"] });
 f.Give("actor", Act("bad", new ApplyEffect("irrelevant", new())), Act("good", new ApplyEffect("applicable", new()))); f.Start();
 decision = CombatDecisionMaker.Decide(f.Resolver, "actor", new(StrategyId.Disruptive));
 Check(decision.Selected?.Action.Id == "good" && !decision.Candidates.Single(entry => entry.Candidate.Action.Id == "bad").Contributions.Any(entry => entry.Feature == "opposing-actions-denied"), "Restriction benefit must match real opposing actions.");
 
 // Cost discipline, immediate impact, and identifiable elimination openings.
 f = new Fixture(); f.Add("player", true, CombatTeam.PlayerAndAllies, 50, 10); f.Add("actor", false, CombatTeam.Enemies, 20, 0, FormationSlot.FrontLeft);
-f.Give("actor", Act("economical", new DamageEffect(DamageType.General, 3)),
-    Act("expensive", new DamageEffect(DamageType.General, 4)) with { Costs = [new(new ResourceSubject(ResourceKind.Focus), 1)] }); f.Start();
+f.Give("actor", Act("economical", new DamageEffect(DamageType.Basic, 3)),
+    Act("expensive", new DamageEffect(DamageType.Basic, 4)) with { Costs = [new(new ResourceSubject(ResourceKind.Focus), 1)] }); f.Start();
 Check(CombatDecisionMaker.Decide(f.Resolver, "actor").Selected?.Action.Id == "expensive"
     && CombatDecisionMaker.Decide(f.Resolver, "actor", new(StrategyId.Cautious)).Selected?.Action.Id == "economical", "Cautious must preserve scarce resources when progress is adequate.");
 f = new Fixture(); f.Add("player", true, CombatTeam.PlayerAndAllies, 50, 10); f.Add("actor", false, CombatTeam.Enemies, 20, 0, FormationSlot.FrontLeft);
-f.Give("actor", Act("safe", new DamageEffect(DamageType.General, 4)), Act("exposed", new DamageEffect(DamageType.General, 8),
-    new DamageEffect(DamageType.General, 7) { Recipients = RecipientScope.Source })); f.Start();
+f.Give("actor", Act("safe", new DamageEffect(DamageType.Basic, 4)), Act("exposed", new DamageEffect(DamageType.Basic, 8),
+    new DamageEffect(DamageType.Basic, 7) { Recipients = RecipientScope.Source })); f.Start();
 Check(CombatDecisionMaker.Decide(f.Resolver, "actor").Selected?.Action.Id == "safe"
     && CombatDecisionMaker.Decide(f.Resolver, "actor", new(StrategyId.Reckless)).Selected?.Action.Id == "exposed", "Reckless must discount future personal contribution.");
 f = new Fixture(); f.Add("player", true, CombatTeam.PlayerAndAllies, 50, 10); f.Add("opening", false, CombatTeam.PlayerAndAllies, 1, 10, FormationSlot.FrontRight);
-f.Add("actor", false, CombatTeam.Enemies, 20, 0, FormationSlot.FrontLeft); f.Give("actor", Act("pressure", new DamageEffect(DamageType.General, 15))); f.Start();
+f.Add("actor", false, CombatTeam.Enemies, 20, 0, FormationSlot.FrontLeft); f.Give("actor", Act("pressure", new DamageEffect(DamageType.Basic, 15))); f.Start();
 Check(CombatDecisionMaker.Decide(f.Resolver, "actor").Selected?.TargetId == "player"
     && CombatDecisionMaker.Decide(f.Resolver, "actor", new(StrategyId.Opportunistic)).Selected?.TargetId == "opening", "Opportunistic must favor an identifiable elimination opening over ordinary pressure.");
 
 // Stable mode changes alter decisions; Reactive matches committed classifications.
 f = new Fixture(); f.Add("player", true, CombatTeam.PlayerAndAllies, 40, 10); f.Add("actor", false, CombatTeam.Enemies, 1, 0, FormationSlot.FrontLeft);
-f.Give("player", Act("threat", new DamageEffect(DamageType.General, 4)));
-f.Give("actor", Act("pressure", new DamageEffect(DamageType.General, 10)), Act("survive", new RestoreEffect(4)) with { Targeting = new(TargetShape.Self) });
+f.Give("player", Act("threat", new DamageEffect(DamageType.Basic, 4)));
+f.Give("actor", Act("pressure", new DamageEffect(DamageType.Basic, 10)), Act("survive", new RestoreEffect(4)) with { Targeting = new(TargetShape.Self) });
 f.Resolver.Behavior.Assign("actor", new(StrategyId.Chaotic) { Modes = [StrategyId.Aggressive, StrategyId.Defensive] }); f.Start();
 decision = CombatDecisionMaker.Decide(f.Resolver, "actor"); Check(decision.Selected?.Action.Id == "pressure", "Aggressive Chaos mode must apply offensive preferences.");
 var clone = f.Resolver.CopyForSimulation(); clone.Commit("actor", decision.Selected!); clone.Combat.Process();
 Check(CombatDecisionMaker.Decide(clone, "actor").Selected?.Action.Id == "survive", "Committed Chaos mode must switch policy without random choices.");
 f = new Fixture(); f.Add("player", true, CombatTeam.PlayerAndAllies, 20, 0); f.Add("actor", false, CombatTeam.Enemies, 20, 10, FormationSlot.FrontLeft);
-var ranged = Act("observed-ranged", new DamageEffect(DamageType.General, 1)) with { Classifications = ["ranged"] };
-f.Give("player", ranged); f.Give("actor", Act("attack", new DamageEffect(DamageType.General, 1))); f.Resolver.Behavior.Assign("actor", new(StrategyId.Reactive)); f.Start();
+var ranged = Act("observed-ranged", new DamageEffect(DamageType.Basic, 1)) with { Classifications = ["ranged"] };
+f.Give("player", ranged); f.Give("actor", Act("attack", new DamageEffect(DamageType.Basic, 1))); f.Resolver.Behavior.Assign("actor", new(StrategyId.Reactive)); f.Start();
 f.Resolver.Commit("player", ranged, "actor"); f.Resolver.Commit("player", ranged, "actor");
 clone = f.Resolver.CopyForSimulation();
 while (clone.Combat.ActiveCombatant?.Id != "actor") { clone.Combat.SubmitNoLegalAction(); clone.Combat.Process(); }
@@ -104,8 +104,8 @@ Check(CombatDecisionMaker.Decide(clone, "actor").Strategy == StrategyId.Defensiv
 // Analytical follows actual scheduled decisions and distinguishes retaliation from immediate impact.
 var shield = Status("shield", new NegateEffect(new()));
 f = new Fixture([shield]); f.Add("player", true, CombatTeam.PlayerAndAllies, 10, 1); f.Add("actor", false, CombatTeam.Enemies, 1, 0, FormationSlot.FrontLeft);
-f.Give("player", Act("retaliate", new DamageEffect(DamageType.General, 2)) with { TurnCost = 2 });
-f.Give("actor", Act("strike", new DamageEffect(DamageType.General, 3)) with { TurnCost = 2 },
+f.Give("player", Act("retaliate", new DamageEffect(DamageType.Basic, 2)) with { TurnCost = 2 });
+f.Give("actor", Act("strike", new DamageEffect(DamageType.Basic, 3)) with { TurnCost = 2 },
     Act("protect", new ApplyEffect("shield", new(Uses: 1, UseEvent: StatusUseEvent.IncomingAction))) with { Targeting = new(TargetShape.Self), TurnCost = 2 });
 f.Combat.ConfigureObjectives([new(CombatConditionKind.AllEnemiesDefeated)], [new(CombatConditionKind.PlayerDefeated)]); f.Start();
 Check(CombatDecisionMaker.Decide(f.Resolver, "actor", new(StrategyId.Reckless)).Selected?.Action.Id == "strike", "Immediate Reckless must prefer impact.");
@@ -115,7 +115,7 @@ Check(decision.Selected?.Action.Id == "protect" && decision.Planning is { UsedFa
 // Supportive helps the allied group; Protective keeps an explicitly designated ward.
 f = new Fixture(); f.Add("player", true, CombatTeam.PlayerAndAllies, 50, 10); f.Add("actor", false, CombatTeam.Enemies, 30, 0, FormationSlot.FrontLeft);
 f.Add("a-ally", false, CombatTeam.Enemies, 1, 10, FormationSlot.FrontCenter); f.Add("z-ward", false, CombatTeam.Enemies, 1, 10, FormationSlot.FrontRight);
-f.Give("player", Act("threat", new DamageEffect(DamageType.General, 4)));
+f.Give("player", Act("threat", new DamageEffect(DamageType.Basic, 4)));
 f.Give("actor", Act("restore", new RestoreEffect(4)) with { Targeting = new(TargetShape.Single, TargetRelationship.SameTeam) }); f.Start();
 Check(CombatDecisionMaker.Decide(f.Resolver, "actor", new(StrategyId.Supportive)).Selected?.TargetId == "a-ally"
     && CombatDecisionMaker.Decide(f.Resolver, "actor", new(StrategyId.Protective, ["z-ward"])).Selected?.TargetId == "z-ward", "Supportive and Protective must have distinct preservation scopes.");
@@ -129,15 +129,15 @@ Check(decision.Selected?.Action.Id == "a-modest" && decision.Candidates.All(entr
 
 // A valid choice becomes stale when the live resource state changes; reevaluation pays only the replacement's cost.
 f = new Fixture(); f.Add("player", true, CombatTeam.PlayerAndAllies, 50, 10); f.Add("actor", false, CombatTeam.Enemies, 20, 0, FormationSlot.FrontLeft);
-f.Give("actor", Act("costly", new DamageEffect(DamageType.General, 4)) with { Costs = [new(new ResourceSubject(ResourceKind.Focus), 1)] },
-    Act("free", new DamageEffect(DamageType.General, 1))); f.Start();
+f.Give("actor", Act("costly", new DamageEffect(DamageType.Basic, 4)) with { Costs = [new(new ResourceSubject(ResourceKind.Focus), 1)] },
+    Act("free", new DamageEffect(DamageType.Basic, 1))); f.Start();
 decision = CombatDecisionMaker.Decide(f.Resolver, "actor"); f.State("actor").Loadout.Focus = 0;
 decision = CombatDecisionMaker.CommitDecision(f.Resolver, decision);
-Check(decision.Selected?.Action.Id == "free" && f.State("actor").Loadout.Focus == 0 && f.State("player").Health.Health == 49, "Stale selections must reevaluate without spending old costs.");
+Check(decision.Selected?.Action.Id == "free" && f.State("actor").Loadout.Focus == 1 && f.State("player").Health.Health == 49, "Stale selections must reevaluate without spending old costs; the next whole boundary restores one Focus.");
 
 // Collection insertion order must not change tied action selection or structured traces.
 f = new Fixture(); f.Add("player", true, CombatTeam.PlayerAndAllies, 50, 10); f.Add("actor", false, CombatTeam.Enemies, 20, 0, FormationSlot.FrontLeft);
-var tieA = Act("a", new DamageEffect(DamageType.General, 1)); var tieZ = Act("z", new DamageEffect(DamageType.General, 1));
+var tieA = Act("a", new DamageEffect(DamageType.Basic, 1)); var tieZ = Act("z", new DamageEffect(DamageType.Basic, 1));
 f.Give("actor", tieZ, tieA); f.Start(); decision = CombatDecisionMaker.Decide(f.Resolver, "actor");
 f.State("actor").Loadout.Actions.Clear(); f.Give("actor", tieA, tieZ);
 Check(decision.Selected?.Action.Id == "a" && Json(decision) == Json(CombatDecisionMaker.Decide(f.Resolver, "actor")), "Canonical ties and traces must ignore action dictionary insertion order.");
@@ -160,7 +160,7 @@ Check(f.State("enemy").Statuses.Single().RemainingUses == 1 && preview.Character
 
 // Chaos advances on successful commitment only; memory is serializable and independent in a clone.
 f = new Fixture(); f.Add("player", true, CombatTeam.PlayerAndAllies, 20, 10); f.Add("actor", false, CombatTeam.Enemies, 20, 0, FormationSlot.FrontLeft);
-f.Give("actor", Act("attack", new DamageEffect(DamageType.General, 1))); f.Resolver.Behavior.Assign("actor", new(StrategyId.Chaotic)); f.Start();
+f.Give("actor", Act("attack", new DamageEffect(DamageType.Basic, 1))); f.Resolver.Behavior.Assign("actor", new(StrategyId.Chaotic)); f.Start();
 var saved = Json(f.Resolver.Behavior.Save()); decision = CombatDecisionMaker.Decide(f.Resolver, "actor");
 _ = f.Resolver.Preview("actor", decision.Selected!); _ = CombatDecisionMaker.Decide(f.Resolver, "actor");
 Check(Json(f.Resolver.Behavior.Save()) == saved, "Preview or evaluation advanced Chaos memory.");
@@ -184,9 +184,9 @@ f.Resolver.Behavior.ApplyBoundary(); Check(f.Resolver.Behavior.Snapshot("actor")
 // Scheduled events and status expiration in copied multi-decision state.
 var timelineStatus = Status("temporary", new ResistEffect(new(), 1));
 f = new Fixture([timelineStatus]); f.Add("player", true, CombatTeam.PlayerAndAllies, 20, 5); f.Add("actor", false, CombatTeam.Enemies, 20, 0, FormationSlot.FrontLeft);
-f.Give("actor", Act("attack", new DamageEffect(DamageType.General, 1)));
+f.Give("actor", Act("attack", new DamageEffect(DamageType.Basic, 1)));
 f.Resolver.ResolveCommitted(Act("apply", new ApplyEffect("temporary", new(StatusClock.Timeline, 1))), "actor", ["player"]);
-f.Resolver.ScheduleEvent(new(2, "known damage", "actor", "player", Act("event", new DamageEffect(DamageType.General, 3)))); f.Start();
+f.Resolver.ScheduleEvent(new(2, "known damage", "actor", "player", Act("event", new DamageEffect(DamageType.Basic, 3)))); f.Start();
 clone = f.Resolver.CopyForSimulation(); clone.Commit("actor", CandidateGeneration.Enumerate(clone, "actor").First());
 // Stop at each scheduled decision, advancing actor actions until the known event occurs.
 for (var index = 0; index < 4 && clone.Combat.Timeline.CurrentTurn < 2; index++)
@@ -205,7 +205,7 @@ Check(Json(decision) == Json(CombatDecisionMaker.Decide(f.Resolver, "actor", ana
 
 // Refresh keeps attribution order but stale expiration occurrences cannot remove the refreshed instance.
 f = new Fixture([timelineStatus]); f.Add("player", true, CombatTeam.PlayerAndAllies, 20, 10); f.Add("actor", false, CombatTeam.Enemies, 20, 0, FormationSlot.FrontLeft);
-f.Give("actor", Act("attack", new DamageEffect(DamageType.General, 1)));
+f.Give("actor", Act("attack", new DamageEffect(DamageType.Basic, 1)));
 f.Resolver.ResolveCommitted(Act("first", new ApplyEffect("temporary", new(StatusClock.Timeline, 1))), "actor", ["player"]);
 f.Resolver.ResolveCommitted(Act("refresh", new ApplyEffect("temporary", new(StatusClock.Timeline, 3))), "actor", ["player"]); f.Start();
 clone = f.Resolver.CopyForSimulation(); clone.Commit("actor", CandidateGeneration.Enumerate(clone, "actor").First()); clone.Combat.Process();
@@ -214,12 +214,12 @@ Check(clone.Characters["player"].Statuses.Count == 1 && clone.Combat.Timeline.Cu
 // Explicit no-action scheduling, unsupported events, and character-owned configuration binding.
 var restricted = Status("restricted", new RestrictEffect(new()));
 f = new Fixture([restricted]); f.Add("player", true, CombatTeam.PlayerAndAllies, 20, 10); f.Add("actor", false, CombatTeam.Enemies, 20, 0, FormationSlot.FrontLeft, ["restricted"]);
-f.Give("actor", Act("attack", new DamageEffect(DamageType.General, 1))); f.Start();
+f.Give("actor", Act("attack", new DamageEffect(DamageType.Basic, 1))); f.Start();
 decision = CombatDecisionMaker.DecideAndCommit(f.Resolver, "actor");
 Check(decision.NoLegalAction && f.Combat.Timeline.CurrentTurn == 1, "NoLegalAction must use the defined advancing scheduler rule.");
 f.Combat.ScheduleEvent(2, "opaque", _ => { });
 Reject(() => f.Resolver.CopyForSimulation(), "Opaque event callbacks must fail explicitly.");
-Reject(() => f.Resolver.ScheduleEvent(new(3, "hidden", "actor", "player", Act("hidden", new DamageEffect(DamageType.General, 1))) { KnownToAi = false }), "Hidden rules must not leak into exact previews.");
+Reject(() => f.Resolver.ScheduleEvent(new(3, "hidden", "actor", "player", Act("hidden", new DamageEffect(DamageType.Basic, 1))) { KnownToAi = false }), "Hidden rules must not leak into exact previews.");
 f = new Fixture(); f.Add("player", true, CombatTeam.PlayerAndAllies, 20, 10); f.Add("actor", false, CombatTeam.Enemies, 20, 0, FormationSlot.FrontLeft); f.Add("ward", false, CombatTeam.Enemies, 20, 10, FormationSlot.FrontRight);
 f.Resolver.ConfigureCharacters(new Dictionary<string, CharacterData> { ["actor"] = Character("guardian", new(StrategyId.Protective, ["protected-character"])), ["ward"] = Character("protected-character") });
 Check(f.Resolver.Behavior.Snapshot("actor").Base.ProtectedIds!.Single() == "ward", "Character strategy references must bind independently of scenario configuration.");
@@ -232,7 +232,7 @@ foreach (var frontHealth in new[] { 2, 5 })
     f.Add("player", true, CombatTeam.PlayerAndAllies, 20, 0, loadout: new CombatLoadout());
     f.Add("front", false, CombatTeam.Enemies, frontHealth, 10, FormationSlot.FrontLeft);
     f.Add("back", false, CombatTeam.Enemies, 20, 10, FormationSlot.BackLeft);
-    f.Give("back", Act("ranged", new DamageEffect(DamageType.General, 3)));
+    f.Give("back", Act("ranged", new DamageEffect(DamageType.Basic, 3)));
     f.Start();
     decision = CombatDecisionMaker.Decide(f.Resolver, "player", new(strategy));
     Check(decision.Selected?.TargetId == "front" && decision.Selected.Action.Id != "wait",
@@ -263,7 +263,7 @@ for (var shot = 0; shot < 3; shot++)
 Check(f.State("player").Health.Health == 91, "Three shots must actually resolve against the target.");
 // Authored objectives outweigh incidental damage and follow the data when changed.
 var resistSlash = Status("objective-resist-slash", new ResistEffect(new(DamageType.Slashing), 20));
-var resistGeneral = Status("objective-resist-general", new ResistEffect(new(DamageType.General), 20));
+var resistGeneral = Status("objective-resist-general", new ResistEffect(new(DamageType.Basic), 20));
 foreach (var requiredId in new[] { "small-target", "large-target" })
 {
     f = new Fixture([resistSlash, resistGeneral]);
@@ -271,7 +271,7 @@ foreach (var requiredId in new[] { "small-target", "large-target" })
     f.Add("small-target", false, CombatTeam.Enemies, 6, 10, FormationSlot.FrontLeft, [resistSlash.Id]);
     f.Add("large-target", false, CombatTeam.Enemies, 100, 10, FormationSlot.FrontRight, [resistGeneral.Id]);
     f.Give("player", Act("a-high-damage", new DamageEffect(DamageType.Slashing, 10)),
-        Act("z-low-damage", new DamageEffect(DamageType.General, 2)));
+        Act("z-low-damage", new DamageEffect(DamageType.Basic, 2)));
     f.Combat.ConfigureObjectives([new(CombatConditionKind.CharacterDefeated, requiredId)], [new(CombatConditionKind.PlayerDefeated)]);
     f.Start();
     var original = CombatDecisionMaker.StateKey(f.Resolver);
@@ -299,9 +299,9 @@ Check(decision.Candidates.All(entry => !entry.Contributions.Any(feature => featu
 // A truncated deeper layer must retain the fully compared earlier layer.
 f = new Fixture(); f.Add("player", true, CombatTeam.PlayerAndAllies, 20, 0);
 f.Add("target", false, CombatTeam.Enemies, 50, 100, FormationSlot.FrontLeft);
-f.Give("player", Act("a-weak", new DamageEffect(DamageType.General, 1)), Act("z-strong", new DamageEffect(DamageType.General, 3)));
+f.Give("player", Act("a-weak", new DamageEffect(DamageType.Basic, 1)), Act("z-strong", new DamageEffect(DamageType.Basic, 3)));
 f.Start();
-decision = CombatDecisionMaker.Decide(f.Resolver, "player", new(StrategyId.Analytical) { DecisionDepth = 3, NodeBudget = 4 });
+decision = CombatDecisionMaker.Decide(f.Resolver, "player", new(StrategyId.Analytical) { DecisionDepth = 3, NodeBudget = 6 });
 Check(decision.Selected?.Action.Id == "z-strong"
     && decision.Planning is { Truncated: true, UsedFallback: false, CompletedDepth: 1 },
     "Budget exhaustion must preserve a completed comparison rather than favor a candidate prefix.");
@@ -313,7 +313,7 @@ foreach (var strategy in Enum.GetValues<StrategyId>())
     f.Add("actor", false, CombatTeam.Enemies, 20, 0, FormationSlot.FrontLeft);
     f.Add("ward", false, CombatTeam.Enemies, 1, 100, FormationSlot.FrontRight);
     f.Give("actor", Act("a-protect-victory-target", new RestoreEffect(1)) with { Targeting = new(TargetShape.Single, TargetRelationship.SameTeam) },
-        Act("z-pursue-defeat", new DamageEffect(DamageType.General, 1)));
+        Act("z-pursue-defeat", new DamageEffect(DamageType.Basic, 1)));
     f.Combat.ConfigureObjectives([new(CombatConditionKind.CharacterDefeated, "ward")], [new(CombatConditionKind.PlayerDefeated)]);
     f.Start();
     var assignment = new StrategyAssignment(strategy) { ProtectedIds = ["ward"] };
@@ -328,11 +328,11 @@ foreach (var strategy in Enum.GetValues<StrategyId>())
 f = new Fixture();
 f.Add("player", true, CombatTeam.PlayerAndAllies, 10, 1);
 f.Add("actor", false, CombatTeam.Enemies, 1, 0, FormationSlot.FrontLeft);
-f.Give("player", Act("finish", new DamageEffect(DamageType.General, 1)));
-f.Give("actor", Act("a-attack", new DamageEffect(DamageType.General, 3)) with { TurnCost = 2 },
+f.Give("player", Act("finish", new DamageEffect(DamageType.Basic, 1)));
+f.Give("actor", Act("a-attack", new DamageEffect(DamageType.Basic, 3)) with { TurnCost = 2 },
     Act("z-stall", new DelayEffect(2)) with { TurnCost = 2 });
 f.Combat.ConfigureObjectives([new(CombatConditionKind.AllEnemiesDefeated)], [new(CombatConditionKind.PlayerDefeated)]);
-f.Resolver.ScheduleEvent(new(1.5f, "known hazard", "actor", "player", Act("hazard", new DamageEffect(DamageType.General, 10))));
+f.Resolver.ScheduleEvent(new(1.5f, "known hazard", "actor", "player", Act("hazard", new DamageEffect(DamageType.Basic, 10))));
 f.Start();
 decision = CombatDecisionMaker.Decide(f.Resolver, "actor", new(StrategyId.Analytical));
 Check(decision.Selected?.Action.Id == "z-stall"

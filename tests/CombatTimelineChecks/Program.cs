@@ -297,9 +297,9 @@ Check(lastStrike is { Hand: StrikeHand.Right, Item: null } && handHits == 3);
 Check(hands.Assign(9, "RightHandStrike") && hands.QuickSlots[1] is null);
 Console.WriteLine("Intrinsic hand strike checks passed.");
 
-// Each damage point has one type; the basic point remains General.
-Check(lastStrike!.DamagePoints.Typed.GetValueOrDefault(DamageType.General) == 1 && lastStrike.DamagePoints.Typed.Count == 1);
-var scimitarBonus = new Dictionary<DamageType, int> { [DamageType.General] = 1, [DamageType.Slashing] = 2 };
+// Each damage point has one type; the basic point remains Basic.
+Check(lastStrike!.DamagePoints.Typed.GetValueOrDefault(DamageType.Basic) == 1 && lastStrike.DamagePoints.Typed.Count == 1);
+var scimitarBonus = new Dictionary<DamageType, int> { [DamageType.Basic] = 1, [DamageType.Slashing] = 2 };
 var scimitar = new WeaponData { Damage = scimitarBonus };
 Check(new ItemData { Weapon = scimitar }.Weapon == scimitar && new ItemData().Weapon is null);
 hands.Items.Add(new("scimitar", "Scimitar", "Left hand", Weapon: scimitar));
@@ -315,7 +315,7 @@ Check(hands.Confirm(handCombat, "player", CombatLoadout.LeftHandStrike, () => ha
     typedDamage += strike.Damage;
 }));
 Check(typedHits == 1 && typedDamage == 3);
-Check(lastStrike!.DamagePoints.Typed.GetValueOrDefault(DamageType.General) == 1 && lastStrike.DamagePoints.Typed[DamageType.Slashing] == 2);
+Check(lastStrike!.DamagePoints.Typed.GetValueOrDefault(DamageType.Basic) == 1 && lastStrike.DamagePoints.Typed[DamageType.Slashing] == 2);
 scimitarBonus[DamageType.Slashing] = 9;
 Check(lastStrike.Damage == 3); // Resolved points are a snapshot.
 scimitarBonus[DamageType.Slashing] = 2;
@@ -327,9 +327,9 @@ Check(sharp.DamagePoints.Reduce(DamageType.Slashing, 99).Total == 1);
 Check(lastStrike.DamagePoints.Negate(DamageType.Slashing).Total == 1);
 var mace = new HandStrike(StrikeHand.Right, new("mace", "Spiked mace", "Right hand", Weapon: new()
 {
-    Damage = new Dictionary<DamageType, int> { [DamageType.General] = 1, [DamageType.Crushing] = 1, [DamageType.Piercing] = 1 },
+    Damage = new Dictionary<DamageType, int> { [DamageType.Basic] = 1, [DamageType.Crushing] = 1, [DamageType.Piercing] = 1 },
 }));
-Check(mace.Damage == 3 && mace.DamagePoints.Typed.GetValueOrDefault(DamageType.General) == 1);
+Check(mace.Damage == 3 && mace.DamagePoints.Typed.GetValueOrDefault(DamageType.Basic) == 1);
 Check(mace.DamagePoints.Negate(DamageType.Crushing).Total == 2);
 Check(mace.DamagePoints.Negate(DamageType.Crushing).Negate(DamageType.Piercing).Total == 1);
 var appleStrike = new HandStrike(StrikeHand.Right, hands.Items.Find(i => i.Id.Value == "apple"));
@@ -356,7 +356,7 @@ foreach (var (type, slashing, crushing, piercing, iconCount) in weaponExpectatio
         var item = WeaponCatalog.Create(type, "catalog-weapon", type.ToString(), "Left hand", index);
         var strike = new HandStrike(StrikeHand.Left, item);
         Check(item.Icon == data.Icons[index]);
-        Check(strike.Damage == 3 && strike.DamagePoints.Typed.GetValueOrDefault(DamageType.General) == 1);
+        Check(strike.Damage == 3 && strike.DamagePoints.Typed.GetValueOrDefault(DamageType.Basic) == 1);
         Check(strike.DamagePoints.Typed.GetValueOrDefault(DamageType.Slashing) == slashing);
         Check(strike.DamagePoints.Typed.GetValueOrDefault(DamageType.Crushing) == crushing);
         Check(strike.DamagePoints.Typed.GetValueOrDefault(DamageType.Piercing) == piercing);
@@ -370,9 +370,9 @@ foreach (var type in new[] { DamageType.Slashing, DamageType.Piercing, DamageTyp
     Check(type.GetCategory() == DamageCategory.Physical);
 foreach (var type in new[] { DamageType.Fire, DamageType.Ice, DamageType.Lightning })
     Check(type.GetCategory() == DamageCategory.Elemental);
-Check(DamageType.General.GetCategory() is null);
+Check(DamageType.Basic.GetCategory() is null);
 Check(mace.DamagePoints.AmountIn(DamageCategory.Physical) == 2);
-Check(mace.DamagePoints.Total == 3); // The General point belongs to no category.
+Check(mace.DamagePoints.Total == 3); // The Basic point belongs to no category.
 foreach (var category in new[] { DamageCategory.Elemental, DamageCategory.Spiritual, DamageCategory.Mental, DamageCategory.Magical })
     Check(mace.DamagePoints.AmountIn(category) == 0);
 Check(appleStrike.DamagePoints.AmountIn(DamageCategory.Physical) == 0);
@@ -547,8 +547,8 @@ Check(pistolStrike.Damage == 3 && pistolStrike.DamagePoints.Typed.Count == 1);
 Check(pistolStrike.DamagePoints.Typed[DamageType.Piercing] == 3);
 Check(pistolStrike.DamagePoints.Negate(DamageType.Piercing).Total == 0);
 Check(pistolStrike.DamagePoints.Reduce(DamageType.Piercing, 1).Total == 2);
-Check(DamageProfile.ForStrike(null).Negate(DamageType.General).Total == 0);
-Check(DamageProfile.ForStrike(null).Reduce(DamageType.General, 1).Total == 0);
+Check(DamageProfile.ForStrike(null).Negate(DamageType.Basic).Total == 0);
+Check(DamageProfile.ForStrike(null).Reduce(DamageType.Basic, 1).Total == 0);
 var pistolLoadout = new CombatLoadout();
 pistolLoadout.Items.Add(pistolItem);
 var pistolPending = pistolLoadout.BeginEquipment();
@@ -558,7 +558,7 @@ pistolCombat.Add(new("player", true));
 pistolCombat.Process();
 Check(pistolLoadout.Commit(pistolCombat, "player", pistolPending));
 Check(pistolLoadout.ValidTarget(CombatLoadout.RightHandStrike, new(true, true, CombatTeam.Enemies, CombatRow.Back, true, true)));
-Console.WriteLine("General damage and Pistol checks passed.");
+Console.WriteLine("Basic damage and Pistol checks passed.");
 // Throw selection is read-only until a valid, single-use commit.
 CombatSystem ThrowCombat()
 {
@@ -593,7 +593,7 @@ Check(throwCombat.Timeline.CurrentTurn == beforeThrow + CombatLoadout.Throw.Turn
 Check(!throws.Available(CombatLoadout.Throw));
 
 var stack = new CarriedItem("stones", "Stones", "Accessory")
-    { Quantity = 3, ThrowDamage = new(new Dictionary<DamageType, int> { [DamageType.General] = 1 }) };
+    { Quantity = 3, ThrowDamage = new(new Dictionary<DamageType, int> { [DamageType.Basic] = 1 }) };
 throws.Items.Add(stack);
 var stackSession = throws.BeginThrow(throwCombat, "player", () => throwTarget)!;
 Check(stackSession.Choose(stackSession.Options.Single(), profile => Check(profile.Total == 1)));

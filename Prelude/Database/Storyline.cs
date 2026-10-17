@@ -198,17 +198,14 @@ public sealed class Storyline
         {
             if (string.IsNullOrWhiteSpace(ability.Id.Value))
                 throw new ArgumentException("Ability identity is required.");
-            foreach (var action in ability.Actions)
-            {
-                if (!abilityActions.Add(action.Id))
-                    throw new ArgumentException($"Duplicate ability action '{action.Id}'.");
-                if (action.Requirements.Abilities.Any(id => !Abilities.ContainsKey(id)))
-                    throw new ArgumentException(
-                        $"Action '{action.Id}' references an unknown ability."
-                    );
-                CombatRules.Validate(action, StatusEffects);
-            }
+            var action = AbilityActionRegistry.Default.Resolve(ability);
+            if (!abilityActions.Add(action.Id))
+                throw new ArgumentException($"Duplicate ability action '{action.Id}'.");
+            if (action.Requirements.Abilities.Any(id => !Abilities.ContainsKey(id)))
+                throw new ArgumentException($"Action '{action.Id}' references an unknown ability.");
+            CombatRules.Validate(action, StatusEffects);
         }
+
         foreach (var graph in Progression.ProgressionGraphs.All.Values)
         {
             var graphNodes = new HashSet<AbilityId>();

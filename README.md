@@ -25,11 +25,15 @@ legal candidates, isolated previews, deterministic policies and bounded Analytic
 rollouts. See [character AI decisions](docs/AI-Decision-Making.md) for configuration,
 observation assumptions, memory, diagnostics and acceptance checks.
 
+Combat simulation is an on-demand workflow available through `$nexusrealms-simulate`,
+separate from routine ability implementation and focused checks. See
+[simulator usage](Simulator/README.md) for manual commands and output details.
+
 The simulator cycles through every zodiac sign and configurable player strategy
 instead of repeating one policy or choosing random actions; `playerZodiacs` and
 `playerStrategies` in the state file can limit either cycle. By default, it runs
 once per zodiac-strategy combination; explicit run counts repeat the cycle with
-additional seeds. Routine scenario validation uses just this single complete
+additional seeds. A requested full scenario matrix uses one complete
 cycle (currently 120 runs), without `--runs`; repeated seeds are reserved for
 explicit randomness investigations. Each result records its zodiac and strategy, and the report
 compares outcomes by both dimensions. The JSON output keeps shared
@@ -68,3 +72,11 @@ From the repository root:
 dotnet build NexusRealms.slnx
 dotnet run --project Prelude/Prelude.csproj
 ```
+
+Slow and Haste share persistent Turn-cost multipliers (defaults 1.5x and 0.75x). Active multipliers multiply together, and the cost is fixed when an action is committed. Existing queued turns, status durations, and Focus regeneration retain their timeline timing. Wait still schedules just after the next character. Status applications choose their duration.
+
+Fixed-duration defaults allow time to act after casting: Slow/Haste, Headwind, Cooling Breeze and planned Wind Shear last 3 timeline turns; Blind, Bewilder and planned Silence last 2. Focus-based Levitate and Pressure Shield durations remain unchanged.
+
+Basic damage (`DamageType.Basic`) is the uncategorized base damage type. Hurricane deals 2 Basic and 1 Electrical damage to every enemy using the shared action resolver.
+
+Silence applies a negative, refreshable Silenced status to one Visual enemy target for 2 timeline turns (1 Turn / 0 Focus). It blocks the Magical targeting flag, representing magical affinity regardless of speech or Focus cost. Visual and Magical combine independently. Aquarius spells carry Magical; Whirlwind and ordinary weapon attacks do not. Cleanse shortens Silence and Purge removes it.

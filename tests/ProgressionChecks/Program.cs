@@ -5,6 +5,22 @@ using NexusRealms.Prelude.Database.Progression;
 using NexusRealms.Prelude.DataModel;
 
 static void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
+var registry = NexusRealms.Prelude.Actions.AbilityActionRegistry.Default;
+foreach (var definition in Abilities.All.Values)
+{
+    var action = registry.Resolve(definition);
+    Check(action.Id == definition.ActionId.Value && action.Icon == definition.Icon && action.Name == definition.Name,
+        "Each ability must resolve one action with shared presentation.");
+    if (!action.IsImplemented)
+        Check(action.BuildEffects().IsEmpty && !action.IsImplemented, "Scaffolds must not inherit legacy attack damage.");
+}
+var authored = Aquarius.Heal with { TurnCost = 2.5f, FocusCost = 3, Targeting = new(TargetShape.Self) };
+var bound = registry.Resolve(authored);
+Check(bound.TurnCost == 2.5f && bound.Targeting == authored.Targeting
+    && bound.Costs.Single().Amount == 3 && bound.Requirements.Abilities.Contains(authored.Id),
+    "Binding must use ability costs, targeting and progression requirements.");
+try { registry.Resolve(authored with { ActionId = "missing" }); throw new Exception("Unknown mapping accepted."); }
+catch (ArgumentException) { }
 var story = new Storyline();
 Check(ProgressionGraphs.All.Count == 12, "All Zodiac graphs must exist.");
 Check(story.StartNodeId == NexusRealms.Prelude.Database.Chapter1.Part1.Begin.Id,

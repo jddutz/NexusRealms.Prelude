@@ -14,7 +14,7 @@ public sealed class CombatActionResolver
     internal void RestoreApplicationSequence(long sequence) => _statusSequence = Math.Max(_statusSequence, sequence);
     private IReadOnlyDictionary<string, CharacterData> _definitions = new Dictionary<string, CharacterData>();
     /// <summary>Creates a resolver and validates every registered persistent definition.</summary>
-    public CombatActionResolver(CombatSystem combat, IReadOnlyDictionary<StatusEffectId, StatusEffectData> statuses)
+    public CombatActionResolver(CombatSystem combat, IReadOnlyDictionary<StatusEffectId, StatusEffectData> statuses, bool initializeFocusGain = true)
     {
         Combat = combat;
         combat.Resolver = this;
@@ -22,6 +22,7 @@ public sealed class CombatActionResolver
         foreach (var definition in _statuses.Values) CombatRules.ValidateStatus(definition);
         combat.TurnStarted += OnTurnStarted;
         Behavior = new(this);
+        if (initializeFocusGain) ScheduleFocusBoundary(MathF.Floor(combat.Timeline.CurrentTurn) + 1);
     }
     /// <summary>The shared encounter scheduler.</summary>
     public CombatSystem Combat { get; }
@@ -66,17 +67,20 @@ public sealed class CombatActionResolver
     /// <summary>Registers existing mutable owners and expands authored initial status identifiers.</summary>
     public void Add(ActionCharacterState character, IEnumerable<StatusEffectId>? initialStatuses = null)
     {
-        if (character.MaximumHealth is < 0 || character.Loadout.Focus < 0) throw new ArgumentException("Invalid initial character resources.");
+        if (character.Loadout.Focus < 0) throw new ArgumentException("Invalid initial character resources.");
         if (character.Position is { } position && _characters.Values.Any(other => other.Team == character.Team && other.Position == position))
             throw new ArgumentException("Formation position is occupied.");
         foreach (var rule in character.Rules) CombatRules.ValidateEffect(rule, true, _statuses);
         var initial = (initialStatuses ?? []).ToArray();
         foreach (var id in initial) if (!_statuses.ContainsKey(id)) throw new ArgumentException($"Unknown initial status '{id}'.");
         _characters.Add(character.Id, character);
+        character.Loadout.AdjustTurnCost = cost => EffectiveTurnCost(character.Id, cost);
         character.Loadout.CommandAllowed = command => Allows(character.Id, character.Loadout.Actions.GetValueOrDefault(command.Id.Value) ?? new ActionData
         {
             Id = command.Id.Value,
             Classifications = command.Hand is not null || command == CombatLoadout.Throw ? ["weapon"] : command.Classifications.IsDefault ? [] : command.Classifications,
+            Targeting = new(Flags: command.TargetingFlags),
+            Costs = command.FocusCost == 0 ? [] : [new(new ResourceSubject(ResourceKind.Focus), command.FocusCost)],
         });
         foreach (var action in character.Loadout.Actions.Values) { Register(action); character.Loadout.AddActionCommand(action); }
         foreach (var id in initial) ApplyStatus(character, id, character.Id, _statuses[id].Persistence);
@@ -90,16 +94,14 @@ public sealed class CombatActionResolver
     }
 
     /// <summary>Registers progression-gated definitions without learning them or granting their capabilities.</summary>
-    public void RegisterAbility(AbilityData ability)
-    {
-        foreach (var action in ability.Actions)
-            Register(action with { Requirements = action.Requirements with { Abilities = action.Requirements.Abilities.Add(ability.Id) } });
-    }
+    public void RegisterAbility(AbilityData ability, AbilityActionRegistry? registry = null)
+        => Register((registry ?? AbilityActionRegistry.Default).Resolve(ability));
 
     /// <summary>Checks live restrictions for legacy playback without paying or resolving an action.</summary>
     public bool Allows(string sourceId, ActionData action)
     {
         Expire();
+        if (action is AbilityAction { IsImplemented: false }) return false;
         return _characters.TryGetValue(sourceId, out var source) && source.Health.Health > 0
             && source.Loadout.MeetsRequirements(action) && !Restricted(source, action)
             && action.Costs.GroupBy(cost => cost.Subject).All(group => Available(source, group.Key) >= group.Sum(cost => (long)cost.Amount));
@@ -107,16 +109,40 @@ public sealed class CombatActionResolver
 
     /// <summary>Routes a committed legacy strike through the same typed effects and persistent rules.</summary>
     public ActionOutcome ResolveDamage(string sourceId, string targetId, string actionId, DamageProfile damage, AttackImpact? impact = null)
-        => ResolveCommitted(new ActionData { Id = actionId, Classifications = ["weapon"], Damage = damage }, sourceId, [targetId], impact);
+        => ResolveCommitted(new ActionData { Id = actionId, Classifications = ["weapon"], Damage = damage, Targeting = new(Flags: _characters[sourceId].Loadout.Find(actionId)?.TargetingFlags ?? TargetingFlags.None) }, sourceId, [targetId], impact);
+
+    /// <summary>Scales an authored cost by every active equipment and status multiplier.</summary>
+    public float EffectiveTurnCost(string sourceId, float baseCost)
+    {
+        Expire();
+        if (!float.IsFinite(baseCost) || baseCost <= 0) throw new ArgumentOutOfRangeException(nameof(baseCost));
+        double cost = baseCost;
+        foreach (var rule in Rules(_characters[sourceId]))
+            if (rule.Effect is TurnCostMultiplierEffect scale) cost *= scale.Multiplier;
+        var result = (float)cost;
+        if (!float.IsFinite(result) || result <= 0) throw new InvalidOperationException("Effective Turn cost must remain positive and finite.");
+        return result;
+    }
+
+    /// <summary>Shared reach eligibility for owned capabilities, committed playback and simulation.</summary>
+    public bool CanTarget(string sourceId, ActionData action, string targetId)
+        => _characters.TryGetValue(targetId, out var target) && target.Health.Health > 0
+            && (target.Elevation == 0 || !IsShortMelee(sourceId, action));
+
+    private bool IsShortMelee(string sourceId, ActionData action)
+        => _characters[sourceId].Loadout.IsShortMelee(action);
 
     /// <summary>Checks current capability, restrictions, equipment, full costs, and targeting.</summary>
     public bool CanCommit(string sourceId, ActionData action, string? targetId)
     {
         ValidateContext(action);
+        if (action is AbilityAction { IsImplemented: false }) return false;
         Expire();
         if (!_characters.TryGetValue(sourceId, out var source) || source.Health.Health == 0 || Combat.HasEnded
             || Combat.IsResolving || Combat.ActiveCombatant?.Id != sourceId || !source.Loadout.Actions.TryGetValue(action.Id, out var capability) || capability != action
             || !source.Loadout.MeetsRequirements(action) || Restricted(source, action)) return false;
+        if (action is AbilityAction behavior)
+            ValidateContext(new EffectAction(action.Id, behavior.Execute(this, sourceId).ToArray()));
         if (action.Costs.GroupBy(cost => cost.Subject).Any(group => Available(source, group.Key) < group.Sum(cost => (long)cost.Amount))) return false;
         if (action.Effects is null && action.ItemId is not null)
         {
@@ -127,9 +153,9 @@ public sealed class CombatActionResolver
             if (!prepared.Throw && !source.Loadout.ValidTarget(hand == StrikeHand.Left ? CombatLoadout.LeftHandStrike : CombatLoadout.RightHandStrike,
                 CandidateGeneration.Target(this, sourceId, targetId))) return false;
         }
-        var recipients = action.Targeting.Select(this, sourceId, targetId);
+        var recipients = action.SelectTargets(this, sourceId, targetId);
         if (recipients.Length == 0) return false;
-        if (action.BuildEffects().OfType<MoveEffect>().Any(effect =>
+        if (action.BuildEffects().Where(effect => effect is MoveEffect or ShiftRowEffect).Any(effect =>
             (effect.Recipients == RecipientScope.Source ? new[] { sourceId } : recipients.ToArray()).Any(id => _characters[id].IsPlayer))) return false;
         return true;
     }
@@ -150,7 +176,7 @@ public sealed class CombatActionResolver
         {
             // Costs were aggregated and validated before any mutation; evasion never refunds them.
             foreach (var cost in action.Costs) Consume(source, cost.Subject, cost.Amount);
-            var recipients = action.Targeting.Select(this, sourceId, targetId);
+            var recipients = action.SelectTargets(this, sourceId, targetId);
             outcome = ResolveCommitted(action, sourceId, recipients);
         });
         if (Combat.ActiveCombatant!.PlayerControlled) Combat.SubmitAction(operation);
@@ -161,13 +187,13 @@ public sealed class CombatActionResolver
     /// <summary>Clones all mutable combat owners and rebinds simulation-safe scheduled effects.</summary>
     public CombatActionResolver CopyForSimulation()
     {
-        var copy = new CombatActionResolver(Combat.CopyForPreview(), _statuses) { _statusSequence = _statusSequence,
+        var copy = new CombatActionResolver(Combat.CopyForPreview(), _statuses, initializeFocusGain: false) { _statusSequence = _statusSequence,
             AllowEscape = AllowEscape, CaptureCandidateTraces = CaptureCandidateTraces, _definitions = _definitions };
         foreach (var original in _characters.Values)
         {
             var character = new ActionCharacterState(original.Id, original.IsPlayer, original.Team,
                 new DamageReceiver(original.Health.Health), original.Loadout.CopyForPreview(), original.Position)
-            { MaximumHealth = original.MaximumHealth, Rules = original.Rules.ToArray(), TurnsStarted = original.TurnsStarted };
+            { Rules = original.Rules.ToArray(), TurnsStarted = original.TurnsStarted };
             copy.Add(character);
             character.ActiveStatuses.AddRange(original.ActiveStatuses.Select(status => status.CopyForPreview()));
             character.Health.DamageTaken += result => { if (result.IsLethal) copy.Combat.Remove(character.Id); };
@@ -219,7 +245,9 @@ public sealed class CombatActionResolver
                 return source.Loadout.CanCommitItemLayout(Combat, sourceId, candidate.Layout, candidate.Reloads);
             case CandidateKind.Command:
                 var command = source.Loadout.Find(candidate.Action.Id);
-                return command is not null && command.Resolve is null && source.Loadout.CanConfirm(Combat, sourceId, command,
+                return command is not null && command.Resolve is null
+                    && (!command.RequiresTarget || candidate.TargetId is { } id && CanTarget(sourceId, candidate.Action, id))
+                    && source.Loadout.CanConfirm(Combat, sourceId, command,
                     source.Loadout.ValidTarget(command, CandidateGeneration.Target(this, sourceId, candidate.TargetId)))
                     && (command.Hand is not { } hand || source.Loadout.HeldItem(hand)?.Id.Value == candidate.ItemId);
             case CandidateKind.Throw:
@@ -235,6 +263,7 @@ public sealed class CombatActionResolver
         if (Combat.HasEnded) return "Encounter has ended.";
         if (Combat.ActiveCombatant?.Id != sourceId || Combat.IsResolving) return "Actor has no pending decision boundary.";
         var source = _characters[sourceId];
+        if (candidate.Action is AbilityAction { IsImplemented: false }) return "Action implementation is not authored yet.";
         if (!Combat.IsAlive(sourceId)) return "Actor is incapacitated or unscheduled.";
         if (Restricted(source, candidate.Action)) return "An active restriction matches this action.";
         if (!source.Loadout.MeetsRequirements(candidate.Action)) return "Progression, ownership or equipment prerequisites are unmet.";
@@ -253,12 +282,15 @@ public sealed class CombatActionResolver
         if (candidate.Kind == CandidateKind.Capability) return Commit(sourceId, candidate.Action, candidate.TargetId);
         var source = _characters[sourceId];
         ActionOutcome? outcome = null;
-        void EmptyOutcome() { outcome = new(candidate.Action, sourceId, [], []); Resolved?.Invoke(outcome); }
+        var effectiveCost = candidate.Kind == CandidateKind.Command && candidate.Action.Id == CombatLoadout.Wait.Id.Value
+            ? candidate.Action.TurnCost : EffectiveTurnCost(sourceId, candidate.Action.TurnCost);
+        var committedAction = candidate.Action with { TurnCost = effectiveCost };
+        void EmptyOutcome() { outcome = new(committedAction, sourceId, [], []); Resolved?.Invoke(outcome); }
         switch (candidate.Kind)
         {
             case CandidateKind.Escape:
                 if (!Combat.RequestEscape(sourceId)) throw new InvalidOperationException("Escape invalidated before commitment.");
-                outcome = new(candidate.Action, sourceId, [], []);
+                outcome = new(committedAction, sourceId, [], []);
                 break;
             case CandidateKind.LegacyWeapon:
                 var original = source.Loadout.Actions[candidate.Action.Id];
@@ -267,7 +299,7 @@ public sealed class CombatActionResolver
                 {
                     foreach (var cost in original.Costs) Consume(source, cost.Subject, cost.Amount);
                     new EnemyActionState(source.Loadout).Apply(prepared);
-                    outcome = ResolveCommitted(prepared, sourceId, prepared.Reload ? [sourceId] : original.Targeting.Select(this, sourceId, candidate.TargetId));
+                    outcome = ResolveCommitted(prepared, sourceId, prepared.Reload ? [sourceId] : original.SelectTargets(this, sourceId, candidate.TargetId));
                 });
                 if (Combat.ActiveCombatant!.PlayerControlled) Combat.SubmitAction(operation); else Combat.SubmitAutomaticAction(operation);
                 break;
@@ -290,7 +322,7 @@ public sealed class CombatActionResolver
                 // Equipment commitment has no effects; its inventory/resource changes remain in the resulting state.
                 if (!source.Loadout.CommitItemLayout(Combat, sourceId, candidate.Layout.ToDictionary(), candidate.Reloads))
                     throw new InvalidOperationException("Item layout invalidated before commitment.");
-                outcome = new(candidate.Action, sourceId, [], []);
+                outcome = new(committedAction, sourceId, [], []);
                 break;
         }
         return outcome ?? throw new InvalidOperationException("Candidate did not resolve.");
@@ -298,7 +330,7 @@ public sealed class CombatActionResolver
 
     internal ActionOutcome RecordEmptyAction(string sourceId, string actionId, float turnCost)
     {
-        var outcome = new ActionOutcome(new ActionData { Id = actionId, TurnCost = turnCost, Damage = new DamageProfile() }, sourceId, [], []);
+        var outcome = new ActionOutcome(new ActionData { Id = actionId, TurnCost = Combat.CommittedTurnCost ?? turnCost, Damage = new DamageProfile() }, sourceId, [], []);
         Resolved?.Invoke(outcome);
         return outcome;
     }
@@ -315,18 +347,23 @@ public sealed class CombatActionResolver
         var evasions = targets.ToDictionary(id => id, id => Rules(_characters[id]).Where(rule => rule.Effect is EvadeEffect evade && evade.Filter.Matches(action, sourceId)).Select(rule => rule.Id).ToImmutableArray());
         var results = ImmutableArray.CreateBuilder<EffectOutcome>();
         var changed = new Dictionary<(int Index, string Recipient), bool>();
-        var spentResistance = new Dictionary<(string Recipient, string Rule, DamageType Type), int>();
-        var effects = action.BuildEffects();
+        var spentResistance = new Dictionary<(string Recipient, string Rule, DamageType? Type, int Attack), int>();
+        var effects = action is AbilityAction behavior ? behavior.Execute(this, sourceId) : action.BuildEffects();
         for (var index = 0; index < effects.Length; index++)
         {
             var effect = effects[index];
             var selected = effect.Recipients == RecipientScope.Source ? ImmutableArray.Create(sourceId) : targets;
+            if (effect is ShiftRowEffect shift) selected = FormationMovement.Order(this, selected, shift.Direction);
             foreach (var id in selected)
             {
                 var recipient = _characters[id];
                 var effectId = effect.Id ?? index.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 EffectOutcome result;
-                if (effect.Recipients == RecipientScope.Targets && evasions[id].Length > 0)
+                if (recipient.Elevation > 0 && (effect.RequiresGroundContact
+                    || effect.Recipients == RecipientScope.Targets && (action.RequiresGroundContact || effect.MeleeRange == WeaponRange.Short || IsShortMelee(sourceId, action))))
+                    result = new(effectId, effect.Verb, id, effect, Requested(effect), 0, 0, EffectResult.Negated,
+                        "Recipient is Elevated and cannot be reached by this effect.");
+                else if (effect.Recipients == RecipientScope.Targets && evasions[id].Length > 0)
                     result = new(effectId, effect.Verb, id, effect, Requested(effect), 0, 0, EffectResult.Evaded, "Incoming action evaded for this recipient.", evasions[id]);
                 else if (effect.RequiresEffect is { } dependency && !changed.GetValueOrDefault((dependency, id)))
                     result = new(effectId, effect.Verb, id, effect, Requested(effect), 0, 0, EffectResult.Unchanged, "Required earlier effect did not change this recipient.");
@@ -347,14 +384,16 @@ public sealed class CombatActionResolver
                     if (status.RemainingUses == 0) _characters[id].ActiveStatuses.Remove(status);
                 }
             }
-        var outcome = new ActionOutcome(action, sourceId, targets, results.ToImmutable());
+        var committedAction = Combat.IsResolving && Combat.ActiveCombatant?.Id == sourceId && Combat.CommittedTurnCost is { } cost
+            ? action with { TurnCost = cost } : action;
+        var outcome = new ActionOutcome(committedAction, sourceId, targets, results.ToImmutable());
         Resolved?.Invoke(outcome);
         return outcome;
     }
 
     /// <summary>Resolves an operation against current state; independent failures yield explicit no-change results.</summary>
     private EffectOutcome ResolveEffect(string effectId, ActionEffect effect, ActionCharacterState recipient, string source,
-        Dictionary<(string Recipient, string Rule, DamageType Type), int> spentResistance, AttackImpact? impact)
+        Dictionary<(string Recipient, string Rule, DamageType? Type, int Attack), int> spentResistance, AttackImpact? impact)
     {
         var requested = Requested(effect);
         double resolved = requested, actual = 0;
@@ -375,7 +414,7 @@ public sealed class CombatActionResolver
                 else foreach (var rule in rules)
                 {
                     if (rule.Effect is not ResistEffect resist || !resist.Filter.Matches(damage.Type, source)) continue;
-                    var key = (recipient.Id, rule.Id, damage.Type);
+                    var key = (recipient.Id, rule.Id, resist.ShareAcrossTypes ? (DamageType?)null : damage.Type, effect.AttackIndex);
                     var reduction = Math.Min(amount, Math.Max(0, resist.Amount - spentResistance.GetValueOrDefault(key)));
                     if (reduction == 0) continue;
                     spentResistance[key] = spentResistance.GetValueOrDefault(key) + reduction;
@@ -390,7 +429,7 @@ public sealed class CombatActionResolver
                 resolved = Modified(recipient, restore, NumericalField.RestoreAmount, restore.Amount, attribution);
                 // Restore does not define resurrection. Dead characters remain dead and unscheduled.
                 if (!HealingRules.CanRestore(recipient.Health)) { reason = "Restore does not resurrect an incapacitated character."; break; }
-                actual = HealingRules.Restore(recipient.Health, resolved, recipient.MaximumHealth);
+                actual = HealingRules.Restore(recipient.Health, resolved);
                 break;
             }
             case DelayEffect delay:
@@ -411,6 +450,16 @@ public sealed class CombatActionResolver
                     recipient.Position = move.Destination;
                     if (Combat.Contains(recipient.Id)) Combat.Relocate(recipient.Id, Row(move.Destination));
                     Moved?.Invoke(recipient.Id, move.Destination); actual = 1;
+                }
+                break;
+            case ShiftRowEffect shift:
+                if (FormationMovement.Destination(this, recipient, shift.Direction) is not { } shiftDestination)
+                    reason = "Recipient is at the formation boundary or the adjacent row has no free position.";
+                else
+                {
+                    recipient.Position = shiftDestination;
+                    if (Combat.Contains(recipient.Id)) Combat.Relocate(recipient.Id, Row(shiftDestination));
+                    Moved?.Invoke(recipient.Id, shiftDestination); actual = 1;
                 }
                 break;
             case ConsumeEffect consume: actual = Consume(recipient, consume.Subject, consume.Amount); break;
@@ -438,6 +487,8 @@ public sealed class CombatActionResolver
                 break;
             case ApplyEffect apply:
                 var persistence = apply.Persistence;
+                if (apply.ScaleDurationBySourceFocus)
+                    persistence = persistence with { Duration = persistence.Duration * _characters[source].Loadout.Focus };
                 if (persistence.Clock != StatusClock.Permanent)
                 {
                     resolved = Modified(recipient, apply, NumericalField.StatusDuration, persistence.Duration, attribution);
@@ -449,10 +500,32 @@ public sealed class CombatActionResolver
                 break;
             case DispelEffect dispel:
                 var matches = recipient.ActiveStatuses.Where(status => (dispel.Selector.Id is null || status.Definition.Id == dispel.Selector.Id)
-                    && (dispel.Selector.Tag is null || status.Definition.Tags.Contains(dispel.Selector.Tag)))
+                    && (dispel.Selector.Tag is null || status.Definition.Tags.Contains(dispel.Selector.Tag))
+                    && (dispel.DurationReduction is null || status.Persistence.Clock != StatusClock.Permanent))
                     .OrderBy(status => status.Sequence).Take(dispel.Limit ?? int.MaxValue).ToArray();
-                foreach (var status in matches) recipient.ActiveStatuses.Remove(status);
-                actual = matches.Length;
+                foreach (var status in matches)
+                {
+                    if (dispel.DurationReduction is not { } reduction)
+                    {
+                        RemoveStatus(recipient, status);
+                        actual++;
+                    }
+                    else if (status.ExpiresAt is { } expiration)
+                    {
+                        var removed = Math.Min(reduction, Math.Max(0, expiration - Combat.Timeline.CurrentTurn));
+                        status.ExpiresAt = expiration - removed;
+                        actual += removed;
+                        if (status.ExpiresAt <= Combat.Timeline.CurrentTurn) RemoveStatus(recipient, status);
+                        else if (removed > 0) ScheduleStatusExpiration(recipient, status);
+                    }
+                    else if (status.ExpiresOnTurnStart is { } turnStart)
+                    {
+                        var removed = Math.Min(reduction, Math.Max(0, turnStart - recipient.TurnsStarted));
+                        status.ExpiresOnTurnStart = turnStart - removed;
+                        actual += removed;
+                        if (status.ExpiresOnTurnStart <= recipient.TurnsStarted) RemoveStatus(recipient, status);
+                    }
+                }
                 break;
             case TransferEffect transfer:
                 if (!_characters.TryGetValue(transfer.DestinationId, out var destination) || destination == recipient || transfer.Amount == 0)
@@ -512,19 +585,77 @@ public sealed class CombatActionResolver
         var duplicates = recipient.ActiveStatuses.Where(status => status.Definition.Id == id).ToArray();
         if (duplicates.Length > 0 && definition.Duplicates == DuplicateStatusRule.Reject) return false;
         if (definition.Duplicates is DuplicateStatusRule.Refresh or DuplicateStatusRule.Replace)
-            foreach (var existing in duplicates) recipient.ActiveStatuses.Remove(existing);
+            foreach (var existing in duplicates) RemoveStatus(recipient, existing);
         var application = NextApplicationSequence();
         var sequence = definition.Duplicates == DuplicateStatusRule.Refresh && duplicates.Length > 0 ? duplicates[0].Sequence : application;
         var status = new ActiveStatus(sequence, definition, source, persistence, Combat.Timeline.CurrentTurn, recipient.TurnsStarted);
         status.ApplicationSequence = application;
         recipient.ActiveStatuses.Add(status);
-        if (status.ExpiresAt is { } expiration && !Combat.HasEnded)
-        {
-            var recipientId = recipient.Id;
-            Combat.ScheduleSimulationEvent(expiration, $"Expire {id}",
-                system => system.Resolver!._characters[recipientId].ActiveStatuses.RemoveAll(instance => instance.ApplicationSequence == application), isVisible: false);
-        }
+        if (definition.FocusGainBonuses.IsEmpty) ScheduleStatusExpiration(recipient, status);
+        else ScheduleFocusBonuses(recipient, status);
         return true;
+    }
+
+    private void ScheduleFocusBoundary(float boundary)
+    {
+        Combat.ScheduleSimulationEvent(boundary, "Focus regeneration", system => system.Resolver!.GainBoundaryFocus(boundary), isVisible: false);
+    }
+
+    private void GainBoundaryFocus(float boundary)
+    {
+        foreach (var character in _characters.Values.Where(character => character.Health.Health > 0))
+            character.Loadout.Focus += Math.Min(1, int.MaxValue - character.Loadout.Focus);
+        if (!Combat.HasEnded) ScheduleFocusBoundary(boundary + 1);
+    }
+
+    private void ScheduleFocusBonuses(ActionCharacterState recipient, ActiveStatus status)
+    {
+        var bonuses = status.Definition.FocusGainBonuses;
+        var start = MathF.Floor(Combat.Timeline.CurrentTurn);
+        status.ExpiresAt = start + bonuses.Length;
+        var recipientId = recipient.Id;
+        var application = status.ApplicationSequence;
+        var events = ImmutableArray.CreateBuilder<long>();
+        for (var index = 0; index < bonuses.Length; index++)
+        {
+            var amount = bonuses[index];
+            if (amount == 0) continue;
+            var final = index == bonuses.Length - 1;
+            events.Add(Combat.ScheduleSimulationEvent(start + index + 1, $"{status.Definition.Name}: +{amount} Focus",
+                system => system.Resolver!.GainStatusFocus(recipientId, application, amount, final), icon: status.Definition.Icon.Value));
+        }
+        status.FocusGainEvents = events.ToImmutable();
+    }
+
+    private void GainStatusFocus(string recipientId, long application, int amount, bool final)
+    {
+        var recipient = _characters[recipientId];
+        var status = recipient.ActiveStatuses.FirstOrDefault(instance => instance.ApplicationSequence == application);
+        if (status is null || recipient.Health.Health == 0) return;
+        recipient.Loadout.Focus += Math.Min(amount, int.MaxValue - recipient.Loadout.Focus);
+        if (final) RemoveStatus(recipient, status);
+    }
+
+    private void RemoveStatus(ActionCharacterState recipient, ActiveStatus status)
+    {
+        recipient.ActiveStatuses.Remove(status);
+        foreach (var id in status.FocusGainEvents) Combat.CancelEvent(id);
+    }
+
+    private void RemoveStatusApplication(string recipientId, long application)
+    {
+        var recipient = _characters[recipientId];
+        foreach (var status in recipient.ActiveStatuses.Where(instance => instance.ApplicationSequence == application).ToArray())
+            RemoveStatus(recipient, status);
+    }
+
+    private void ScheduleStatusExpiration(ActionCharacterState recipient, ActiveStatus status)
+    {
+        if (status.ExpiresAt is not { } expiration || Combat.HasEnded) return;
+        var recipientId = recipient.Id;
+        var application = status.ApplicationSequence;
+        Combat.ScheduleSimulationEvent(expiration, $"Expire {status.Definition.Id}",
+            system => system.Resolver!.RemoveStatusApplication(recipientId, application), isVisible: false);
     }
 
     /// <summary>Expires recipient-turn statuses before selection and automatic decision making.</summary>
@@ -537,8 +668,10 @@ public sealed class CombatActionResolver
     private void Expire()
     {
         foreach (var character in _characters.Values)
-            character.ActiveStatuses.RemoveAll(status => status.ExpiresAt is { } time && time <= Combat.Timeline.CurrentTurn
-                || status.ExpiresOnTurnStart is { } count && count <= character.TurnsStarted || status.RemainingUses == 0);
+            foreach (var status in character.ActiveStatuses.Where(status => status.ExpiresAt is { } time && (time < Combat.Timeline.CurrentTurn
+                    || time == Combat.Timeline.CurrentTurn && status.Definition.FocusGainBonuses.IsEmpty)
+                || status.ExpiresOnTurnStart is { } count && count <= character.TurnsStarted || status.RemainingUses == 0).ToArray())
+                RemoveStatus(character, status);
     }
     /// <summary>Validates definitions and resolves capability references before any mutation.</summary>
     private void ValidateContext(ActionData action)
@@ -568,7 +701,7 @@ public sealed class CombatActionResolver
         DamageEffect damage => damage.Amount, RestoreEffect restore => restore.Amount, DelayEffect delay => delay.Amount,
         ConsumeEffect consume => consume.Amount, GrantEffect { Subject: GrantResource resource } => resource.Amount,
         GrantEffect { Subject: GrantItem item } => item.Item.Quantity, ApplyEffect apply => apply.Persistence.Duration,
-        DispelEffect dispel => dispel.Limit ?? int.MaxValue, TransferEffect transfer => transfer.Amount, _ => 1,
+        DispelEffect dispel => dispel.DurationReduction ?? dispel.Limit ?? int.MaxValue, TransferEffect transfer => transfer.Amount, _ => 1,
     };
     /// <summary>Maps authoritative formation position to scheduler row ordering.</summary>
     private static CombatRow Row(FormationSlot slot) => slot >= FormationSlot.FrontLeft ? CombatRow.Front : slot >= FormationSlot.MiddleLeft ? CombatRow.Middle : CombatRow.Back;

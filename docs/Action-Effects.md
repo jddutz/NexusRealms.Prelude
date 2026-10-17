@@ -53,7 +53,11 @@ Defaults are explicit:
   cancelling independent effects. `RequiresEffect` names an earlier operation
   which must have changed that same recipient before a dependent effect proceeds.
 - Freeze recipients at resolution start. Single, self, row, column, adjacent,
-  and all are targeting profiles. Movement does not recalculate them.
+  cone, and all are targeting profiles. Row, column and adjacent use a selected
+  target as their anchor; cone selects front-center, both middle-center slots,
+  and all three back-row slots without an anchor. Targeting defaults to the
+  opposing team; `TargetingOptions.AllTeams` explicitly includes both teams,
+  including the source. Movement does not recalculate recipients.
 - Source-scoped effects express execution commitments independent of target
   evasion. Each target's evasion cancels every target-scoped operation for that
   recipient while other targets continue.
@@ -64,12 +68,11 @@ Defaults are explicit:
 - Numerical modification is signed addition, summed and clamped once. Supported
   fields are Damage amount, Restore amount, Delay amount, and status duration.
   Integer fields reject fractional adjustments. Targeting extent and unsupported
-  operations cannot be modified. No multiplier or override precedence exists.
+  operations cannot be modified. Other numerical fields remain additive. Persistent `TurnCostMultiplierEffect` rules multiply together to scale committed Turn costs.
 - Delay only affects an existing future occurrence. It cannot postpone an
   already active action. Movement rejects player/occupied positions and updates
   the formation and scheduler row without an implicit swap or displacement.
-- Restore has no implicit resurrection. It respects an explicitly supplied
-  `MaximumHealth`; the current game introduces no new maximum.
+- Restore has no implicit resurrection and no gameplay maximum; starting Health is not a cap.
 - Consume effects reduce up to the available Focus/item quantity. Grant follows
   identity and inventory capacity rules and never implicitly equips items.
 - Remove distinguishes owned items, equipment associations, and capabilities.
@@ -86,7 +89,7 @@ names permanent, absolute timeline, or recipient-turn-start clocks. A duration
 of 1 with `RecipientTurnStart` expires before selection at the next recipient turn.
 Bounded uses declare incoming action or non-evaded incoming action, optionally
 filtered. Dispel uses explicit identifiers/tags; limited selection removes oldest
-applications first. Natural expiration does not undo earlier effects.
+applications first. With DurationReduction, Dispel instead shortens matching timed statuses by that many turns, removing exhausted instances and leaving permanent lifetimes unchanged. Natural expiration does not undo earlier effects.
 
 Existing status presentation placeholders remain mechanically empty; their names
 imply no resistance, Focus recovery, or other hidden behavior. Existing attacks

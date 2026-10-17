@@ -93,7 +93,7 @@ public static class WeaponCatalog
         Icons = icons,
         Weapon = new WeaponData
         {
-            Damage = new ReadOnlyDictionary<DamageType, int>(points.Append((DamageType.General, 1)).ToDictionary(point => point.Item1, point => point.Item2)),
+            Damage = new ReadOnlyDictionary<DamageType, int>(points.Append((DamageType.Basic, 1)).ToDictionary(point => point.Item1, point => point.Item2)),
         },
     };
 }

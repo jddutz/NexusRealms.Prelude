@@ -5,8 +5,16 @@ public record ActionData
 {
     /// <summary>Stable action identity, independent of an ability identifier.</summary>
     public string Id { get; init; } = "attack";
+    /// <summary>Display name supplied by the unlocking ability when applicable.</summary>
+    public string? Name { get; init; }
+    /// <summary>Presentation icon shared with the unlocking ability.</summary>
+    public ContentId? Icon { get; init; }
     /// <summary>Explicit filter classifications such as weapon or spell.</summary>
     public System.Collections.Immutable.ImmutableArray<string> Classifications { get; init; } = [];
+    /// <summary>Explicit melee reach for typed actions; null means not a melee attack. Weapon attacks derive this from equipment.</summary>
+    public WeaponRange? MeleeRange { get; init; }
+    /// <summary>Target effects require ground contact; airborne recipients negate them.</summary>
+    public bool RequiresGroundContact { get; init; }
     /// <summary>Progression and equipment conditions required to unlock this capability.</summary>
     public ActionRequirements Requirements { get; init; } = new();
     /// <summary>Costs paid in full at commitment.</summary>
@@ -33,7 +41,7 @@ public record ActionData
     public float TurnCost { get; init; } = 1f;
     /// <summary>Compatibility damage for existing weapon attacks.</summary>
     public DamageProfile Damage { get; init; } =
-        new(new Dictionary<DamageType, int> { [DamageType.General] = 1 });
+        new(new Dictionary<DamageType, int> { [DamageType.Basic] = 1 });
     /// <summary>Presentation cue for impact within the animation.</summary>
     public float ImpactFraction { get; init; } = 0.6f;
 }

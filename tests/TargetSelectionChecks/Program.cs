@@ -5,6 +5,8 @@ global using Nexus.Graphics.Components;
 global using Nexus.Graphics.Textures;
 global using Silk.NET.Maths;
 using NexusRealms.Prelude;
+using NexusRealms.Prelude.Actions;
+using NexusRealms.Prelude.Combat;
 using NexusRealms.Prelude.DataModel;
 
 static void Check(bool value) { if (!value) throw new Exception("Check failed"); }
@@ -82,7 +84,7 @@ var feedbackCharacter = new Character(new CharacterData
 var feedbackTextures = new FeedbackTextures(texture);
 feedbackCharacter.ConfigureEffectOverlays(feedbackTextures, 1);
 NexusRealms.Prelude.Combat.DamageResolver.Apply(feedbackCharacter.DamageReceiver,
-    new(new Dictionary<DamageType, int> { [DamageType.General] = 5 }),
+    new(new Dictionary<DamageType, int> { [DamageType.Basic] = 5 }),
     impact: new("effects.ranged.png", "test-ammo"));
 Check(feedbackTextures.Requests.Select(id => id.Value).SequenceEqual(new[] { "effects.ranged.png", "test-ammo" }));
 Check(feedbackCharacter.IsShowingFeedback && feedbackCharacter.Renderer.IsVisible);
@@ -102,7 +104,7 @@ blockedCharacter.Update(0.5d);
 Check(!blockedCharacter.IsShowingFeedback && blockedCharacter.Renderer.IsVisible);
 blockedCharacter.Health = 1;
 NexusRealms.Prelude.Combat.DamageResolver.Apply(blockedCharacter.DamageReceiver,
-    new(new Dictionary<DamageType, int> { [DamageType.General] = 1 }), impact: new("effects.impact.png"));
+    new(new Dictionary<DamageType, int> { [DamageType.Basic] = 1 }), impact: new("effects.impact.png"));
 blockedCharacter.Update(0.1d);
 Check(!blockedCharacter.IsShowingDamage && blockedCharacter.IsShowingFeedback && blockedCharacter.Renderer.IsVisible);
 blockedCharacter.Update(0.4d);
@@ -125,7 +127,7 @@ gameSystem.Initialize();
 gameSystem.Update(0d);
 var originalTint = lifecycleCharacter.Renderer.Instances.Values.Single().Color;
 NexusRealms.Prelude.Combat.DamageResolver.Apply(lifecycleCharacter.DamageReceiver,
-    new(new Dictionary<DamageType, int> { [DamageType.General] = 1, [DamageType.Fire] = 1 }),
+    new(new Dictionary<DamageType, int> { [DamageType.Basic] = 1, [DamageType.Fire] = 1 }),
     impact: new("effects.slash.png"));
 var physicalTint = lifecycleCharacter.Renderer.Instances.Values.Single().Color;
 Check(!physicalTint.Equals(originalTint));
@@ -139,7 +141,7 @@ Check(!lifecycleCharacter.IsShowingDamage && lifecycleCharacter.IsShowingFeedbac
 gameSystem.Update(0.34d);
 Check(!lifecycleCharacter.IsShowingFeedback);
 NexusRealms.Prelude.Combat.DamageResolver.Apply(lifecycleCharacter.DamageReceiver,
-    new(new Dictionary<DamageType, int> { [DamageType.General] = 3 }), impact: new("effects.impact.png"));
+    new(new Dictionary<DamageType, int> { [DamageType.Basic] = 3 }), impact: new("effects.impact.png"));
 Check(lifecycleCharacter.Health == 0);
 gameSystem.Update(0.499d);
 Check(lifecycleCharacter.Renderer.IsVisible);
@@ -175,7 +177,7 @@ try
     Check(animated.VisualWidth == 2 && animated.VisualHeight == 2);
     Check(animated.HitTest(new(0f, -1f)));
     NexusRealms.Prelude.Combat.DamageResolver.Apply(animated.DamageReceiver,
-        new(new Dictionary<DamageType, int> { [DamageType.General] = 1 }));
+        new(new Dictionary<DamageType, int> { [DamageType.Basic] = 1 }));
     Check(sprite.TexCoord.X == 2f / 6f && !animated.HitTest(new(0f, -1f)));
     animated.Update(0.1d);
     Check(sprite.TexCoord.X == 4f / 6f && animated.IsShowingFeedback);
@@ -200,7 +202,7 @@ try
     Check(sprite.TexCoord.X == 0f && !animated.IsShowingFeedback);
     // An update crossing both effect phases advances stagger only after its cue.
     NexusRealms.Prelude.Combat.DamageResolver.Apply(animated.DamageReceiver,
-        new(new Dictionary<DamageType, int> { [DamageType.General] = 1 }), impact: new("effects.slash_01.png"));
+        new(new Dictionary<DamageType, int> { [DamageType.Basic] = 1 }), impact: new("effects.slash_01.png"));
     animated.Update(0.5d);
     Check(sprite.TexCoord.X == 2f / 6f && !effectRenderer.IsVisible);
     animated.Update(0.184d);
@@ -208,12 +210,12 @@ try
     animated.StaggerAnimationEnabled = false;
     animated.Health = 10;
     NexusRealms.Prelude.Combat.DamageResolver.Apply(animated.DamageReceiver,
-        new(new Dictionary<DamageType, int> { [DamageType.General] = 1 }));
+        new(new Dictionary<DamageType, int> { [DamageType.Basic] = 1 }));
     Check(sprite.TexCoord.X == 0f && animated.IsShowingDamage);
     animated.Update(0.08d);
     Check(sprite.TexCoord.X == 0f && !animated.IsShowingFeedback);
     NexusRealms.Prelude.Combat.DamageResolver.Apply(animated.DamageReceiver,
-        new(new Dictionary<DamageType, int> { [DamageType.General] = 1 }), impact: new("effects.slash_01.png"));
+        new(new Dictionary<DamageType, int> { [DamageType.Basic] = 1 }), impact: new("effects.slash_01.png"));
     animated.Update(0.484d);
     Check(sprite.TexCoord.X == 0f && effectRenderer.IsVisible);
     animated.Update(0.017d);
@@ -221,7 +223,7 @@ try
     animated.StaggerAnimationEnabled = true;
     animated.Health = 1;
     NexusRealms.Prelude.Combat.DamageResolver.Apply(animated.DamageReceiver,
-        new(new Dictionary<DamageType, int> { [DamageType.General] = 1 }), impact: new("effects.slash_01.png"));
+        new(new Dictionary<DamageType, int> { [DamageType.Basic] = 1 }), impact: new("effects.slash_01.png"));
     animated.Update(0.5d);
     Check(animated.Renderer.IsVisible && sprite.Color.A == 1f);
     animated.Update(0.184d);
@@ -230,6 +232,40 @@ try
     Console.WriteLine("Atlas idle, stagger, hit testing and lethal feedback checks passed.");
 }
 finally { File.Delete(sheetPath); }
+
+var coneCombat = new CombatSystem();
+coneCombat.Add(new("cone-player", true));
+foreach (var slot in Enum.GetValues<FormationSlot>())
+{
+    var id = $"cone-{slot}";
+    coneCombat.Add(new(id, false, 10, team: CombatTeam.Enemies));
+}
+coneCombat.Add(new("cone-ally", false, 10, team: CombatTeam.PlayerAndAllies));
+var coneResolver = new CombatActionResolver(coneCombat, new Dictionary<StatusEffectId, StatusEffectData>());
+coneResolver.Add(new("cone-player", true, CombatTeam.PlayerAndAllies, new(20), CombatLoadout.CreatePlayerLoadout()));
+foreach (var slot in Enum.GetValues<FormationSlot>())
+{
+    var id = $"cone-{slot}";
+    coneResolver.Add(new(id, false, CombatTeam.Enemies, new(20), new(), slot));
+}
+coneResolver.Add(new("cone-ally", false, CombatTeam.PlayerAndAllies, new(20), new(), FormationSlot.MiddleCenterLeft));
+var coneTargets = new TargetingProfile(TargetShape.Cone, TargetRelationship.OpposingTeam)
+    .Select(coneResolver, "cone-player", null);
+Check(coneTargets.ToHashSet(StringComparer.Ordinal).SetEquals(
+    ["cone-FrontCenter", "cone-MiddleCenterLeft", "cone-MiddleCenterRight", "cone-BackLeft", "cone-BackCenter", "cone-BackRight"]));
+Check(new TargetingProfile().Relationship == TargetRelationship.OpposingTeam);
+var allEnemies = new TargetingProfile(TargetShape.All)
+    .Select(coneResolver, "cone-player", null);
+Check(allEnemies.Length == 10 && !allEnemies.Contains("cone-player") && !allEnemies.Contains("cone-ally"));
+var allCharacters = new TargetingProfile(TargetShape.All, Options: TargetingOptions.AllTeams)
+    .Select(coneResolver, "cone-player", null);
+Check(allCharacters.Length == 12 && allCharacters.Contains("cone-player") && allCharacters.Contains("cone-ally"));
+var coneAction = new ActionData { Id = "cone-action", Targeting = new(TargetShape.Cone, TargetRelationship.OpposingTeam) };
+var coneLoadout = CombatLoadout.CreatePlayerLoadout();
+coneLoadout.AddActionCommand(coneAction);
+Check(!coneLoadout.Commands.Single(command => command.Id.Value == coneAction.Id).RequiresTarget);
+Console.WriteLine("Cone targeting selects the six specified enemy positions without an anchor.");
+
 sealed class FeedbackTextures(ITexture texture) : ITextureRegistry
 {
     public List<ContentId> Requests { get; } = [];

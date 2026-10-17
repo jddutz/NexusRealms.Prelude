@@ -91,7 +91,7 @@ public class CombatScene : Scene
         var occupied = ActionResolver.Characters.Values.Where(character => character.Team == CombatTeam.Enemies
             && Combat.IsAlive(character.Id) && character.Position is not null).Select(character => RowOf(character.Position!.Value)).ToHashSet();
         return new(Combat.Contains(pair.Key), target.Health.Health > 0, target.Team, RowOf(target.Position!.Value),
-            occupied.Contains(CombatRow.Front), occupied.Contains(CombatRow.Middle));
+            occupied.Contains(CombatRow.Front), occupied.Contains(CombatRow.Middle), target.Elevation > 0);
     }
     private static CombatRow RowOf(FormationSlot slot) =>
         slot >= FormationSlot.FrontLeft ? NexusRealms.Prelude.DataModel.CombatRow.Front
@@ -1277,7 +1277,7 @@ public class CombatScene : Scene
             Margins = new(Left: equipmentLeft, Right: 0f, Top: 0f, Bottom: 24f),
         };
         var costLabel = CreateHudLabel(
-            $"Turn +{Loadout.ItemLayoutCost(pending, _pendingReloads):0.##}",
+            $"Turn +{Loadout.PreviewTurnCost(Loadout.ItemLayoutCost(pending, _pendingReloads)):0.##}",
             AlignVertical.Center
         );
         costLabel.Margins = new(0f);
@@ -1311,7 +1311,7 @@ public class CombatScene : Scene
             var changed = Loadout.ChangedItemSlots(pending).Count > 0 || _pendingReloads.Count > 0;
             closeButton.IsVisible = !changed;
             cancelButton.IsVisible = confirmButton.IsVisible = changed;
-            costLabel.Text = $"Turn +{Loadout.ItemLayoutCost(pending, _pendingReloads):0.##}";
+            costLabel.Text = $"Turn +{Loadout.PreviewTurnCost(Loadout.ItemLayoutCost(pending, _pendingReloads)):0.##}";
             message.Text = "";
         });
         RefreshItems();
@@ -1377,10 +1377,9 @@ public class CombatScene : Scene
                             || position.Y >= bounds.Max.Y
                         )
                             continue;
-                        var unlocked = ability.Actions.FirstOrDefault(action =>
-                            Loadout.LearnedAbilities.Contains(ability.Id) && Loadout.Actions.ContainsKey(action.Id)
-                            && Loadout.MeetsRequirements(Loadout.Actions[action.Id]));
-                        if (unlocked is null) return;
+                        if (!Loadout.LearnedAbilities.Contains(ability.Id)
+                            || !Loadout.Actions.TryGetValue(ability.ActionId.Value, out var unlocked)
+                            || !Loadout.MeetsRequirements(unlocked)) return;
                         Loadout.Assign(slot, unlocked.Id);
                         RefreshCommand();
                         break;
@@ -1514,6 +1513,11 @@ public class CombatScene : Scene
             var dialog = _dialog;
             _dialog = null;
             dialog?.Dispose();
+        }
+        foreach (var (id, visual) in _runtimeCharacters)
+        {
+            var elevation = ActionResolver.Characters[id].Elevation > 0 ? 12f : 0f;
+            if (visual.Elevation != elevation) visual.Elevation = elevation;
         }
         foreach (var entry in _characterDisplays)
             entry.Character.AnimationSpeed = _gameState.GameSpeed;

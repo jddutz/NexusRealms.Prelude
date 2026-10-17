@@ -250,7 +250,7 @@ public static class CombatDecisionMaker
             Objectives(before.Combat.VictoryObjectives, "victory", 1);
             Objectives(before.Combat.DefeatObjectives, "defeat", -1, any: true);
         }
-        Add("schedule-opportunities", ScheduleAdvantage(before, after, actorId, candidate.Action.TurnCost), weights.Denial);
+        Add("schedule-opportunities", ScheduleAdvantage(before, after, actorId, outcome.Action.TurnCost), weights.Denial);
         Add("allied-actions-enabled", beforeThreat is not null && afterThreat is not null
             ? afterThreat.AlliedActions.Except(beforeThreat.AlliedActions).Count()
             : EnabledActions(after, actor.Team).Except(EnabledActions(before, actor.Team)).Count(), weights.Support);
@@ -262,7 +262,7 @@ public static class CombatDecisionMaker
             Add("prepared-action-value", PreparedActionValue(after, actorId, snapshot, strategy)
                 - PreparedActionValue(before, actorId, snapshot, strategy), 1);
         }
-        Add("time-centiturns", -(long)Math.Round(candidate.Action.TurnCost * 100d, MidpointRounding.AwayFromZero), weights.Time);
+        Add("time-centiturns", -(long)Math.Round(outcome.Action.TurnCost * 100d, MidpointRounding.AwayFromZero), weights.Time);
         // Time is expressed in centiturns; the declared weight is per Turn, avoiding float tie comparisons.
         return new(candidate, captureTrace ? ActionPreview.Capture(outcome, after) : null, utility,
             ObjectiveRank(after.Combat.Outcome, actor.Team), captureTrace ? contributions.ToImmutable() : []);
@@ -394,7 +394,7 @@ public static class CombatDecisionMaker
             // Compare net consequences and every controlled Turn spent, rather than
             // summing intermediate damage/eliminations or charging only the root action.
             var evaluation = Evaluate(resolver, state, actorId,
-                root with { Action = root.Action with { TurnCost = cost } }, outcome, snapshot, settings.Fallback,
+                root, outcome with { Action = outcome.Action with { TurnCost = cost } }, snapshot, settings.Fallback,
                 captureTrace: resolver.CaptureCandidateTraces, evaluatePreparation: false);
             return evaluation with { Candidate = root };
         }
@@ -439,8 +439,8 @@ public static class CombatDecisionMaker
                     if (!Spend()) break;
                     var copy = resolver.CopyForSimulation();
                     var outcome = copy.Commit(actorId, candidate);
-                    layer.Add(new(copy, candidate, outcome, candidate.Action.TurnCost,
-                        Score(copy, candidate, outcome, candidate.Action.TurnCost)));
+                    layer.Add(new(copy, candidate, outcome, outcome.Action.TurnCost,
+                        Score(copy, candidate, outcome, outcome.Action.TurnCost)));
                 }
             }
             else
@@ -460,8 +460,8 @@ public static class CombatDecisionMaker
                     {
                         if (!Spend()) break;
                         var copy = parent.Resolver.CopyForSimulation();
-                        copy.Commit(actorId, choice);
-                        var cost = parent.TurnCost + choice.Action.TurnCost;
+                        var outcome = copy.Commit(actorId, choice);
+                        var cost = parent.TurnCost + outcome.Action.TurnCost;
                         layer.Add(new(copy, parent.Root, parent.RootOutcome, cost,
                             Score(copy, parent.Root, parent.RootOutcome, cost)));
                     }
