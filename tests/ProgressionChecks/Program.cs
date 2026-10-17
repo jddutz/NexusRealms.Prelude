@@ -38,6 +38,9 @@ Check(intro.Choices.Length == 2
     && intro.Choices.Select(choice => choice.NextNode).Distinct().Count() == intro.Choices.Length
     && intro.Choices.All(choice => story.Nodes.ContainsKey(choice.NextNode)),
     "Each narrative choice must resolve to a distinct registered destination.");
+Check(Aries.Rampage.Targeting.Shape == TargetShape.FrontRow
+    && Aquarius.Whirlwind.Targeting.Shape == TargetShape.FrontRow,
+    "Rampage and Whirlwind must target the front row.");
 Check(Aquarius.Definitions.Length == 20 && Aquarius.Graph.Abilities.Length == 20, "Aquarius must author all twenty definitions and placements.");
 Check(Aquarius.Graph.Abilities.Select(node => (node.X, node.Y)).Distinct().Count() == 20,
     "Aquarius stars must have twenty explicit distinct artwork positions.");

@@ -1,5 +1,19 @@
 namespace NexusRealms.Prelude.DataModel;
 
+/// <summary>Action properties that govern restrictions independently of recipient selection.</summary>
+[Flags]
+public enum ActionFlags
+{
+    /// <summary>No explicit action properties.</summary>
+    None = 0,
+    /// <summary>Requires sight and is prevented by Blind.</summary>
+    Visual = 1,
+    /// <summary>Has magical affinity and is prevented by Silence, independently of speech.</summary>
+    Magical = 2,
+    /// <summary>Has melee affinity, is prevented by Fear, and is required by Berserk.</summary>
+    Melee = 4,
+}
+
 /// <summary>An authored character capability. Derive a record class for each named action.</summary>
 public record ActionData
 {
@@ -11,12 +25,16 @@ public record ActionData
     public ContentId? Icon { get; init; }
     /// <summary>Explicit filter classifications such as weapon or spell.</summary>
     public System.Collections.Immutable.ImmutableArray<string> Classifications { get; init; } = [];
+    /// <summary>Action properties that are independent of target selection.</summary>
+    public ActionFlags Flags { get; init; }
     /// <summary>Explicit melee reach for typed actions; null means not a melee attack. Weapon attacks derive this from equipment.</summary>
     public WeaponRange? MeleeRange { get; init; }
     /// <summary>Target effects require ground contact; airborne recipients negate them.</summary>
     public bool RequiresGroundContact { get; init; }
     /// <summary>Progression and equipment conditions required to unlock this capability.</summary>
     public ActionRequirements Requirements { get; init; } = new();
+    /// <summary>Whether this capability is not manually activated as a combat action.</summary>
+    public bool Passive { get; init; }
     /// <summary>Costs paid in full at commitment.</summary>
     public System.Collections.Immutable.ImmutableArray<ActionCost> Costs { get; init; } = [];
     /// <summary>Ordered typed operations; null adapts the existing typed damage profile.</summary>

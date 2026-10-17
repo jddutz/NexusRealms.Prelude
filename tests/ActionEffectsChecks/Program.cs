@@ -21,10 +21,11 @@ static StatusEffectData Status(string id, params ActionEffect[] rules) => new()
 };
 var resistance = Status("resistance", new ResistEffect(new(DamageType.Slashing), 1));
 var negate = Status("negate", new NegateEffect(new(DamageType.Fire)));
+var prevention = Status("prevention", new PreventEffect("resistance"));
 var evade = Status("evade", new EvadeEffect(new()));
 var restriction = Status("restriction", new RestrictEffect(new(Classification: "weapon")));
 var modifier = Status("modifier", new ModifyEffect(new(EffectVerb.Damage), NumericalField.DamageAmount, 2));
-var definitions = new[] { resistance, negate, evade, restriction, modifier,
+var definitions = new[] { resistance, negate, prevention, evade, restriction, modifier,
     Status("reject") with { Duplicates = DuplicateStatusRule.Reject },
     Status("replace") with { Duplicates = DuplicateStatusRule.Replace },
     Status("stack") with { Duplicates = DuplicateStatusRule.Stack },
@@ -40,8 +41,11 @@ var definitions = new[] { resistance, negate, evade, restriction, modifier,
     NexusRealms.Prelude.Database.StatusEffects.EyeOfTheStorm,
     NexusRealms.Prelude.Database.StatusEffects.Slow,
     NexusRealms.Prelude.Database.StatusEffects.Haste,
+    NexusRealms.Prelude.Database.StatusEffects.Fury,
+    NexusRealms.Prelude.Database.StatusEffects.Onslaught,
     NexusRealms.Prelude.Database.StatusEffects.Silenced,
-    NexusRealms.Prelude.Database.StatusEffects.Blind }.ToDictionary(status => status.Id);
+    NexusRealms.Prelude.Database.StatusEffects.Blind,
+    NexusRealms.Prelude.Database.StatusEffects.Berserk }.ToDictionary(status => status.Id);
 
 Fixture New() => new(definitions);
 void Apply(Fixture f, string id, string recipient = "enemy", StatusPersistence? persistence = null)
@@ -67,6 +71,14 @@ var mixed = new ActionEffect[] { new DamageEffect(DamageType.Basic, 1), new Dama
 var f = New(); Apply(f, "resistance");
 var outcome = f.Resolve("enemy", mixed);
 Check(f.Enemy.Health.Health == 17 && outcome.Effects.Sum(effect => effect.ResolvedAmount) == 3, "Typed resistance acceptance case.");
+f = New(); Apply(f, "prevention", "enemy");
+outcome = f.Resolve("enemy", new ApplyEffect("resistance", new()));
+Check(f.Enemy.Statuses.Count == 1 && f.Enemy.Statuses.Single().Definition.Id == "prevention"
+    && outcome.Effects.Single().Result == EffectResult.Unchanged && outcome.Effects.Single().Rules.Length == 1,
+    "Prevent must block the matching status application and attribute its persistent rule.");
+outcome = f.Resolve("enemy", new ApplyEffect("negate", new()));
+Check(outcome.Effects.Single().ActualChange == 1 && f.Enemy.Statuses.Count == 2,
+    "Prevent must not block applications of other statuses.");
 f = New(); Apply(f, "negate");
 outcome = f.Resolve("enemy", mixed.Concat([new DelayEffect(2)]).ToArray());
 Check(f.Enemy.Health.Health == 17 && f.Combat.Timeline.TurnOrder.Single(turn => turn.CombatantId == "enemy").Turn == 12,
@@ -83,7 +95,7 @@ var otherHealth = new DamageReceiver(20);
 f.Combat.Add(new("other", false, 10, team: CombatTeam.Enemies));
 f.Resolver.Add(new("other", false, CombatTeam.Enemies, otherHealth, new(), FormationSlot.FrontRight));
 var area = new ExampleAction("area", new DamageEffect(DamageType.Basic, 3), new DelayEffect(2))
-    { Targeting = new(TargetShape.All, TargetRelationship.OpposingTeam) };
+    { Targeting = new(TargetShape.All) };
 f.Player.Loadout.Actions[area.Id] = area; f.Resolver.Register(area);
 outcome = f.Resolver.Commit("player", area, null);
 Check(f.Enemy.Health.Health == 20 && otherHealth.Health == 17 && outcome.Recipients.Length == 2, "Area evasion must be recipient-specific.");
@@ -180,6 +192,12 @@ Reject(() => f.Resolver.Register(new ExampleAction("negative", new DamageEffect(
 Reject(() => f.Resolver.Register(new ExampleAction("missing", new ApplyEffect("unknown", new()))), "Unresolved status validation.");
 Reject(() => CombatRules.Persistence(new(StatusClock.RecipientTurnStart, 1.5f)), "Ambiguous duration validation.");
 Reject(() => CombatRules.ValidateStatus(Status("invalid", new ModifyEffect(new(EffectVerb.Negate), NumericalField.DamageAmount, 2))), "Unsupported numerical field validation.");
+Reject(() => CombatRules.ValidateStatus(Status("invalid-modifier-flags",
+    new ModifyEffect(new(EffectVerb.Damage, DamageType.Basic, (ActionFlags)8, RecipientScope.Source), NumericalField.DamageAmount, 1))),
+    "Unknown action flags in modifier filters must be rejected.");
+Reject(() => CombatRules.ValidateStatus(Status("invalid-modifier-recipient",
+    new ModifyEffect(new(EffectVerb.Damage, DamageType.Basic, Recipient: (RecipientScope)99), NumericalField.DamageAmount, 1))),
+    "Unknown modifier recipient scopes must be rejected.");
 f = New();
 outcome = f.Resolve("player", new TransferEffect("enemy", new ResourceSubject(ResourceKind.Focus), 2));
 Check(f.Player.Loadout.Focus == 0 && f.Enemy.Loadout.Focus == 2 && outcome.Effects.Single().ActualChange == 2, "Focus transfer must conserve the full amount.");
@@ -205,7 +223,7 @@ f.Combat.Add(new("row-other", false, 10, team: CombatTeam.Enemies));
 var rowOther = new DamageReceiver(20);
 f.Resolver.Add(new("row-other", false, CombatTeam.Enemies, rowOther, new(), FormationSlot.FrontRight));
 var frozen = new ExampleAction("frozen-row", new MoveEffect(FormationSlot.MiddleLeft), new DamageEffect(DamageType.Basic, 1))
-    { Targeting = new(TargetShape.Row, TargetRelationship.OpposingTeam) };
+    { Targeting = new(TargetShape.Row) };
 f.Player.Loadout.Actions[frozen.Id] = frozen; f.Resolver.Register(frozen);
 outcome = f.Resolver.Commit("player", frozen, "enemy");
 Check(f.Enemy.Health.Health == 19 && rowOther.Health == 19 && outcome.Recipients.Length == 2, "Movement must not recalculate an area's recipients.");
@@ -236,7 +254,7 @@ Reject(() => HealingRules.Restore(healingTarget, double.NaN), "Nonfinite healing
 var abilityFixture = New();
 var paidAbility = ability with
 {
-    FocusCost = 1, TurnCost = 2, Targeting = new(TargetShape.Single, TargetRelationship.OpposingTeam),
+    FocusCost = 1, TurnCost = 2, Targeting = new(TargetShape.Single),
 };
 abilityFixture.Player.Loadout.Learn(paidAbility, abilityRegistry);
 var paidAction = abilityFixture.Player.Loadout.Actions[paidAbility.ActionId.Value];
@@ -303,6 +321,62 @@ support.Resolver.Commit("player", heal, null);
 Check(support.Player.Health.Health == 26, "Repeated Heal must keep increasing Health.");
 
 support = New();
+support.Player.Health.Health = 10;
+support.Player.Loadout.Focus = 4;
+var recovery = LearnSupport(support, NexusRealms.Prelude.Database.Progression.Aries.Recovery);
+Check(recovery is RecoveryAction && recovery.Costs.Single() is
+    { Subject: ResourceSubject { Resource: ResourceKind.Focus }, Amount: 1 }
+    && support.Resolver.CanCommit("player", recovery, null),
+    "Recovery must use its authored one-Focus cost and be available as a self action.");
+var recoveryPreview = support.Resolver.Preview("player", recovery, null);
+Check(recoveryPreview.Characters["player"].Health == 18
+    && recoveryPreview.Outcome.Effects.Single(effect => effect.Verb == EffectVerb.Consume).ActualChange == 3
+    && recoveryPreview.Outcome.Effects.Single(effect => effect.Verb == EffectVerb.Restore).ActualChange == 8
+    && support.Player.Health.Health == 10 && support.Player.Loadout.Focus == 4,
+    "Recovery preview must count the activation cost, consume remaining Focus, and restore two Health per initial Focus without mutating live state.");
+var recoveryOutcome = support.Resolver.Commit("player", recovery, null);
+Check(support.Player.Health.Health == 18
+    && recoveryOutcome.Effects.Single(effect => effect.Verb == EffectVerb.Consume).ActualChange == 3
+    && recoveryOutcome.Effects.Single(effect => effect.Verb == EffectVerb.Restore).ActualChange == 8,
+    "Recovery must spend all four Focus and restore eight Health.");
+support = New();
+support.Player.Health.Health = 5;
+support.Player.Loadout.Focus = 1;
+recovery = LearnSupport(support, NexusRealms.Prelude.Database.Progression.Aries.Recovery);
+var minimumRecoveryOutcome = support.Resolver.Commit("player", recovery, null);
+Check(support.Player.Health.Health == 7
+    && minimumRecoveryOutcome.Effects.Single(effect => effect.Verb == EffectVerb.Restore).ActualChange == 2,
+    "Recovery must count its one-Focus activation cost when no Focus remains for the consume effect.");
+
+var kingMakerScale = new[] { 1, 2, 3, 5, 8, 13, 19, 26, 34, 60, 94 };
+for (var focus = 0; focus < kingMakerScale.Length; focus++)
+{
+    support = New();
+    support.Player.Loadout.Focus = focus;
+    var kingMaker = LearnSupport(support, NexusRealms.Prelude.Database.Progression.Aries.KingMaker);
+    Check(kingMaker is KingMakerAction && (kingMaker.Flags & ActionFlags.Melee) != 0
+        && support.Resolver.CanCommit("player", kingMaker, "enemy"),
+        "King Maker must be a usable melee action at every Focus amount.");
+    var kingMakerOutcome = support.Resolver.ResolveCommitted(kingMaker, "player", ["enemy"]);
+    var focusSpent = kingMakerOutcome.Effects.Single(effect => effect.Requested is
+        ConsumeEffect { Subject: ResourceSubject { Resource: ResourceKind.Focus } });
+    var bonusDamage = kingMakerOutcome.Effects.Single(effect => effect.EffectId == "king-maker-bonus");
+    Check(focusSpent.ActualChange == focus && support.Player.Loadout.Focus == 0
+        && bonusDamage.RequestedAmount == kingMakerScale[focus]
+        && bonusDamage.ResolvedAmount == kingMakerScale[focus],
+        "King Maker must consume the indexed Focus amount and deal its authored or continued bonus.");
+}
+
+support = New();
+support.Player.Loadout.Focus = 5;
+var previewKingMaker = LearnSupport(support, NexusRealms.Prelude.Database.Progression.Aries.KingMaker);
+var kingMakerPreview = support.Resolver.Preview("player", previewKingMaker, "enemy");
+Check(kingMakerPreview.Outcome.Effects.Single(effect => effect.EffectId == "king-maker-bonus").ResolvedAmount == 13
+    && kingMakerPreview.Outcome.Effects.Single(effect => effect.Requested is ConsumeEffect).ActualChange == 5
+    && support.Player.Loadout.Focus == 5 && support.Enemy.Health.Health == 20,
+    "King Maker preview must scale from and consume only its isolated Focus snapshot.");
+
+support = New();
 Apply(support, "positive", "enemy"); Apply(support, "negative-permanent", "enemy");
 Apply(support, "positive", "player");
 var purge = LearnSupport(support, NexusRealms.Prelude.Database.Progression.Aquarius.Purge);
@@ -336,6 +410,106 @@ Check(!support.Player.Statuses.Any(status => status.Definition.Id.Value == "nega
 Check(cleansePreview.Characters["player"].Statuses.SequenceEqual(
     support.Player.Statuses.OrderBy(status => status.Sequence).Select(status => FormattableString.Invariant($"{status.Definition.Id}:{status.Sequence}:{status.RemainingUses}:{status.ExpiresAt}:{status.ExpiresOnTurnStart}"))),
     "Cleanse preview and live expiration state must agree.");
+
+support = New();
+Apply(support, "negative-long", "player");
+Apply(support, "negative-short", "player");
+Apply(support, "negative-clock", "player");
+Apply(support, "positive", "player");
+var defiance = LearnSupport(support, NexusRealms.Prelude.Database.Progression.Aries.Defiance);
+var defiancePreview = support.Resolver.Preview("player", defiance, null);
+Check(support.Player.Statuses.Count == 4
+    && defiancePreview.Characters["player"].Statuses.Length == 2
+    && defiancePreview.Characters["player"].Statuses
+        .Any(status => status.StartsWith("berserk:", StringComparison.Ordinal) && status.Split(':')[3] == "3"),
+    "Defiance preview must count every negative status without mutating live statuses.");
+var defianceOutcome = support.Resolver.Commit("player", defiance, null);
+Check(support.Player.Statuses.Count == 2
+    && support.Player.Statuses.Any(status => status.Definition.Id.Value == "positive")
+    && support.Player.Statuses.Single(status => status.Definition.Id.Value == "berserk").ExpiresAt == 3
+    && defianceOutcome.Effects[0].ActualChange == 3 && defianceOutcome.Effects[1].ActualChange == 1,
+    "Defiance must remove all negative statuses and replace them with Berserk for one turn per removed status.");
+support = New();
+Apply(support, "negative-long", "player");
+Apply(support, "berserk", "player", new(StatusClock.Timeline, 5));
+var defiancePlan = new DefianceAction().Execute(support.Resolver, "player");
+Check(defiancePlan.OfType<ApplyEffect>().Single().Persistence.Duration == 2,
+    "Defiance must include a current Berserk status when planning its replacement duration.");
+support = New();
+defiance = LearnSupport(support, NexusRealms.Prelude.Database.Progression.Aries.Defiance);
+Check(support.Resolver.CanCommit("player", defiance, null)
+    && support.Resolver.Preview("player", defiance, null).Characters["player"].Statuses.IsEmpty,
+    "Defiance with no negative statuses must remain valid and not apply zero-duration Berserk.");
+
+support = New();
+var fury = LearnSupport(support, NexusRealms.Prelude.Database.Progression.Aries.Fury);
+Check(fury is FuryAction && (fury.Flags & ActionFlags.Melee) != 0
+    && support.Resolver.CanCommit("player", fury, "enemy"),
+    "Fury must be a usable single-target melee attack.");
+var furyOutcome = support.Resolver.Commit("player", fury, "enemy");
+Check(furyOutcome.Effects[^1] is { Verb: EffectVerb.Apply, RecipientId: "player", ActualChange: 1 }
+    && furyOutcome.Effects.Any(effect => effect.Verb == EffectVerb.Damage && effect.ActualChange > 0)
+    && support.Enemy.Health.Health < 20
+    && MathF.Abs(support.Resolver.EffectiveTurnCost("player", 1) - 0.75f) < 0.0001f,
+    "Fury must strike its target, apply its speed boost to the caster, and retain it for the caster's next turn.");
+support = New();
+fury = LearnSupport(support, NexusRealms.Prelude.Database.Progression.Aries.Fury);
+support.Resolver.ResolveCommitted(fury, "player", ["enemy"]);
+support.Resolver.ResolveCommitted(fury, "player", ["enemy"]);
+Check(support.Player.Statuses.Count(status => status.Definition.Id == "fury") == 2
+    && MathF.Abs(support.Resolver.EffectiveTurnCost("player", 1) - 0.5625f) < 0.0001f,
+    "Fury speed boosts must stack multiplicatively.");
+var dualWieldLoadout = CombatLoadout.FromState(
+    [
+        WeaponCatalog.Create(WeaponType.Sword, "fury-right", "Sword", "Right hand"),
+        WeaponCatalog.Create(WeaponType.Axe, "fury-left", "Axe", "Left hand"),
+    ],
+    new Dictionary<string, string>
+    {
+        ["Right hand"] = "fury-right",
+        ["Left hand"] = "fury-left",
+    },
+    focus: 2);
+support = new Fixture(definitions, dualWieldLoadout);
+fury = LearnSupport(support, NexusRealms.Prelude.Database.Progression.Aries.Fury);
+var dualFuryOutcome = support.Resolver.ResolveCommitted(fury, "player", ["enemy"]);
+Check(dualFuryOutcome.Effects
+        .Where(effect => effect.Requested is DamageEffect)
+        .Select(effect => ((DamageEffect)effect.Requested).AttackIndex)
+        .Distinct()
+        .Count() == 2,
+    "Fury must attack once with each of two equipped melee weapons.");
+Apply(support, "onslaught", "player", NexusRealms.Prelude.Database.StatusEffects.Onslaught.Persistence);
+dualFuryOutcome = support.Resolver.ResolveCommitted(fury, "player", ["enemy"]);
+var onslaughtDualBonuses = dualFuryOutcome.Effects
+    .Where(effect => effect.Requested is DamageEffect { Type: DamageType.Basic })
+    .ToArray();
+Check(onslaughtDualBonuses.Length == 2
+    && onslaughtDualBonuses.All(effect => effect.ResolvedAmount == 1)
+    && onslaughtDualBonuses.Select(effect => ((DamageEffect)effect.Requested).AttackIndex).Distinct().Count() == 2,
+    "Onslaught must add one Basic damage to each dual-wielded melee attack.");
+
+support = New();
+var onslaught = LearnSupport(support, NexusRealms.Prelude.Database.Progression.Aries.Onslaught);
+Check(onslaught is OnslaughtAction
+    && onslaught.Targeting.Shape == TargetShape.Self
+    && support.Resolver.CanCommit("player", onslaught, null),
+    "Onslaught must be a usable self-targeted ability.");
+support.Resolver.ResolveCommitted(onslaught, "player", ["player"]);
+Check(support.Player.Statuses.Single().Definition.Id == "onslaught",
+    "Onslaught must apply its status to the caster.");
+var meleeWithoutBasic = new ExampleAction("melee-without-basic", new DamageEffect(DamageType.Slashing, 3))
+    { Flags = ActionFlags.Melee };
+var meleeOutcome = support.Resolver.ResolveCommitted(meleeWithoutBasic, "player", ["enemy"]);
+Check(support.Enemy.Health.Health == 16
+    && meleeOutcome.Effects.Any(effect => effect.Requested is DamageEffect { Type: DamageType.Basic, Amount: 0 }
+        && effect.ResolvedAmount == 1),
+    "Onslaught must create one Basic damage point on a melee attack without a Basic entry.");
+var nonMelee = new ExampleAction("non-melee", new DamageEffect(DamageType.Slashing, 3));
+var nonMeleeOutcome = support.Resolver.ResolveCommitted(nonMelee, "player", ["enemy"]);
+Check(support.Enemy.Health.Health == 13 && nonMeleeOutcome.Effects.Length == 1
+    && nonMeleeOutcome.Effects.Single().Requested is DamageEffect { Type: DamageType.Slashing, Amount: 3 },
+    "Onslaught must not modify damage from actions without the Melee flag.");
 
 // The shortened expiration must be scheduled, including when no actor acts at that time.
 support = New();
@@ -616,6 +790,7 @@ AddWindCharacter(spin, "front-other", FormationSlot.FrontRight);
 AddWindCharacter(spin, "middle", FormationSlot.MiddleLeft);
 AddWindCharacter(spin, "back", FormationSlot.BackLeft);
 var whirlwind = LearnSupport(spin, NexusRealms.Prelude.Database.Progression.Aquarius.Whirlwind);
+Check(whirlwind.Targeting.Shape == TargetShape.FrontRow, "Whirlwind must declare front-row targeting.");
 Check(spin.Resolver.CanCommit("player", whirlwind, null), "Whirlwind must select the front row without an anchor.");
 var spinPreview = spin.Resolver.Preview("player", whirlwind, null);
 Check(spinPreview.Characters["enemy"].Health == 13 && spin.Enemy.Health.Health == 20,
@@ -769,7 +944,8 @@ Check(stormFixture.Player.Loadout.Focus == beforeRefreshBoundary + 1 && stormFix
 var sight = New();
 var visualAction = new EffectAction("aimed-spell", new DamageEffect(DamageType.Basic, 1))
 {
-    Targeting = new(TargetShape.Single, TargetRelationship.OpposingTeam, TargetingFlags.Visual),
+    Targeting = new(TargetShape.Single),
+    Flags = ActionFlags.Visual,
     Costs = [new(new ResourceSubject(ResourceKind.Focus), 1)],
 };
 sight.Player.Loadout.Actions.Add(visualAction.Id, visualAction);
@@ -786,11 +962,11 @@ Check(!sight.Resolver.CanCommit("player", visualAction, "enemy")
     "Blind must disable Visual capabilities, unarmed strikes, weapon strikes and throws in the shared HUD path.");
 Check(sight.Resolver.CanCommit("player", selfDowse, null) && sight.Resolver.CanCommit("player", blindFog, null),
     "Blind must leave explicitly nonvisual self and all-enemy abilities usable.");
-Check(sight.Player.Loadout.Find(visualAction.Id)!.TargetingFlags == TargetingFlags.Visual
-    && !new ActionFilter(RequiresTargetingFlags: TargetingFlags.Visual).Matches(selfDowse, "player"),
-    "Targeting flags must survive command adaptation without being inferred from target shape.");
+Check(sight.Player.Loadout.Find(visualAction.Id)!.Flags == ActionFlags.Visual
+    && !new ActionFilter(RequiresActionFlags: ActionFlags.Visual).Matches(selfDowse, "player"),
+    "Action flags must survive command adaptation independently of target shape.");
 var sightCandidates = CandidateGeneration.Enumerate(sight.Resolver, "player", includeLayouts: false);
-Check(!sightCandidates.Any(candidate => candidate.Action.Targeting.Flags.HasFlag(TargetingFlags.Visual))
+Check(!sightCandidates.Any(candidate => candidate.Action.Flags.HasFlag(ActionFlags.Visual))
     && sightCandidates.Any(candidate => candidate.Action.Id == blindFog.Id),
     "AI must exclude Visual actions under Blind while retaining nonvisual choices.");
 Reject(() => sight.Resolver.Commit("player", visualAction, "enemy"), "Blind must reject a stale Visual commitment.");
@@ -854,10 +1030,12 @@ Check(fogFixture.Enemy.Statuses.Count == 1 && fogFixture.Enemy.Statuses.Single()
     "Recasting Fog must refresh Blind's duration without stacking or removing it at the old expiration.");
 var blindCopy = fogFixture.Resolver.CopyForSimulation();
 Check(!blindCopy.Allows("enemy", visualAction), "Simulation copies must retain Blind's targeting restriction.");
-Reject(() => CombatRules.Validate(visualAction with { Targeting = new(Flags: (TargetingFlags)4) }, definitions),
-    "Unknown targeting flags must be rejected.");
-Reject(() => CombatRules.ValidateStatus(Status("bad-flags", new RestrictEffect(new(RequiresTargetingFlags: (TargetingFlags)4)))),
-    "Unknown targeting flags in action filters must be rejected.");
+Reject(() => CombatRules.Validate(visualAction with { Flags = (ActionFlags)8 }, definitions),
+    "Unknown action flags must be rejected.");
+Reject(() => CombatRules.ValidateStatus(Status("bad-flags", new RestrictEffect(new(RequiresActionFlags: (ActionFlags)8)))),
+    "Unknown action flags in action filters must be rejected.");
+Reject(() => CombatRules.ValidateStatus(Status("bad-missing-flags", new RestrictEffect(new(MissingActionFlags: (ActionFlags)8)))),
+    "Unknown missing action flags in action filters must be rejected.");
 Check(NexusRealms.Prelude.Database.StatusEffects.Slow.Persistence.Duration == 3
     && NexusRealms.Prelude.Database.StatusEffects.Haste.Persistence.Duration == 3,
     "Shared Slow and Haste must default to three timeline turns.");
@@ -979,7 +1157,7 @@ Check(!silenceFixture.Resolver.CanCommit("player", magicalSelf, null)
     "Silence must block free magical self, area and visual actions in resolver and HUD while allowing ordinary attacks.");
 Reject(() => silenceFixture.Resolver.Commit("player", magicalArea, null), "Silenced magical commitment must fail.");
 Check(!CandidateGeneration.Enumerate(silenceFixture.Resolver, "player", includeLayouts: false)
-    .Any(candidate => (candidate.Action.Targeting.Flags & TargetingFlags.Magical) != 0),
+    .Any(candidate => (candidate.Action.Flags & ActionFlags.Magical) != 0),
     "AI candidates must exclude silenced magical actions.");
 Check(!silenceFixture.Resolver.CopyForSimulation().Allows("player", magicalArea), "Simulation copies must retain Silence.");
 silenceFixture.Resolve("player", new DispelEffect(new(Tag: "negative"), DurationReduction: 1));
@@ -989,10 +1167,13 @@ Check(silenceFixture.Resolver.CanCommit("player", magicalArea, null), "Purge mus
 Apply(silenceFixture, "blind", "player", new(StatusClock.Timeline, 2));
 Check(silenceFixture.Resolver.CanCommit("player", magicalArea, null)
     && !silenceFixture.Resolver.CanCommit("player", silence, "enemy"), "Visual and Magical flags must remain independent.");
-Check(NexusRealms.Prelude.Database.Progression.Aquarius.Whirlwind.Targeting.Flags == TargetingFlags.None,
-    "Whirlwind must remain an ordinary weapon action.");
+var whirlwindAction = AbilityActionRegistry.Default.Resolve(NexusRealms.Prelude.Database.Progression.Aquarius.Whirlwind);
+Check(whirlwindAction.Targeting.Shape == TargetShape.FrontRow
+    && whirlwindAction.Flags.HasFlag(ActionFlags.Melee)
+    && !whirlwindAction.Flags.HasFlag(ActionFlags.Magical),
+    "Whirlwind must remain a melee weapon action with independent front-row targeting.");
 var barrierFixture = New();
-var barrier = LearnSupport(barrierFixture, NexusRealms.Prelude.Database.Progression.Aquarius.SoundBarrier);
+var barrier = LearnSupport(barrierFixture, NexusRealms.Prelude.Database.Progression.Aquarius.Barrier);
 Check(!barrierFixture.Resolver.CanCommit("player", barrier, null), "Sound Barrier must be unavailable without a living back-row enemy.");
 AddWindCharacter(barrierFixture, "barrier-middle", FormationSlot.MiddleLeft);
 AddWindCharacter(barrierFixture, "barrier-left", FormationSlot.BackLeft);
@@ -1092,7 +1273,7 @@ Check(shearFixture.Resolver.Characters["shear-center"].Statuses.Count == 0 && sh
 Apply(shearFixture, "silenced", "player", new(StatusClock.Timeline, 2));
 Check(!shearFixture.Resolver.CanCommit("player", shear, null), "Silence must block Wind Shear's magical ability.");
 var emptyShearFixture = New();
-emptyShearFixture.Resolver.Characters["enemy"].Health.Apply(20);
+emptyShearFixture.Resolver.Characters["enemy"].Health.Health = 20;
 var emptyShear = LearnSupport(emptyShearFixture, NexusRealms.Prelude.Database.Progression.Aquarius.WindShear);
 Check(!emptyShearFixture.Resolver.CanCommit("player", emptyShear, null), "Wind Shear needs a living front-row enemy.");
 Console.WriteLine("Action effects acceptance and lifecycle checks passed.");

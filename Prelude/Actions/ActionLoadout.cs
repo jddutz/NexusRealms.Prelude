@@ -62,15 +62,27 @@ public sealed partial class CombatLoadout
 
     /// <summary>Derives short melee reach from typed action metadata, owned weapons or hand commands.</summary>
     public bool IsShortMelee(ActionData action)
+        => GetMeleeRange(action) == WeaponRange.Short;
+
+    /// <summary>Resolves the melee reach declared by an action or its currently owned weapon.</summary>
+    /// <param name="action">The action whose melee reach is requested.</param>
+    /// <returns>The action's melee range, or null when the action is not melee.</returns>
+    public WeaponRange? GetMeleeRange(ActionData action)
     {
-        if (action.Throw || action.Reload) return false;
-        if (action is AbilityAction ability) return ability.GetMeleeRange(this) == WeaponRange.Short;
-        if (action.MeleeRange is { } reach) return reach == WeaponRange.Short;
+        if (action.Throw || action.Reload) return null;
+        if (action is AbilityAction ability) return ability.GetMeleeRange(this);
+        if (action.MeleeRange is { } reach) return reach;
         if (action.ItemId is { } item)
-            return Items.Find(owned => owned.Id == item)?.Weapon is { IsMelee: true, Range: WeaponRange.Short };
+            return Items.Find(owned => owned.Id == item)?.Weapon is { IsMelee: true } weapon
+                ? weapon.Range
+                : null;
         if (Find(action.Id)?.Hand is { } hand)
-            return HeldItem(hand)?.Weapon is not { } weapon || weapon.IsMelee && weapon.Range == WeaponRange.Short;
-        return false;
+            return HeldItem(hand)?.Weapon is not { } weapon
+                ? WeaponRange.Short
+                : weapon.IsMelee ? weapon.Range : null;
+        return action.Classifications.Contains("melee", StringComparer.Ordinal)
+            ? WeaponRange.Short
+            : null;
     }
 
     /// <summary>Exposes an owned action through the existing HUD without treating its ability as an action.</summary>
@@ -78,7 +90,11 @@ public sealed partial class CombatLoadout
     {
         if (Commands.Any(command => command.Id.Value == action.Id)) return;
         Commands.Add(new(action.Id, action.Name ?? action.Id, action.TurnCost,
-            RequiresTarget: action.Targeting.Shape is not (TargetShape.Self or TargetShape.All or TargetShape.Cone), TargetRule: target => !target.Elevated || !IsShortMelee(action), Icon: action.Icon?.Value, TargetingFlags: action.Targeting.Flags));
+            Passive: action.Passive,
+            RequiresTarget: !action.Passive && action.Targeting.Shape is not (
+                TargetShape.Self or TargetShape.All or TargetShape.Cone
+                    or TargetShape.FrontRow or TargetShape.MiddleRow or TargetShape.BackRow
+            ), TargetRule: target => !target.Elevated || !IsShortMelee(action), Icon: action.Icon?.Value, Flags: EffectiveActionFlags(action)));
     }
 
     /// <summary>Checks all progression, ownership, and equipment requirements against current state.</summary>
@@ -88,6 +104,46 @@ public sealed partial class CombatLoadout
         && action.Requirements.Items.All(id => Items.Any(item => item.Id == id && item.Quantity > 0))
         && action.Requirements.Equipment.All(requirement => Equipment.TryGetValue(requirement.Slot, out var id)
             && (requirement.Item is null || id == requirement.Item.Value.Value));
+
+    /// <summary>Resolves action flags using authored metadata and current melee equipment.</summary>
+    /// <param name="action">The action whose effective affinities are requested.</param>
+    /// <returns>Action flags including inferred melee affinity where applicable.</returns>
+    internal ActionFlags EffectiveActionFlags(ActionData action)
+    {
+        if (Find(action.Id) is { Hand: not null } command)
+            return EffectiveActionFlags(command, action.Flags);
+
+        var isMelee = GetMeleeRange(action) is not null;
+        return isMelee
+            ? action.Flags | ActionFlags.Melee
+            : action.Flags;
+    }
+
+    /// <summary>Resolves a command's melee affinity from the current hand equipment.</summary>
+    /// <param name="command">The command whose effective affinities are requested.</param>
+    /// <returns>Action flags adjusted for the equipped weapon's melee classification.</returns>
+    internal ActionFlags EffectiveActionFlags(CommandDefinition command)
+    {
+        if (command.Hand is not { } hand) return command.Flags;
+        return IsMeleeHand(hand)
+            ? command.Flags | ActionFlags.Melee
+            : command.Flags & ~ActionFlags.Melee;
+    }
+
+    /// <summary>Resolves hand-command affinities while preserving the action's other authored flags.</summary>
+    /// <param name="command">The command that supplies the hand identity.</param>
+    /// <param name="flags">The action's existing flags.</param>
+    /// <returns>The flags with melee affinity matching the current hand equipment.</returns>
+    private ActionFlags EffectiveActionFlags(CommandDefinition command, ActionFlags flags)
+    {
+        if (command.Hand is not { } hand) return flags;
+        return IsMeleeHand(hand) ? flags | ActionFlags.Melee : flags & ~ActionFlags.Melee;
+    }
+
+    /// <summary>Determines whether a hand currently attacks in melee, including unarmed attacks.</summary>
+    /// <param name="hand">The attacking hand.</param>
+    /// <returns>True for an unarmed hand or an equipped melee weapon.</returns>
+    private bool IsMeleeHand(StrikeHand hand) => HeldItem(hand)?.Weapon is not { IsMelee: false };
 
     /// <summary>Consumes an owned stack and clears equipment references if it is exhausted.</summary>
     public int ConsumeItem(ItemId id, int amount)

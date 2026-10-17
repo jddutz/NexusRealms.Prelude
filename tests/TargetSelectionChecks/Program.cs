@@ -249,7 +249,7 @@ foreach (var slot in Enum.GetValues<FormationSlot>())
     coneResolver.Add(new(id, false, CombatTeam.Enemies, new(20), new(), slot));
 }
 coneResolver.Add(new("cone-ally", false, CombatTeam.PlayerAndAllies, new(20), new(), FormationSlot.MiddleCenterLeft));
-var coneTargets = new TargetingProfile(TargetShape.Cone, TargetRelationship.OpposingTeam)
+var coneTargets = new TargetingProfile(TargetShape.Cone)
     .Select(coneResolver, "cone-player", null);
 Check(coneTargets.ToHashSet(StringComparer.Ordinal).SetEquals(
     ["cone-FrontCenter", "cone-MiddleCenterLeft", "cone-MiddleCenterRight", "cone-BackLeft", "cone-BackCenter", "cone-BackRight"]));
@@ -260,11 +260,66 @@ Check(allEnemies.Length == 10 && !allEnemies.Contains("cone-player") && !allEnem
 var allCharacters = new TargetingProfile(TargetShape.All, Options: TargetingOptions.AllTeams)
     .Select(coneResolver, "cone-player", null);
 Check(allCharacters.Length == 12 && allCharacters.Contains("cone-player") && allCharacters.Contains("cone-ally"));
-var coneAction = new ActionData { Id = "cone-action", Targeting = new(TargetShape.Cone, TargetRelationship.OpposingTeam) };
+var frontRow = new TargetingProfile(TargetShape.FrontRow)
+    .Select(coneResolver, "cone-player", null);
+Check(frontRow.ToHashSet(StringComparer.Ordinal).SetEquals(
+    ["cone-FrontLeft", "cone-FrontCenter", "cone-FrontRight"]));
+var middleRow = new TargetingProfile(TargetShape.MiddleRow)
+    .Select(coneResolver, "cone-player", null);
+Check(middleRow.ToHashSet(StringComparer.Ordinal).SetEquals(
+    ["cone-MiddleLeft", "cone-MiddleCenterLeft", "cone-MiddleCenterRight", "cone-MiddleRight"]));
+var backRow = new TargetingProfile(TargetShape.BackRow)
+    .Select(coneResolver, "cone-player", null);
+Check(backRow.ToHashSet(StringComparer.Ordinal).SetEquals(
+    ["cone-BackLeft", "cone-BackCenter", "cone-BackRight"]));
+var shortMelee = new ActionData
+{
+    Id = "short-melee",
+    MeleeRange = WeaponRange.Short,
+    Targeting = new(TargetShape.Melee),
+};
+Check(shortMelee.SelectTargets(coneResolver, "cone-player", null).IsEmpty);
+Check(shortMelee.SelectTargets(coneResolver, "cone-player", "cone-FrontLeft")
+    .SequenceEqual(["cone-FrontLeft"]));
+Check(shortMelee.SelectTargets(coneResolver, "cone-player", "cone-MiddleLeft").IsEmpty);
+var mediumMelee = shortMelee with { Id = "medium-melee", MeleeRange = WeaponRange.Medium };
+Check(mediumMelee.SelectTargets(coneResolver, "cone-player", "cone-MiddleLeft")
+    .SequenceEqual(["cone-MiddleLeft"]));
+Check(mediumMelee.SelectTargets(coneResolver, "cone-player", "cone-BackLeft").IsEmpty);
+var longMelee = shortMelee with { Id = "long-melee", MeleeRange = WeaponRange.Long };
+Check(longMelee.SelectTargets(coneResolver, "cone-player", "cone-BackLeft")
+    .SequenceEqual(["cone-BackLeft"]));
+var elevatedCombat = new CombatSystem();
+elevatedCombat.Add(new("reach-player", true));
+elevatedCombat.Add(new("reach-target", false, team: CombatTeam.Enemies));
+var elevatedResolver = new CombatActionResolver(elevatedCombat, NexusRealms.Prelude.Database.StatusEffects.All);
+elevatedResolver.Add(new("reach-player", true, CombatTeam.PlayerAndAllies, new(20), new()));
+elevatedResolver.Add(
+    new("reach-target", false, CombatTeam.Enemies, new(20), new(), FormationSlot.FrontLeft),
+    ["elevated"]
+);
+Check(shortMelee.SelectTargets(elevatedResolver, "reach-player", "reach-target").IsEmpty);
+Check(mediumMelee.SelectTargets(elevatedResolver, "reach-player", "reach-target")
+    .SequenceEqual(["reach-target"]));
+Check(
+    NexusRealms.Prelude.Database.Progression.Aries.Rampage.Targeting.Shape == TargetShape.FrontRow
+        && NexusRealms.Prelude.Database.Progression.Aquarius.Whirlwind.Targeting.Shape
+            == TargetShape.FrontRow
+);
+var coneAction = new ActionData { Id = "cone-action", Targeting = new(TargetShape.Cone) };
 var coneLoadout = CombatLoadout.CreatePlayerLoadout();
 coneLoadout.AddActionCommand(coneAction);
 Check(!coneLoadout.Commands.Single(command => command.Id.Value == coneAction.Id).RequiresTarget);
-Console.WriteLine("Cone targeting selects the six specified enemy positions without an anchor.");
+var frontRowAction = new ActionData { Id = "front-row-action", Targeting = new(TargetShape.FrontRow) };
+coneLoadout.AddActionCommand(frontRowAction);
+Check(!coneLoadout.Commands.Single(command => command.Id.Value == frontRowAction.Id).RequiresTarget);
+foreach (var shape in new[] { TargetShape.MiddleRow, TargetShape.BackRow })
+{
+    var rowAction = new ActionData { Id = $"{shape}-action", Targeting = new(shape) };
+    coneLoadout.AddActionCommand(rowAction);
+    Check(!coneLoadout.Commands.Single(command => command.Id.Value == rowAction.Id).RequiresTarget);
+}
+Console.WriteLine("Cone and row targeting select the authored formations without an anchor.");
 
 sealed class FeedbackTextures(ITexture texture) : ITextureRegistry
 {

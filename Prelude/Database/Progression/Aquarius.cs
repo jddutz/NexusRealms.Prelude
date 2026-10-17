@@ -12,11 +12,8 @@ public static class Aquarius
             Icon = new("abilities.Bewilder.png"),
             TurnCost = 0.5f,
             FocusCost = 0,
-            Targeting = new(
-                TargetShape.Single,
-                TargetRelationship.OpposingTeam,
-                TargetingFlags.Visual | TargetingFlags.Magical
-            ),
+            Flags = ActionFlags.Visual | ActionFlags.Magical,
+            Targeting = new(TargetShape.Single),
         };
 
     public static AbilityData Cleanse { get; } =
@@ -29,7 +26,8 @@ public static class Aquarius
             Icon = new("abilities.Cleanse.png"),
             TurnCost = 1f,
             FocusCost = 0,
-            Targeting = new(TargetShape.Self, Flags: TargetingFlags.Magical),
+            Flags = ActionFlags.Magical,
+            Targeting = new(TargetShape.Self),
         };
 
     public static AbilityData CoolingBreeze { get; } =
@@ -42,7 +40,8 @@ public static class Aquarius
             Icon = new("abilities.CoolingBreeze.png"),
             TurnCost = 1f,
             FocusCost = 0,
-            Targeting = new(TargetShape.Self, Flags: TargetingFlags.Magical),
+            Flags = ActionFlags.Magical,
+            Targeting = new(TargetShape.Self),
         };
 
     public static AbilityData Dowse { get; } =
@@ -55,7 +54,8 @@ public static class Aquarius
             Icon = new("abilities.Dowse.png"),
             TurnCost = 1f,
             FocusCost = 0,
-            Targeting = new(TargetShape.Self, Flags: TargetingFlags.Magical),
+            Flags = ActionFlags.Magical,
+            Targeting = new(TargetShape.Self),
         };
 
     public static AbilityData EyeOfTheStorm { get; } =
@@ -68,7 +68,8 @@ public static class Aquarius
             Icon = new("abilities.EyeOfTheStorm.png"),
             TurnCost = 1f,
             FocusCost = 0,
-            Targeting = new(TargetShape.Self, Flags: TargetingFlags.Magical),
+            Flags = ActionFlags.Magical,
+            Targeting = new(TargetShape.Self),
         };
 
     public static AbilityData Fog { get; } =
@@ -81,11 +82,8 @@ public static class Aquarius
             Icon = new("abilities.Fog.png"),
             TurnCost = 1f,
             FocusCost = 0,
-            Targeting = new(
-                TargetShape.All,
-                TargetRelationship.OpposingTeam,
-                TargetingFlags.Magical
-            ),
+            Flags = ActionFlags.Magical,
+            Targeting = new(TargetShape.All),
         };
 
     public static AbilityData Gale { get; } =
@@ -98,11 +96,8 @@ public static class Aquarius
             Icon = new("abilities.Gale.png"),
             TurnCost = 1f,
             FocusCost = 0,
-            Targeting = new(
-                TargetShape.Cone,
-                TargetRelationship.OpposingTeam,
-                Flags: TargetingFlags.Magical
-            ),
+            Flags = ActionFlags.Magical,
+            Targeting = new(TargetShape.Cone),
         };
 
     public static AbilityData Headwind { get; } =
@@ -113,11 +108,8 @@ public static class Aquarius
             Name = "Headwind",
             Description = "Multiply the target enemy's Turn costs by 1.5 for 3 turns",
             Icon = new("abilities.Headwind.png"),
-            Targeting = new(
-                TargetShape.Single,
-                TargetRelationship.OpposingTeam,
-                TargetingFlags.Visual | TargetingFlags.Magical
-            ),
+            Flags = ActionFlags.Visual | ActionFlags.Magical,
+            Targeting = new(TargetShape.Single),
         };
 
     public static AbilityData Heal { get; } =
@@ -130,7 +122,8 @@ public static class Aquarius
             Icon = new("abilities.Heal.png"),
             TurnCost = 1f,
             FocusCost = 0,
-            Targeting = new(TargetShape.Self, Flags: TargetingFlags.Magical),
+            Flags = ActionFlags.Magical,
+            Targeting = new(TargetShape.Self),
         };
 
     public static AbilityData Hurricane { get; } =
@@ -143,11 +136,8 @@ public static class Aquarius
             Icon = new("abilities.Hurricane.png"),
             TurnCost = 1f,
             FocusCost = 0,
-            Targeting = new(
-                TargetShape.All,
-                TargetRelationship.OpposingTeam,
-                Flags: TargetingFlags.Magical
-            ),
+            Flags = ActionFlags.Magical,
+            Targeting = new(TargetShape.All),
         };
 
     public static AbilityData Levitate { get; } =
@@ -161,7 +151,8 @@ public static class Aquarius
             TurnCost = 1f,
             FocusCost = 1,
             MinimumFocus = 2,
-            Targeting = new(TargetShape.Self, Flags: TargetingFlags.Magical),
+            Flags = ActionFlags.Magical,
+            Targeting = new(TargetShape.Self),
         };
 
     public static AbilityData PressureShield { get; } =
@@ -175,7 +166,8 @@ public static class Aquarius
             TurnCost = 1f,
             FocusCost = 1,
             MinimumFocus = 2,
-            Targeting = new(TargetShape.Self, Flags: TargetingFlags.Magical),
+            Flags = ActionFlags.Magical,
+            Targeting = new(TargetShape.Self),
         };
 
     public static AbilityData Purge { get; } =
@@ -188,11 +180,8 @@ public static class Aquarius
             Icon = new("abilities.Purge.png"),
             TurnCost = 1f,
             FocusCost = 0,
-            Targeting = new(
-                TargetShape.Single,
-                TargetRelationship.Any,
-                Flags: TargetingFlags.Magical
-            ),
+            Flags = ActionFlags.Magical,
+            Targeting = new(TargetShape.Single, TargetRelationship.Any),
         };
 
     public static AbilityData Sandstorm { get; } =
@@ -205,11 +194,8 @@ public static class Aquarius
             Icon = new("abilities.Sandstorm.png"),
             TurnCost = 1f,
             FocusCost = 0,
-            Targeting = new(
-                TargetShape.Cone,
-                TargetRelationship.OpposingTeam,
-                TargetingFlags.Magical
-            ),
+            Flags = ActionFlags.Magical,
+            Targeting = new(TargetShape.Cone),
         };
 
     public static AbilityData Silence { get; } =
@@ -222,17 +208,17 @@ public static class Aquarius
             Icon = new("abilities.Silence.png"),
             TurnCost = 1f,
             FocusCost = 0,
-            Targeting = new(
-                TargetShape.Single,
-                TargetRelationship.OpposingTeam,
-                TargetingFlags.Visual | TargetingFlags.Magical
-            ),
+            Flags = ActionFlags.Visual | ActionFlags.Magical,
+            Targeting = new(TargetShape.Single),
         };
 
-    public static AbilityData SoundBarrier { get; } =
+    /// <summary>
+    /// Gets the Barrier ability data.
+    /// </summary>
+    public static AbilityData Barrier { get; } =
         new()
         {
-            Id = new(nameof(SoundBarrier)),
+            Id = new(nameof(Barrier)),
             ActionId = "ability:SoundBarrier",
             Name = "Sound Barrier",
             Description =
@@ -240,11 +226,8 @@ public static class Aquarius
             Icon = new("abilities.SoundBarrier.png"),
             TurnCost = 1f,
             FocusCost = 0,
-            Targeting = new(
-                TargetShape.All,
-                TargetRelationship.OpposingTeam,
-                TargetingFlags.Magical
-            ),
+            Flags = ActionFlags.Magical,
+            Targeting = new(TargetShape.All),
         };
 
     public static AbilityData Tailwind { get; } =
@@ -257,11 +240,8 @@ public static class Aquarius
             Icon = new("abilities.Tailwind.png"),
             TurnCost = 1f,
             FocusCost = 0,
-            Targeting = new(
-                TargetShape.All,
-                TargetRelationship.OpposingTeam,
-                Flags: TargetingFlags.Magical
-            ),
+            Flags = ActionFlags.Magical,
+            Targeting = new(TargetShape.All),
         };
 
     public static AbilityData Twister { get; } =
@@ -274,11 +254,8 @@ public static class Aquarius
             Icon = new("abilities.Twister.png"),
             TurnCost = 1f,
             FocusCost = 0,
-            Targeting = new(
-                TargetShape.All,
-                TargetRelationship.OpposingTeam,
-                TargetingFlags.Magical
-            ),
+            Flags = ActionFlags.Magical,
+            Targeting = new(TargetShape.All),
         };
 
     public static AbilityData Whirlwind { get; } =
@@ -291,7 +268,7 @@ public static class Aquarius
             Icon = new("abilities.Whirlwind.png"),
             TurnCost = 1.5f,
             FocusCost = 3,
-            Targeting = new(TargetShape.All, TargetRelationship.OpposingTeam),
+            Targeting = new(TargetShape.FrontRow),
         };
 
     public static AbilityData WindShear { get; } =
@@ -304,7 +281,8 @@ public static class Aquarius
             Icon = new("abilities.WindShear.png"),
             TurnCost = 1f,
             FocusCost = 0,
-            Targeting = new(TargetShape.All, TargetRelationship.OpposingTeam, TargetingFlags.Magical),
+            Flags = ActionFlags.Magical,
+            Targeting = new(TargetShape.All),
         };
 
     /// <summary>Authored ability definitions, independent of progression placement.</summary>
@@ -325,7 +303,7 @@ public static class Aquarius
         Purge,
         Sandstorm,
         Silence,
-        SoundBarrier,
+        Barrier,
         Tailwind,
         Twister,
         Whirlwind,
@@ -336,26 +314,30 @@ public static class Aquarius
         new(
             ZodiacSignId.Aquarius,
             [
-                new(Bewilder.Id, Fog.Id, 0.42f, 0.78f),
-                new(Cleanse.Id, Heal.Id, 0.56f, -0.28f),
-                new(CoolingBreeze.Id, null, 0.00f, -0.42f),
-                new(Dowse.Id, Cleanse.Id, 0.56f, -0.84f),
-                new(EyeOfTheStorm.Id, Dowse.Id, 0.84f, -0.84f),
-                new(Fog.Id, Silence.Id, 0.28f, 0.42f),
-                new(Gale.Id, Tailwind.Id, -0.28f, -0.56f),
-                new(Headwind.Id, Tailwind.Id, -0.56f, -0.00f),
-                new(Heal.Id, null, 0.28f, -0.00f),
-                new(Hurricane.Id, Twister.Id, -0.84f, -0.56f),
-                new(Levitate.Id, Silence.Id, 0.14f, 0.84f),
-                new(PressureShield.Id, CoolingBreeze.Id, 0.00f, -0.84f),
-                new(Purge.Id, Cleanse.Id, 0.84f, -0.28f),
-                new(Sandstorm.Id, Fog.Id, 0.56f, 0.28f),
+                // North — Control
                 new(Silence.Id, null, 0.00f, 0.42f),
-                new(SoundBarrier.Id, Silence.Id, -0.14f, 0.84f),
+                new(Fog.Id, Silence.Id, 0.28f, 0.42f),
+                new(Bewilder.Id, Fog.Id, 0.42f, 0.78f),
+                new(Sandstorm.Id, Fog.Id, 0.56f, 0.28f),
+                new(Levitate.Id, Silence.Id, 0.14f, 0.84f),
+                new(Barrier.Id, Silence.Id, -0.14f, 0.84f),
+                // East — Restoration
+                new(Heal.Id, null, 0.28f, -0.00f),
+                new(Cleanse.Id, Heal.Id, 0.56f, -0.28f),
+                new(Dowse.Id, Cleanse.Id, 0.56f, -0.84f),
+                new(Purge.Id, Cleanse.Id, 0.84f, -0.28f),
+                new(EyeOfTheStorm.Id, Dowse.Id, 0.84f, -0.84f),
+                // South — Protection
+                new(CoolingBreeze.Id, null, 0.00f, -0.42f),
+                new(PressureShield.Id, CoolingBreeze.Id, 0.00f, -0.84f),
+                // West — Wind
                 new(Tailwind.Id, null, -0.28f, 0.00f),
+                new(Gale.Id, Tailwind.Id, -0.28f, -0.56f),
                 new(Twister.Id, Gale.Id, -0.56f, -0.56f),
-                new(Whirlwind.Id, WindShear.Id, -0.84f, 0.56f),
+                new(Hurricane.Id, Twister.Id, -0.84f, -0.56f),
+                new(Headwind.Id, Tailwind.Id, -0.56f, -0.00f),
                 new(WindShear.Id, Tailwind.Id, -0.56f, 0.56f),
+                new(Whirlwind.Id, WindShear.Id, -0.84f, 0.56f),
             ]
         );
 }

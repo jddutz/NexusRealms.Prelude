@@ -19,9 +19,8 @@ public static class DamageTypeExtensions
     public static DamageCategory? GetCategory(this DamageType type) => type switch
     {
         DamageType.Slashing or DamageType.Piercing or DamageType.Crushing => DamageCategory.Physical,
-        DamageType.Basic => null,
+        DamageType.Basic or DamageType.Poison => null,
         DamageType.Fire or DamageType.Ice or DamageType.Lightning => DamageCategory.Elemental,
-        DamageType.Poison => DamageCategory.Physical,
         _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown damage type."),
     };
 }

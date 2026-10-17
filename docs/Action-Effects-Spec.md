@@ -5,11 +5,11 @@ Date: October 11, 2026
 
 ## Purpose and scope
 
-Define the fifteen action verbs through which actions affect combat state or influence the resolution of other actions. These definitions are the mechanical vocabulary for authoring effects. They do not name abilities, prescribe a Zodiac tree, balance encounters, or define Focus recovery.
+Define the sixteen action verbs through which actions affect combat state or influence the resolution of other actions. These definitions are the mechanical vocabulary for authoring effects. They do not name abilities, prescribe a Zodiac tree, balance encounters, or define Focus recovery.
 
 The player is a single character. Move changes non-player formation positions. Enemy actions may affect multiple allies; the player has no allied party to heal or buff.
 
-The original nine verbs are Damage, Restore, Delay, Resist, Negate, Evade, Move, Restrict, and Modify. The additional six are Consume, Grant, Remove, Apply, Dispel, and Transfer. The boundaries below make overlapping terms explicit. Details not previously settled are proposed defaults in this specification.
+The original nine verbs are Damage, Restore, Delay, Resist, Negate, Evade, Move, Restrict, and Modify. The additional seven are Consume, Grant, Remove, Apply, Dispel, Transfer, and Prevent. The boundaries below make overlapping terms explicit. Details not previously settled are proposed defaults in this specification.
 
 ## Core terminology
 
@@ -40,13 +40,14 @@ Use verbs as operation names. Use nouns for parameters and state. Code may use `
 | Evade | Cancel all effects of the qualifying incoming action for the protected recipient. | Protected recipient, action filter. |
 | Move | Change a non-player recipient's formation position. | Recipient, destination or explicit movement rule. |
 | Restrict | Prevent the recipient from using qualifying actions. | Recipient, action filter. |
-| Modify | Numerically change a qualifying action's effect parameters during resolution. | Recipient or scope, effect filter, numerical field, numerical operation and value. |
+| Modify | Numerically change a qualifying action's effect parameters during resolution. | Target or source scope, effect filter, optional required action flags, numerical field, numerical operation and value. |
 | Consume | Decrease a non-Health consumable resource or item quantity. | Recipient, resource or item reference, nonnegative amount. |
 | Grant | Add a non-Health resource, item, or capability to the recipient. | Recipient, typed subject and amount where applicable. |
 | Remove | Remove a specified item, equipment association, or capability from the recipient. | Recipient, typed subject reference. |
 | Apply | Add a Status Effect to the recipient. | Recipient, StatusEffectId, persistence parameters required by its definition. |
 | Dispel | Remove qualifying Status Effects from the recipient. | Recipient, status selector or filter, selection limit if applicable. |
 | Transfer | Move an existing resource amount or item from one character to another. | Origin, destination, typed subject and amount where applicable. |
+| Prevent | Block application of a specified Status Effect to the recipient. | Protected recipient, StatusEffectId. |
 
 ### Damage and Restore
 
@@ -94,6 +95,8 @@ Each field must explicitly support modification. Damage type, source identity, S
 
 Proposed initial numerical operation: signed additive adjustment only. Sum qualifying adjustments and clamp to the field's permitted range. This supplies increases and decreases without introducing multiplier order or rounding ambiguity. Turn cost has an explicit extension: persistent `TurnCostMultiplierEffect` rules multiply together at commitment. Other fields do not support multiplication, replacement, or priority overrides. Modify does not convert Row targeting into All targeting; numerical radius or target count can change only where supported.
 
+Modification filters default to rules owned by the operation's target. A source-scoped filter instead reads rules on the action's source and can require all specified action flags. A source damage modifier that adds a typed damage amount creates that damage entry when the attack has no baseline entry of that type; it applies once per recipient and attack index, including each strike of a multi-weapon attack.
+
 ### Consume, Grant, Remove, and Transfer
 
 Consume reduces a quantity without treating it as Health damage. Proposed default for effects: consume up to the available amount and record the actual reduction. A commitment cost instead requires the entire amount to be available before the action is accepted.
@@ -112,11 +115,13 @@ Every status definition declares duplicate handling: reject, refresh, replace, o
 
 Dispel removes statuses selected by identifier or explicit metadata filters. An optional whole-turn DurationReduction shortens matching timed statuses instead of removing them outright; exhausted durations expire immediately, while permanent and use-only lifetimes remain unchanged. Cleanse selects the negative tag and reduces duration by one turn. If a limit selects fewer than all matches, declare a stable selection order. Removing a status ends its future influence but does not reverse previous Damage, Restore, or movement. Natural expiration is lifecycle processing and does not require a character to perform a Dispel action.
 
+Prevent is a persistent rule on a status, equipment, or innate rule collection. It blocks only the matching StatusEffectId from being applied to that recipient; other statuses and effects continue normally. Removing or expiring the rule immediately permits future applications again.
+
 ## Action composition and persistent behavior
 
 An action defines an ordered collection of effects. Resolve them deterministically in authored order; later effects observe earlier resulting state. An unavailable operation produces an explicit no-change outcome and does not cancel unrelated effects unless the definition declares a dependency.
 
-Persistent resistance, negation, evasion, restriction, or modification is represented by Apply installing a Status Effect whose definition supplies the corresponding behavior. Equipment or other existing state may also supply such rules. Do not add separate booleans such as IsSilenced for every status.
+Persistent resistance, negation, prevention, evasion, restriction, or modification is represented by Apply installing a Status Effect whose definition supplies the corresponding behavior. Equipment or other existing state may also supply such rules. Do not add separate booleans such as IsSilenced for every status.
 
 Target selection supplies recipients independently of the verb. Single target, row, column, adjacency, and all are targeting definitions, not additional effect verbs. For the initial model, determine an area's recipients once at the start of resolution. A Move within that action does not silently recalculate the other recipients. A definition requiring later target selection must state it explicitly.
 

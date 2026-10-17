@@ -25,8 +25,8 @@ The gain happens at resolution; the timeline still advances by its authored Turn
 
 The resolver applies effects and pays costs through the existing combat system. Registered
 scaffolds expose no effects and remain unavailable in player combat and AI selection until
-replaced with implementations. All 43 current ability records have registered mappings,
-including Aquarius's 20 authored abilities and 23 temporary/sample records.
+replaced with implementations. All 44 current ability records have registered mappings,
+including Aquarius's 20 authored abilities and 24 temporary/sample records.
 
 Implemented support actions include Heal (+3 Health with no gameplay maximum), Purge
 (all statuses from one target), and Cleanse (one turn from every timed status tagged
@@ -35,6 +35,26 @@ All currently use the provisional 1 Turn / 0 Focus costs authored in Aquarius.
 Cleanse handles both timeline and recipient-turn clocks, removes statuses whose duration
 is exhausted, and leaves positive, permanent and use-only lifetimes unchanged. Shortened
 timeline expirations are rescheduled through the simulation-safe scheduler.
+
+Defiance is self-only and uses Aries' authored 0.5 Turn / 2 Focus costs. It removes every
+status tagged `negative`, then applies Berserk for one timeline turn per removed status.
+The duration is planned from the caster's status snapshot, so previews and committed actions
+agree; with no negative statuses, it does not apply a zero-duration Berserk.
+
+Recovery is self-only, costs 1 Focus, and converts all Focus available before commitment
+into 2 Health per Focus. The activation cost is included in the restoration amount; any
+remaining Focus is consumed by a source-scoped effect. Preview and commitment use the same
+post-cost Focus snapshot.
+
+King Maker is a single melee strike with the primary equipped weapon (or an unarmed strike),
+then adds Basic damage and consumes all remaining Focus. Bonus damage for 0-8 Focus is
+1, 2, 3, 5, 8, 13, 19, 26 and 34. Starting at 9 Focus, each value is the sum of the prior
+two values; the amount saturates at `Int32.MaxValue`.
+
+Fury attacks with each equipped melee weapon (or uses an unarmed strike if none are equipped),
+then applies a stackable 25% Turn-cost reduction to its caster for the caster's next turn.
+Multiple Fury stacks multiply their Turn-cost modifiers; the speed status is applied after
+the attacks and expires at the start of the caster's following turn.
 
 Gale shifts all living enemies one row backward; Tailwind shifts them one row forward.
 Both use all-opponent targeting and the provisional 1 Turn / 0 Focus costs. Their typed

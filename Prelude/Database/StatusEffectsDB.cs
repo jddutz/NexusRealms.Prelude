@@ -66,6 +66,16 @@ public class StatusEffects
         Rules = [new ResistEffect(new(Category: DamageCategory.Physical), 1, ShareAcrossTypes: true)],
     };
 
+    /// <summary>Reduces Physical damage by one per attack for three turns.</summary>
+    public static StatusEffectData Braced { get; } = new()
+    {
+        Id = "braced", Name = "Brace",
+        Description = "Reduces incoming Physical damage by one per attack for three turns.",
+        Icon = new("abilities.Brace.png"), Duplicates = DuplicateStatusRule.Refresh,
+        Persistence = new(StatusClock.Timeline, 3), Tags = ["positive"],
+        Rules = [new ResistEffect(new(Category: DamageCategory.Physical), 1, ShareAcrossTypes: true)],
+    };
+
     public static StatusEffectData Bewildered { get; } = new()
     {
         Id = "bewildered", Name = "Bewildered",
@@ -86,10 +96,10 @@ public class StatusEffects
 
     public static StatusEffectData Blind { get; } = new()
     {
-        Id = "blind", Name = "Blind", Description = "Cannot use actions that require Visual targeting.",
+        Id = "blind", Name = "Blind", Description = "Cannot use actions that require sight.",
         Icon = new("abilities.Fog.png"), Duplicates = DuplicateStatusRule.Refresh,
         Persistence = new(StatusClock.Timeline, 2), Tags = ["negative"],
-        Rules = [new RestrictEffect(new(RequiresTargetingFlags: TargetingFlags.Visual))],
+        Rules = [new RestrictEffect(new(RequiresActionFlags: ActionFlags.Visual))],
     };
 
     /// <summary>Blocks magical affinity independently of speech, sight and Focus costs.</summary>
@@ -98,7 +108,25 @@ public class StatusEffects
         Id = "silenced", Name = "Silenced", Description = "Cannot use magical abilities for two turns.",
         Icon = new("abilities.Silence.png"), Duplicates = DuplicateStatusRule.Refresh,
         Persistence = new(StatusClock.Timeline, 2), Tags = ["negative"],
-        Rules = [new RestrictEffect(new(RequiresTargetingFlags: TargetingFlags.Magical))],
+        Rules = [new RestrictEffect(new(RequiresActionFlags: ActionFlags.Magical))],
+    };
+
+    /// <summary>Two-turn Fear that prevents actions with melee affinity.</summary>
+    public static StatusEffectData Fear { get; } = new()
+    {
+        Id = "fear", Name = "Fear", Description = "Cannot use melee actions for two turns.",
+        Icon = new("abilities.Bellow.png"), Duplicates = DuplicateStatusRule.Refresh,
+        Persistence = new(StatusClock.Timeline, 2), Tags = ["negative"],
+        Rules = [new RestrictEffect(new(RequiresActionFlags: ActionFlags.Melee))],
+    };
+
+    /// <summary>Two-turn Berserk that permits only actions with melee affinity.</summary>
+    public static StatusEffectData Berserk { get; } = new()
+    {
+        Id = "berserk", Name = "Berserk", Description = "Can only use actions with the Melee flag.",
+        Icon = new("stats.arrow_up.png"), Duplicates = DuplicateStatusRule.Refresh,
+        Persistence = new(StatusClock.Timeline, 2), Tags = ["negative"],
+        Rules = [new RestrictEffect(new(MissingActionFlags: ActionFlags.Melee))],
     };
 
     /// <summary>Default Slow; authored applications choose their own lifetime.</summary>
@@ -119,6 +147,31 @@ public class StatusEffects
         Rules = [new TurnCostMultiplierEffect(0.75f)],
     };
 
+    /// <summary>One-turn stackable 25% action speed boost granted by Fury.</summary>
+    public static StatusEffectData Fury { get; } = new()
+    {
+        Id = "fury", Name = "Fury", Description = "Multiplies Turn costs by 0.75 during the caster's next turn.",
+        Icon = new("abilities.Fury.png"), Duplicates = DuplicateStatusRule.Stack,
+        Persistence = new(StatusClock.RecipientTurnStart, 2), Tags = ["positive"],
+        Rules = [new TurnCostMultiplierEffect(0.75f)],
+    };
+
+    /// <summary>Adds one Basic damage to each Melee attack for two turns.</summary>
+    public static StatusEffectData Onslaught { get; } = new()
+    {
+        Id = "onslaught", Name = "Onslaught", Description = "Melee attacks deal 1 additional Basic damage.",
+        Icon = new("abilities.Onslaught.png"), Duplicates = DuplicateStatusRule.Refresh,
+        Persistence = new(StatusClock.Timeline, 2), Tags = ["positive"],
+        Rules =
+        [
+            new ModifyEffect(
+                new(EffectVerb.Damage, DamageType.Basic, ActionFlags.Melee, RecipientScope.Source),
+                NumericalField.DamageAmount,
+                1
+            ),
+        ],
+    };
+
     public static FrozenDictionary<StatusEffectId, StatusEffectData> All { get; } =
-        new[] { Guarded, Inspired, Focused, CoolingBreeze, Elevated, PressureShield, Bewildered, EyeOfTheStorm, Blind, Silenced, Slow, Haste }.ToFrozenDictionary(status => status.Id);
+        new[] { Guarded, Inspired, Focused, CoolingBreeze, Elevated, PressureShield, Braced, Bewildered, EyeOfTheStorm, Blind, Silenced, Fear, Berserk, Slow, Haste, Fury, Onslaught }.ToFrozenDictionary(status => status.Id);
 }

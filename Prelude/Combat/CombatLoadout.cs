@@ -6,7 +6,7 @@ namespace NexusRealms.Prelude.Combat;
 public sealed record CommandDefinition(ActionId Id, string Name, float TurnCost,
     ItemId? RequiredItem = null, string? RequiredSlot = null, bool Learned = true,
     bool Passive = false, bool RequiresTarget = true, int FocusCost = 0, Action<CombatSystem, Combatant>? Resolve = null, Func<CommandTarget, bool>? TargetRule = null, string? Icon = null, string? IconRegion = null, StrikeHand? Hand = null,
-    ImmutableArray<string> Classifications = default, TargetingFlags TargetingFlags = TargetingFlags.None);
+    ImmutableArray<string> Classifications = default, ActionFlags Flags = ActionFlags.None);
 public enum StrikeHand { Left, Right }
 /// <summary>One hit using the held weapon's damage, or one Basic point when unarmed.</summary>
 public sealed record HandStrike(StrikeHand Hand, CarriedItem? Item)
@@ -36,11 +36,11 @@ public sealed partial class CombatLoadout
     }
 
     public static readonly CommandDefinition LeftHandStrike = new("LeftHandStrike", "Left Hand Attack", 1f,
-        Icon: "actions.fist.png", Hand: StrikeHand.Left, TargetingFlags: TargetingFlags.Visual);
+        Icon: "actions.fist.png", Hand: StrikeHand.Left, Flags: ActionFlags.Visual | ActionFlags.Melee);
     public static readonly CommandDefinition RightHandStrike = new("RightHandStrike", "Right Hand Attack", 1f,
-        Icon: "actions.fist.png", Hand: StrikeHand.Right, TargetingFlags: TargetingFlags.Visual);
+        Icon: "actions.fist.png", Hand: StrikeHand.Right, Flags: ActionFlags.Visual | ActionFlags.Melee);
     public static readonly CommandDefinition Throw = new("Throw", "Throw", RightHandStrike.TurnCost,
-        Icon: "actions.throw.png", TargetingFlags: TargetingFlags.Visual, TargetRule: target => target.Team == CombatTeam.Enemies && Enum.IsDefined(target.Row));
+        Icon: "actions.throw.png", Flags: ActionFlags.Visual, TargetRule: target => target.Team == CombatTeam.Enemies && Enum.IsDefined(target.Row));
     private readonly Dictionary<string, int> _shots = [];
     private readonly Dictionary<string, CarriedItem> _loadedAmmunition = [];
     public int ShotsRemaining(CarriedItem item) => _shots.GetValueOrDefault(item.Id.Value, item.Weapon?.Shots ?? 0);
@@ -172,18 +172,29 @@ public sealed partial class CombatLoadout
             var weapon = HeldItem(hand)?.Weapon;
             var range = weapon?.Range ?? WeaponRange.Short;
             if (target.Elevated && (weapon?.IsMelee ?? true) && range == WeaponRange.Short) return false;
-            return range switch
-            {
-                WeaponRange.Short => target.Row == (target.FrontOccupied ? CombatRow.Front
-                    : target.MiddleOccupied ? CombatRow.Middle : CombatRow.Back),
-                WeaponRange.Medium => target.Row is CombatRow.Front or CombatRow.Middle
-                    || !target.FrontOccupied && !target.MiddleOccupied,
-                WeaponRange.Long => true,
-                _ => false,
-            };
+            return CanReachRow(range, target);
         }
         return action.TargetRule?.Invoke(target) ?? target is { Team: CombatTeam.Enemies, Row: CombatRow.Front };
     }
+
+    /// <summary>Determines whether the selected formation row is within the supplied melee range.</summary>
+    /// <param name="range">The melee weapon's reach.</param>
+    /// <param name="target">The target's current row and opposing formation occupancy.</param>
+    /// <returns>True when the target row is reachable at that range.</returns>
+    internal static bool CanReachRow(WeaponRange range, CommandTarget target) =>
+        range switch
+        {
+            WeaponRange.Short => target.Row
+                == (target.FrontOccupied
+                    ? CombatRow.Front
+                    : target.MiddleOccupied
+                        ? CombatRow.Middle
+                        : CombatRow.Back),
+            WeaponRange.Medium => target.Row is CombatRow.Front or CombatRow.Middle
+                || !target.FrontOccupied && !target.MiddleOccupied,
+            WeaponRange.Long => true,
+            _ => false,
+        };
     public bool Available(CommandDefinition a) => (Abilities.Contains(a) || BasicCommands && (ReferenceEquals(a, LeftHandStrike) || ReferenceEquals(a, RightHandStrike) || ReferenceEquals(a, Throw) || ReferenceEquals(a, Wait))) && a.Learned && !a.Passive && (CommandAllowed?.Invoke(a) ?? true)
         && (a != Throw || ThrowOptions().Count > 0)
         && (a.Hand is not { } shootingHand || HasShootingHands(shootingHand))

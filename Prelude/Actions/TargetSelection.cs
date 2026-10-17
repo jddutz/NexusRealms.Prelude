@@ -16,12 +16,26 @@ public static class TargetSelection
     public static ImmutableArray<string> Select(this TargetingProfile profile, CombatActionResolver runtime, string sourceId, string? targetId)
     {
         if (!Enum.IsDefined(profile.Shape) || !Enum.IsDefined(profile.Relationship)
-            || (profile.Flags & ~(TargetingFlags.Visual | TargetingFlags.Magical)) != 0
             || (profile.Options & ~TargetingOptions.AllTeams) != 0) throw new ArgumentException("Unsupported targeting definition.");
         var source = runtime.Characters[sourceId];
         if (profile.Shape == TargetShape.Self) return [sourceId];
-        if (profile.Shape is not (TargetShape.All or TargetShape.Cone)
-            && (targetId is null || !runtime.Characters.TryGetValue(targetId, out var target) || target.Health.Health == 0)) return [];
+        var requiresTarget = profile.Shape
+            is not (
+                TargetShape.All
+                    or TargetShape.Cone
+                    or TargetShape.FrontRow
+                    or TargetShape.MiddleRow
+                    or TargetShape.BackRow
+            );
+        if (
+            requiresTarget
+            && (
+                targetId is null
+                || !runtime.Characters.TryGetValue(targetId, out var target)
+                || target.Health.Health == 0
+            )
+        )
+            return [];
         var anchor = targetId is not null && runtime.Characters.TryGetValue(targetId, out var selected) ? selected.Position : null;
         return runtime.Characters.Values.Where(character => character.Health.Health > 0
             && (profile.Options.HasFlag(TargetingOptions.AllTeams)
@@ -30,7 +44,15 @@ public static class TargetSelection
             && (profile.Shape switch
             {
                 TargetShape.Single => character.Id == targetId,
+                TargetShape.Melee => character.Id == targetId,
                 TargetShape.All => true,
+                TargetShape.FrontRow => character.Position is FormationSlot.FrontLeft
+                    or FormationSlot.FrontCenter or FormationSlot.FrontRight,
+                TargetShape.MiddleRow => character.Position is FormationSlot.MiddleLeft
+                    or FormationSlot.MiddleCenterLeft or FormationSlot.MiddleCenterRight
+                    or FormationSlot.MiddleRight,
+                TargetShape.BackRow => character.Position is FormationSlot.BackLeft
+                    or FormationSlot.BackCenter or FormationSlot.BackRight,
                 TargetShape.Cone => character.Position is FormationSlot.FrontCenter
                     or FormationSlot.MiddleCenterLeft or FormationSlot.MiddleCenterRight
                     or FormationSlot.BackLeft or FormationSlot.BackCenter or FormationSlot.BackRight,

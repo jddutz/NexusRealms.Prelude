@@ -2,8 +2,8 @@ using System.Collections.Immutable;
 
 namespace NexusRealms.Prelude.DataModel;
 
-/// <summary>The fifteen operation names; targeting and costs are separate concerns.</summary>
-public enum EffectVerb { Damage, Restore, Delay, Resist, Negate, Evade, Move, Restrict, Modify, Consume, Grant, Remove, Apply, Dispel, Transfer }
+/// <summary>The sixteen operation names; targeting and costs are separate concerns.</summary>
+public enum EffectVerb { Damage, Restore, Delay, Resist, Negate, Evade, Move, Restrict, Modify, Consume, Grant, Remove, Apply, Dispel, Transfer, Prevent }
 /// <summary>Supported non-Health resources.</summary>
 public enum ResourceKind { Focus }
 /// <summary>Numerical fields explicitly supported by additive modification.</summary>
@@ -21,17 +21,25 @@ public enum StatusClock { Permanent, Timeline, RecipientTurnStart }
 /// <summary>Which qualifying incoming event consumes a status use.</summary>
 public enum StatusUseEvent { Never, IncomingAction, NonEvadedIncomingAction }
 
-/// <summary>Matches explicit action identity, classification, and source; empty means all.</summary>
-public sealed record ActionFilter(string? ActionId = null, string? Classification = null, string? SourceId = null, FilterMatch Match = FilterMatch.All, ResourceKind? SpendsResource = null, TargetingFlags? RequiresTargetingFlags = null)
+/// <summary>Matches explicit action identity, classification, source, resource use, and action flags.</summary>
+/// <param name="ActionId">Optional exact action identity.</param>
+/// <param name="Classification">Optional action classification.</param>
+/// <param name="SourceId">Optional exact action source identity.</param>
+/// <param name="Match">How the declared criteria are combined.</param>
+/// <param name="SpendsResource">Optional resource-spending criterion.</param>
+/// <param name="RequiresActionFlags">Matches when all specified flags are present.</param>
+/// <param name="MissingActionFlags">Matches when none of the specified flags are present.</param>
+public sealed record ActionFilter(string? ActionId = null, string? Classification = null, string? SourceId = null, FilterMatch Match = FilterMatch.All, ResourceKind? SpendsResource = null, ActionFlags? RequiresActionFlags = null, ActionFlags? MissingActionFlags = null)
 {
-    /// <summary>Evaluates only declared criteria using the authored combination rule.</summary>
+    /// <summary>Evaluates declared presence and absence criteria using the authored combination rule.</summary>
     public bool Matches(ActionData action, string source)
     {
         var tests = new List<bool>();
         if (ActionId is not null) tests.Add(action.Id == ActionId);
         if (Classification is not null) tests.Add(action.Classifications.Contains(Classification));
         if (SourceId is not null) tests.Add(source == SourceId);
-        if (RequiresTargetingFlags is { } flags) tests.Add((action.Targeting.Flags & flags) == flags);
+        if (RequiresActionFlags is { } flags) tests.Add((action.Flags & flags) == flags);
+        if (MissingActionFlags is { } missingFlags) tests.Add((action.Flags & missingFlags) == 0);
         if (SpendsResource is { } resource)
             tests.Add(action.Costs.Any(cost => cost is { Subject: ResourceSubject subject, Amount: > 0 } && subject.Resource == resource)
                 || action.BuildEffects().Any(effect => effect.Recipients == RecipientScope.Source && (effect switch
@@ -56,8 +64,13 @@ public sealed record DamageFilter(DamageType? Type = null, string? SourceId = nu
         return tests.Count == 0 || (Match == FilterMatch.All ? tests.All(value => value) : tests.Any(value => value));
     }
 }
-/// <summary>Matches an operation and, optionally, a damage type.</summary>
-public sealed record EffectFilter(EffectVerb Verb, DamageType? DamageType = null);
+/// <summary>Matches an operation by verb, optional damage type, action flags, and source or target owner.</summary>
+/// <param name="Verb">The operation verb to match.</param>
+/// <param name="DamageType">Optional damage type to match.</param>
+/// <param name="RequiredActionFlags">Optional flags that must all be present on the action.</param>
+/// <param name="Recipient">Whether the rule owner must be the operation's source or target.</param>
+public sealed record EffectFilter(EffectVerb Verb, DamageType? DamageType = null,
+    ActionFlags? RequiredActionFlags = null, RecipientScope Recipient = RecipientScope.Targets);
 /// <summary>Explicit status persistence; duration units are determined by Clock.</summary>
 public sealed record StatusPersistence(StatusClock Clock = StatusClock.Permanent, float Duration = 0, int? Uses = null,
     StatusUseEvent UseEvent = StatusUseEvent.Never, ActionFilter? UseFilter = null);
@@ -114,6 +127,8 @@ public sealed record DelayEffect(float Amount) : ActionEffect { public override 
 public sealed record ResistEffect(DamageFilter Filter, int Amount, bool ShareAcrossTypes = false) : ActionEffect { public override EffectVerb Verb => EffectVerb.Resist; }
 /// <summary>Sets matching damage to zero; used as a persistent rule.</summary>
 public sealed record NegateEffect(DamageFilter Filter) : ActionEffect { public override EffectVerb Verb => EffectVerb.Negate; }
+/// <summary>Blocks applications of the specified status; used as a persistent rule.</summary>
+public sealed record PreventEffect(StatusEffectId Status) : ActionEffect { public override EffectVerb Verb => EffectVerb.Prevent; }
 /// <summary>Cancels incoming target effects; used as a persistent rule.</summary>
 public sealed record EvadeEffect(ActionFilter Filter) : ActionEffect { public override EffectVerb Verb => EffectVerb.Evade; }
 /// <summary>Moves a non-player into an unoccupied formation position.</summary>

@@ -5,6 +5,8 @@
 `TargetingProfile`, `ActionData`, effect records, status definitions, and scenario
 objectives/events are data. Mutable `GameState` belongs to the Prelude runtime.
 Scenario adapters turn typed objectives and events into executable behavior.
+`ActionData.Flags` describes action properties such as Visual, Magical, or Melee;
+`TargetingProfile` describes recipient selection independently.
 
 An action is a record class derived from `ActionData` or `EffectAction`. For example:
 
@@ -18,7 +20,7 @@ public sealed record ExampleStrike : EffectAction
         Classifications = ["weapon"];
         Requirements = new() { Equipment = [new("Right hand")] };
         Costs = [new(new ResourceSubject(ResourceKind.Focus), 1)];
-        Targeting = new(TargetShape.Single, TargetRelationship.OpposingTeam);
+        Targeting = new(TargetShape.Single);
     }
 }
 ```
@@ -40,11 +42,12 @@ require full availability and remain paid when effects are evaded or negated.
 existing weapon/throw playback or authored timeline events; it never pays costs
 or repeats availability checks. It should not be used to accept a new player action.
 
-The fifteen operation classes are Damage, Restore, Delay, Resist, Negate, Evade,
-Move, Restrict, Modify, Consume, Grant, Remove, Apply, Dispel, and Transfer, each
+The sixteen operation classes are Damage, Restore, Delay, Resist, Negate, Evade,
+Move, Restrict, Modify, Consume, Grant, Remove, Apply, Dispel, Transfer, and
+Prevent, each
 with an `Effect` suffix. Their subjects and numerical fields are strongly typed.
-Resist/Negate/Evade/Restrict/Modify are persistent rules installed through a
-status's `Rules` or an explicit equipment/innate rule collection; authoring them
+Resist/Negate/Prevent/Evade/Restrict/Modify are persistent rules installed through
+a status's `Rules` or an explicit equipment/innate rule collection; authoring them
 as transient action operations is rejected because they have no defined lifetime.
 
 Defaults are explicit:
@@ -61,6 +64,10 @@ Defaults are explicit:
 - Source-scoped effects express execution commitments independent of target
   evasion. Each target's evasion cancels every target-scoped operation for that
   recipient while other targets continue.
+- A modification filter defaults to rules owned by its recipient; source-scoped
+  filters read rules on the acting character and may require action flags. A
+  source damage modifier creates a missing typed damage entry once per attack
+  index, so multi-weapon attacks receive the bonus for each strike.
 - Resolve each damage type independently. Resistance reductions add and share a
   per-action, per-type budget across split damage entries. Negation overrides
   numerical changes. Outcomes retain requested amount, resolved damage, and

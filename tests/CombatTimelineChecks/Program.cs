@@ -366,11 +366,11 @@ foreach (var (type, slashing, crushing, piercing, iconCount) in weaponExpectatio
 Check(new HandStrike(StrikeHand.Right, CombatLoadout.CreatePlayerLoadout().HeldItem(StrikeHand.Right)).Damage == 3);
 Console.WriteLine("Weapon catalog and variant damage checks passed.");
 
-foreach (var type in new[] { DamageType.Slashing, DamageType.Piercing, DamageType.Crushing, DamageType.Poison })
+foreach (var type in new[] { DamageType.Slashing, DamageType.Piercing, DamageType.Crushing })
     Check(type.GetCategory() == DamageCategory.Physical);
 foreach (var type in new[] { DamageType.Fire, DamageType.Ice, DamageType.Lightning })
     Check(type.GetCategory() == DamageCategory.Elemental);
-Check(DamageType.Basic.GetCategory() is null);
+Check(DamageType.Basic.GetCategory() is null && DamageType.Poison.GetCategory() is null);
 Check(mace.DamagePoints.AmountIn(DamageCategory.Physical) == 2);
 Check(mace.DamagePoints.Total == 3); // The Basic point belongs to no category.
 foreach (var category in new[] { DamageCategory.Elemental, DamageCategory.Spiritual, DamageCategory.Mental, DamageCategory.Magical })

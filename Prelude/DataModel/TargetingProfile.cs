@@ -5,6 +5,8 @@ public enum TargetShape
 {
     /// <summary>Selects one chosen recipient.</summary>
     Single,
+    /// <summary>Selects one chosen recipient within the action's melee reach.</summary>
+    Melee,
     /// <summary>Selects the source character.</summary>
     Self,
     /// <summary>Selects the chosen recipient's row.</summary>
@@ -17,6 +19,12 @@ public enum TargetShape
     All,
     /// <summary>Front-center, both middle-center, and all three back-row positions.</summary>
     Cone,
+    /// <summary>Selects every eligible character in the front row.</summary>
+    FrontRow,
+    /// <summary>Selects every eligible character in the middle row.</summary>
+    MiddleRow,
+    /// <summary>Selects every eligible character in the back row.</summary>
+    BackRow,
 }
 /// <summary>Action target relationship to its source.</summary>
 public enum TargetRelationship
@@ -28,17 +36,6 @@ public enum TargetRelationship
     /// <summary>Restricts recipients to the opposing team.</summary>
     OpposingTeam,
 }
-/// <summary>Explicit action requirements and affinities; combine requirements with bitwise OR.</summary>
-[Flags]
-public enum TargetingFlags
-{
-    /// <summary>No explicit requirements or affinities.</summary>
-    None = 0,
-    /// <summary>Requires sight and is prevented by Blind.</summary>
-    Visual = 1,
-    /// <summary>Has magical affinity and is prevented by Silence, independently of speech.</summary>
-    Magical = 2,
-}
 /// <summary>Explicitly broadens recipient selection beyond the default opposing-team relationship.</summary>
 [Flags]
 public enum TargetingOptions
@@ -48,9 +45,8 @@ public enum TargetingOptions
     /// <summary>Allows recipients from either team, including the source.</summary>
     AllTeams = 1,
 }
-/// <summary>Authored targeting shape, opposing-team-default relationship, requirements, and selection options.</summary>
+/// <summary>Authored targeting shape, opposing-team-default relationship, and selection options.</summary>
 public sealed record TargetingProfile(
     TargetShape Shape = TargetShape.Single,
     TargetRelationship Relationship = TargetRelationship.OpposingTeam,
-    TargetingFlags Flags = TargetingFlags.None,
     TargetingOptions Options = TargetingOptions.None);

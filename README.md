@@ -4,10 +4,21 @@ Prelude is a game built to exercise the Nexus game engine. It is a classic 2D RP
 
 Authored combat definitions belong to `DataModel`: character action capabilities,
 progression abilities, `TargetingProfile`, typed effects, items, and status definitions.
+Action flags describe capabilities independently of target selection.
 Runtime resolution in `Actions` uses the existing health, loadout, and scheduler owners.
 Abilities unlock action classes subject to their item and equipment requirements;
-learning an ability and selecting an action are separate operations. See
+learning an ability and selecting an action are separate operations. Passive
+abilities omit activation costs and targeting, and trigger through combat events.
+Bloodlust grants Focus when an opponent is defeated; Primal Rage gains Focus per
+Basic damage taken. Fear prevents actions with the Melee flag, including unarmed and
+equipped melee hand attacks, while allowing ranged hand weapons. Berserk permits
+only actions with the Melee flag. See
 [action authoring](docs/Action-Effects.md) for composition and lifetime rules.
+Aries' defensive, weapon, and formation abilities use the shared status, attack,
+and movement effects. Onslaught adds one Basic damage to each Melee attack for
+two timeline turns, using a source-scoped, action-flag-filtered damage modifier.
+King Maker consumes remaining Focus for a Basic damage bonus indexed by its authored
+sequence, then extended by recurrence.
 
 Zodiac progression uses parent prerequisites, not directional groups; authored
 node order does not constrain learning. Multiple abilities can be learned per

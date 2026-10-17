@@ -41,7 +41,10 @@ public static class CandidateGeneration
             if (action is null) { rejected?.Add(new(definition.Id, "Owned weapon or required ammunition unavailable.")); continue; }
             // Reload is an item-layout transaction below, with every ammunition choice explicit.
             if (legacy && action.Reload) continue;
-            foreach (var target in action.Reload || action.Targeting.Shape is TargetShape.Self or TargetShape.All or TargetShape.Cone ? new string?[] { null } : targets)
+            foreach (var target in action.Reload || action.Targeting.Shape is (
+                TargetShape.Self or TargetShape.All or TargetShape.Cone
+                    or TargetShape.FrontRow or TargetShape.MiddleRow or TargetShape.BackRow
+            ) ? new string?[] { null } : targets)
                 Add(new(action, target) { Kind = legacy ? CandidateKind.LegacyWeapon : CandidateKind.Capability, ItemId = action.ItemId?.Value });
         }
         foreach (var command in loadout.Commands.Where(command => !loadout.Actions.ContainsKey(command.Id.Value))
@@ -54,7 +57,7 @@ public static class CandidateGeneration
             if (cost is null) continue;
             var action = new ActionData { Id = command.Id.Value, Damage = damage, TurnCost = cost.Value,
                 Classifications = command.Hand is not null ? ["weapon"] : command.Classifications.IsDefault ? [] : command.Classifications,
-                Targeting = new(Flags: command.TargetingFlags),
+                Flags = loadout.EffectiveActionFlags(command),
                 Costs = [new(new ResourceSubject(ResourceKind.Focus), command.FocusCost)] };
             foreach (var target in command.RequiresTarget ? targets : new string?[] { null })
                 Add(new(action, target) { Kind = CandidateKind.Command, ItemId = command.Hand is { } h ? loadout.HeldItem(h)?.Id.Value : null });
@@ -62,7 +65,7 @@ public static class CandidateGeneration
         foreach (var option in loadout.ThrowOptions().OrderBy(option => option.Item.Id.Value, StringComparer.Ordinal))
             foreach (var target in targets)
                 Add(new(new ActionData { Id = "Throw", Damage = option.Item.ThrowDamage!, TurnCost = CombatLoadout.Throw.TurnCost,
-                    Classifications = ["weapon"], Targeting = new(Flags: CombatLoadout.Throw.TargetingFlags), Costs = [new(new ResourceSubject(ResourceKind.Focus), CombatLoadout.Throw.FocusCost)] }, target)
+                    Classifications = ["weapon"], Flags = loadout.EffectiveActionFlags(CombatLoadout.Throw), Costs = [new(new ResourceSubject(ResourceKind.Focus), CombatLoadout.Throw.FocusCost)] }, target)
                     { Kind = CandidateKind.Throw, ItemId = option.Item.Id.Value });
         if (actor.IsPlayer && resolver.AllowEscape && !resolver.Combat.IsEscaping)
             Add(new(new ActionData { Id = "escape", TurnCost = 1f, Damage = new DamageProfile() }, null) { Kind = CandidateKind.Escape });

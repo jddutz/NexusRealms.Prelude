@@ -82,7 +82,7 @@ public sealed record Part1 : StoryGraph
             {
                 Id = "distract",
                 Effects = [new DelayEffect(1)],
-                Targeting = new(TargetShape.Single, TargetRelationship.OpposingTeam),
+                Targeting = new(TargetShape.Single),
             },
         ],
     };
@@ -190,7 +190,7 @@ public sealed record Part1 : StoryGraph
 
         Nodes = [Intro, Battle1, Progress1, Victory, Defeat, Escape];
 
-        Start = Intro.Id;
+        Start = Progress1.Id;
         End = StoryNodeId.Invalid;
     }
 }

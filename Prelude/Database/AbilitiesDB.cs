@@ -5,7 +5,8 @@ public static class Abilities
 {
     /// <summary>All registered definitions. Duplicate ability identifiers fail registration.</summary>
     public static FrozenDictionary<AbilityId, AbilityData> All { get; } =
-        Progression.Aquarius.Definitions
+        Progression.Aries.Definitions
+            .Concat(Progression.Aquarius.Definitions)
             .Concat(Progression.PlaceholderAbilities.Definitions)
             .ToFrozenDictionary(ability => ability.Id);
 }
