@@ -6,7 +6,7 @@ using NexusRealms.Prelude.DataModel;
 
 static void Check(bool condition) { if (!condition) throw new Exception("Story outcome check failed"); }
 var story = new Storyline();
-var scenario = (CombatScenario)story.Nodes[NexusRealms.Prelude.Database.Chapter1.Part1.Intro.Id];
+var scenario = (CombatScenario)story.Nodes[NexusRealms.Prelude.Database.Chapter1.Part1.Battle1.Id];
 Check(scenario.VictoryConditions.Length == 0 && scenario.DefeatConditions.Length == 1);
 Check(scenario.Characters.Count(character => character.RequiredForVictory) == 1);
 Check(scenario.Characters.Single(character => character.RequiredForVictory).Slot == NexusRealms.Prelude.DataModel.FormationSlot.BackLeft);

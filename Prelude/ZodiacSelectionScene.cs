@@ -11,12 +11,14 @@ public sealed class ZodiacSelectionScene : Scene
 
     /// <summary>Creates the Zodiac selection screen.</summary>
     /// <param name="state">The mutable game state receiving the selected sign.</param>
+    /// <param name="storyline">The registered graph used to resolve the starting scene.</param>
     /// <param name="textStyles">Provides built-in interface text styles.</param>
     /// <param name="textures">Provides the button background texture.</param>
     /// <param name="scenes">Requests the transition into the story.</param>
     /// <param name="windowService">Closes the application when selection is cancelled.</param>
     public ZodiacSelectionScene(
         GameState state,
+        Storyline storyline,
         ITextStyleRegistry textStyles,
         ITextureRegistry textures,
         ISceneManager scenes,
@@ -24,6 +26,7 @@ public sealed class ZodiacSelectionScene : Scene
     )
     {
         ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(storyline);
         ArgumentNullException.ThrowIfNull(textStyles);
         ArgumentNullException.ThrowIfNull(textures);
         ArgumentNullException.ThrowIfNull(scenes);
@@ -124,7 +127,7 @@ public sealed class ZodiacSelectionScene : Scene
             Action = _ =>
             {
                 _state.Zodiac = _selectedZodiac;
-                _scenes.LoadScene<ProgressionScene>();
+                StorySceneRouter.LoadCurrentNode(_state, storyline, _scenes);
             },
         };
 

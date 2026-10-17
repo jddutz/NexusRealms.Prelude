@@ -1557,12 +1557,7 @@ public class CombatScene : Scene
             if (destination is { } nodeId)
             {
                 _gameState.CurrentStoryNodeId = nodeId;
-                if (_storyline.Nodes[nodeId] is CombatScenario)
-                    _sceneManager.LoadScene<CombatScene>();
-                else if (_storyline.Nodes[nodeId] is ProgressNode)
-                    _sceneManager.LoadScene<ProgressionScene>();
-                else
-                    _sceneManager.LoadScene<OutcomeScene>();
+                StorySceneRouter.LoadCurrentNode(_gameState, _storyline, _sceneManager);
             }
         }
         RefreshCommand();

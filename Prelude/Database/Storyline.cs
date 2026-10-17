@@ -116,11 +116,35 @@ public sealed class Storyline
 
         foreach (var node in nodes.Values)
         {
+            if (node is NarrativeNode narrative)
+            {
+                if (
+                    string.IsNullOrWhiteSpace(narrative.BackgroundImage.Value)
+                    || string.IsNullOrWhiteSpace(narrative.ForegroundImage.Value)
+                    || string.IsNullOrWhiteSpace(narrative.RichText)
+                    || narrative.Choices.IsDefaultOrEmpty
+                )
+                    throw new InvalidOperationException($"Invalid narrative node '{node.Id}'.");
+
+                foreach (var choice in narrative.Choices)
+                {
+                    if (string.IsNullOrWhiteSpace(choice.Text) || !nodes.ContainsKey(choice.NextNode))
+                        throw new InvalidOperationException(
+                            $"Narrative node '{node.Id}' has an invalid choice destination '{choice.NextNode}'."
+                        );
+                }
+            }
+
             if (node is ProgressNode progression)
             {
                 if (progression.Chapter is < 1 or > 5 || !nodes.ContainsKey(progression.NextNode))
                     throw new InvalidOperationException($"Invalid progression visit '{node.Id}'.");
             }
+            if (node is OutcomeNode { NextNode: { } nextNode } && !nodes.ContainsKey(nextNode))
+                throw new InvalidOperationException(
+                    $"Outcome node '{node.Id}' references missing destination '{nextNode}'."
+                );
+
             if (node is not CombatScenario scenario)
             {
                 continue;

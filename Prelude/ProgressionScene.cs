@@ -127,8 +127,7 @@ public sealed class ProgressionScene : Scene
         {
             if (!ProgressionRules.CanContinue(state, visit)) return;
             state.CurrentStoryNodeId = visit.NextNode;
-            if (story.Nodes[state.CurrentStoryNodeId] is ProgressNode) scenes.LoadScene<ProgressionScene>();
-            else scenes.LoadScene<CombatScene>();
+            StorySceneRouter.LoadCurrentNode(state, story, scenes);
         }, 140f);
         _continue.HorizontalAlignment = AlignHorizontal.Right;
         _continue.VerticalAlignment = AlignVertical.Bottom;

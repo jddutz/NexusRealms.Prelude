@@ -25,12 +25,19 @@ var story = new Storyline();
 Check(ProgressionGraphs.All.Count == 12, "All Zodiac graphs must exist.");
 Check(story.StartNodeId == NexusRealms.Prelude.Database.Chapter1.Part1.Begin.Id,
     "The story must start at the authored Chapter1.Part1.Begin node.");
-Check(story.Nodes.Values.OfType<ProgressNode>().Single().Id == story.StartNodeId,
-    "Only the intentionally authored progression visit must be registered.");
+Check(story.Nodes.Values.OfType<ProgressNode>().Select(node => node.Id).ToHashSet()
+    .SetEquals([NexusRealms.Prelude.Database.Chapter1.Part1.Begin.Id,
+        NexusRealms.Prelude.Database.Chapter1.Part1.Progress1.Id]),
+    "The opening and post-victory progression visits must be registered.");
 var begin = (ProgressNode)story.Nodes[story.StartNodeId];
 Check(begin.NextNode == NexusRealms.Prelude.Database.Chapter1.Part1.Intro.Id
-    && story.Nodes[begin.NextNode] is CombatScenario,
-    "Continue must lead directly from Begin to the intro encounter.");
+    && story.Nodes[begin.NextNode] is NarrativeNode,
+    "Continue must lead from Begin to the authored narrative introduction.");
+var intro = (NarrativeNode)story.Nodes[begin.NextNode];
+Check(intro.Choices.Length == 2
+    && intro.Choices.Select(choice => choice.NextNode).Distinct().Count() == intro.Choices.Length
+    && intro.Choices.All(choice => story.Nodes.ContainsKey(choice.NextNode)),
+    "Each narrative choice must resolve to a distinct registered destination.");
 Check(Aquarius.Definitions.Length == 20 && Aquarius.Graph.Abilities.Length == 20, "Aquarius must author all twenty definitions and placements.");
 Check(Aquarius.Graph.Abilities.Select(node => (node.X, node.Y)).Distinct().Count() == 20,
     "Aquarius stars must have twenty explicit distinct artwork positions.");

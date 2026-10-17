@@ -14,7 +14,8 @@ node order does not constrain learning. Multiple abilities can be learned per
 visit, with availability refreshed after each purchase. Continue unlocks after
 learning an ability, or immediately when points or unlearned abilities run out.
 The story starts at `Chapter1.Part1.Begin`; Continue follows its authored
-`NextNode` directly to the intro encounter, without generated progression visits.
+`NextNode` to the opening narrative. Narrative choices route to distinct authored
+destinations, and combat victories may continue to a registered progression visit.
 
 The headless `Prelude/Simulator` uses the same action resolver. Mutable `GameState`
 lives in the Prelude runtime; scenario objectives and events remain data definitions
@@ -56,6 +57,8 @@ selection and progression graph keys use `ZodiacSignId`; `ZodiacSign` holds
 descriptive character-creation data, including element and modality.
 
 Story graphs implementing `IStoryGraph` in `Prelude.Database.Chapter*` namespaces are discovered automatically; their characters and nodes are validated and registered by ID at runtime. The loaded story database uses immutable graph data and frozen lookup dictionaries, while chapter definitions remain authored in C#.
+
+`NarrativeNode` provides background and foreground artwork, BBCode-rich text, and explicit destination choices. `NarrativeScene` renders the authored node, and all story transitions resolve their scene from the destination node type.
 
 Combat characters are world-space `GameObject2D` entities. Each character owns its
 `SpriteRenderer`, while `CharacterFormation` positions those entities from the
