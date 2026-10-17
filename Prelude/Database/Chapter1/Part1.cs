@@ -95,7 +95,7 @@ public sealed record Part1 : StoryGraph
         EscapeNode = $"{SubgraphId}_{nameof(Escape)}",
         VictoryConditions = [],
         DefeatConditions = [new(CombatConditionKind.PlayerDefeated)],
-        Background = new("background.harbor_district_dockside_dusk.png"),
+        Background = new("backgrounds.harbor_district_dockside_dusk.png"),
         Characters =
         [
             new CharacterPlacement
