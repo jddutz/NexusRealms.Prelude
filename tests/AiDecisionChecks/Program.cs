@@ -204,7 +204,8 @@ Check(
     "All Aries definitions and graph nodes must be available in the shared ability database."
 );
 foreach (var ability in NexusRealms.Prelude.Database.Progression.Aries.Definitions)
-    _ = AbilityActionRegistry.Default.Resolve(ability);
+    Check(AbilityActionRegistry.Default.Resolve(ability).IsImplemented,
+        $"Aries ability {ability.Id} must have a complete runtime implementation.");
 
 var fearStatus = NexusRealms.Prelude.Database.StatusEffects.Fear;
 f = new Fixture([fearStatus]);

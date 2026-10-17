@@ -307,6 +307,111 @@ ActionData LearnSupport(Fixture fixture, AbilityData definition)
     fixture.Resolver.RegisterAbility(definition);
     return action;
 }
+// Aries control abilities must use the same paid execution in previews and gameplay.
+foreach (var ariesDefinition in NexusRealms.Prelude.Database.Progression.Aries.Definitions)
+    Check(AbilityActionRegistry.Default.Resolve(ariesDefinition).IsImplemented,
+        $"Aries ability {ariesDefinition.Id} must not resolve to a scaffold.");
+
+foreach (var focus in new[] { 0, 1, 2, 3, 5 })
+{
+    var shockFixture = New();
+    shockFixture.Enemy.Loadout.Focus = focus;
+    var shock = LearnSupport(shockFixture, NexusRealms.Prelude.Database.Progression.Aries.Shock);
+    Check(shock is ShockAction && shockFixture.Resolver.CanCommit("player", shock, "enemy")
+        && !shockFixture.Resolver.CanCommit("player", shock, "player")
+        && !shockFixture.Resolver.CanCommit("player", shock, null),
+        "Shock must require a living enemy target.");
+    var shockPreview = shockFixture.Resolver.Preview("player", shock, "enemy");
+    Check(shockPreview.Characters["enemy"].Focus == Math.Max(0, focus - 3)
+        && shockFixture.Enemy.Loadout.Focus == focus && shockFixture.Player.Loadout.Focus == 2,
+        "Shock preview must clamp Focus loss and leave live resources untouched.");
+    var shockResult = shockFixture.Resolver.Commit("player", shock, "enemy");
+    Check(shockFixture.Enemy.Loadout.Focus == shockPreview.Characters["enemy"].Focus
+        && shockResult.Effects.Single().ActualChange == Math.Min(3, focus)
+        && shockResult.Action.TurnCost == 0.8f
+        && shockFixture.Player.Loadout.Focus == shockPreview.Characters["player"].Focus,
+        "Shock commitment must match preview, including its activation cost.");
+}
+
+var intimidateFixture = New();
+var intimidate = LearnSupport(intimidateFixture, NexusRealms.Prelude.Database.Progression.Aries.Intimidate);
+var intimidatePreview = intimidateFixture.Resolver.Preview("player", intimidate, "enemy");
+Check(intimidate is IntimidateAction
+    && intimidatePreview.Schedule.Single(turn => turn.CombatantId == "enemy").Turn == 11.5f
+    && intimidateFixture.Combat.Timeline.TurnOrder.Single(turn => turn.CombatantId == "enemy").Turn == 10,
+    "Intimidate preview must delay only the isolated target by 1.5 turns.");
+var intimidateResult = intimidateFixture.Resolver.Commit("player", intimidate, "enemy");
+Check(intimidateFixture.Combat.Timeline.TurnOrder.Single(turn => turn.CombatantId == "enemy").Turn == 11.5f
+    && intimidateFixture.Player.Loadout.Focus == 0 && intimidateResult.Action.TurnCost == 0.5f,
+    "Intimidate must pay two Focus and delay the target's next action.");
+
+foreach (var rowAbility in new[] { false, true })
+{
+    var berserkFixture = New();
+    berserkFixture.Player.Loadout.Focus = 5;
+    foreach (var (id, team, slot) in new[]
+    {
+        ("row-enemy", CombatTeam.Enemies, FormationSlot.FrontRight),
+        ("other-row", CombatTeam.Enemies, FormationSlot.BackLeft),
+        ("row-friend", CombatTeam.PlayerAndAllies, FormationSlot.FrontCenter),
+    })
+    {
+        berserkFixture.Combat.Add(new(id, false, 10, team: team));
+        berserkFixture.Resolver.Add(new(id, false, team, new(20), new(), slot));
+    }
+    var berserkAbility = rowAbility ? NexusRealms.Prelude.Database.Progression.Aries.Enrage
+        : NexusRealms.Prelude.Database.Progression.Aries.Taunt;
+    var berserkAction = LearnSupport(berserkFixture, berserkAbility);
+    Check(berserkFixture.Resolver.CanCommit("player", berserkAction, "enemy")
+        && !berserkFixture.Resolver.CanCommit("player", berserkAction, null),
+        "Berserk abilities must require an enemy anchor.");
+    var berserkPreview = berserkFixture.Resolver.Preview("player", berserkAction, "enemy");
+    var expectedTargets = rowAbility ? new[] { "enemy", "row-enemy" } : new[] { "enemy" };
+    Check(berserkPreview.Outcome.Recipients.SequenceEqual(expectedTargets)
+        && berserkFixture.Resolver.Characters.Values.All(character => character.Statuses.Count == 0),
+        "Berserk previews must isolate single-target or enemy-row selection.");
+    berserkFixture.Resolver.Commit("player", berserkAction, "enemy");
+    foreach (var character in berserkFixture.Resolver.Characters.Values)
+        Check(expectedTargets.Contains(character.Id)
+            ? character.Statuses.Single().Definition.Id == "berserk" && character.Statuses.Single().ExpiresAt == 2
+            : character.Statuses.Count == 0,
+            "Taunt and Enrage must apply exactly two timeline turns of Berserk only to their recipients.");
+    Check(berserkPreview.Characters["player"].Focus == 5 - berserkAbility.FocusCost
+        && berserkFixture.Player.Loadout.Focus == berserkPreview.Characters["player"].Focus + 1,
+        "Berserk abilities must pay their Focus cost; live recovery adds one boundary regeneration.");
+    berserkFixture.Combat.SubmitAction(new(1, (_, _) => { }));
+    Check(berserkFixture.Resolver.Characters.Values.All(character => character.Statuses.Count == 0),
+        "Taunt and Enrage must expire at the second timeline boundary.");
+}
+foreach (var controlDefinition in new[]
+{
+    NexusRealms.Prelude.Database.Progression.Aries.Enrage,
+    NexusRealms.Prelude.Database.Progression.Aries.Intimidate,
+    NexusRealms.Prelude.Database.Progression.Aries.Shock,
+    NexusRealms.Prelude.Database.Progression.Aries.Taunt,
+})
+{
+    var controlFixture = New();
+    var controlAction = LearnSupport(controlFixture, controlDefinition);
+    controlFixture.Player.Loadout.Focus = 0;
+    Check(!controlFixture.Resolver.CanCommit("player", controlAction, "enemy"),
+        "Aries control abilities must reject insufficient Focus.");
+    controlFixture.Player.Loadout.Focus = 5;
+    controlFixture.Enemy.Loadout.Focus = 5;
+    Apply(controlFixture, "evade");
+    var controlPreview = controlFixture.Resolver.Preview("player", controlAction, "enemy");
+    var controlResult = controlFixture.Resolver.Commit("player", controlAction, "enemy");
+    Check(controlResult.Effects.All(effect => effect.Result == EffectResult.Evaded)
+        && controlPreview.Outcome.Effects.All(effect => effect.Result == EffectResult.Evaded)
+        && controlPreview.Characters["enemy"].Focus == 5
+        && controlFixture.Enemy.Loadout.Focus == (controlDefinition.TurnCost >= 1 ? 6 : 5)
+        && controlFixture.Enemy.Statuses.Count == 1
+        && controlFixture.Combat.Timeline.TurnOrder.Single(turn => turn.CombatantId == "enemy").Turn == 10
+        && controlPreview.Characters["player"].Focus == 5 - controlDefinition.FocusCost,
+        "Evasion must cancel Aries control effects while preserving their activation costs.");
+}
+Console.WriteLine("Remaining Aries ability checks passed.");
+
 var support = New();
 var heal = LearnSupport(support, NexusRealms.Prelude.Database.Progression.Aquarius.Heal);
 Check(support.Player.Loadout.Find(heal.Id) is { RequiresTarget: false }
