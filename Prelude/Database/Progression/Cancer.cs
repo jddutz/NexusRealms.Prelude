@@ -299,7 +299,7 @@ public static class Cancer
                 new(ShieldBash.Id, null, -0.84f, 0.56f),
                 new(BreakArmor.Id, ShieldBash.Id, -0.84f, 0.56f),
                 new(Shockwave.Id, ShieldBash.Id, -0.84f, 0.56f),
-                new(Gigas.Id, Shockwave.Id, -0.84f, 0.56f),
+                new(Gigas.Id, Shockwave.Id, -0.84f, 0.56f, Rank: 12),
                 // South — Elemental Defense
                 new(ElementalWard.Id, null, -0.84f, 0.56f),
                 new(Regen.Id, ElementalWard.Id, -0.84f, 0.56f),

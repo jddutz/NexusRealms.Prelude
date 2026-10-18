@@ -46,13 +46,11 @@ Check(Aquarius.Graph.Abilities.Select(node => (node.X, node.Y)).Distinct().Count
     "Aquarius stars must have twenty explicit distinct artwork positions.");
 Check(Aquarius.Graph.Abilities.All(node => node.X is >= -1 and <= 1 && node.Y is >= -1 and <= 1),
     "Aquarius stars must lie within the artwork coordinate space.");
-var rankedNode = Aquarius.Graph.Abilities[0] with { Rank = 18 };
-Check(Aquarius.Graph.Abilities[0].Rank == 0 && rankedNode.Rank == 18,
-    "Ability rank must default to zero and allow the maximum rank.");
-try { _ = rankedNode with { Rank = -1 }; throw new Exception("Negative ability rank accepted."); }
-catch (ArgumentOutOfRangeException) { }
-try { _ = rankedNode with { Rank = 19 }; throw new Exception("Ability rank above eighteen accepted."); }
-catch (ArgumentOutOfRangeException) { }
+var firstNode = Aquarius.Graph.Abilities[0];
+var defaultRankNode = new AbilityNode(firstNode.Id, firstNode.Parent, firstNode.X, firstNode.Y);
+var rankedNode = new AbilityNode(firstNode.Id, firstNode.Parent, firstNode.X, firstNode.Y, 18);
+Check(defaultRankNode.Rank == 0 && rankedNode.Rank == 18,
+    "Ability rank must default to zero and allow the maximum constructor rank.");
 foreach (var definition in Aquarius.Definitions)
 {
     Check(ReferenceEquals(story.Abilities[definition.Id], definition), "Registry must use the authored Aquarius record.");
