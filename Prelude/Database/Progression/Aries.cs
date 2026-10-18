@@ -328,6 +328,7 @@ public static class Aries
                 new(PrimalRage.Id, Bloodlust.Id, -0.84f, 0.56f),
                 new(DualStrike.Id, Haste.Id, -0.84f, 0.56f),
                 new(Fury.Id, DualStrike.Id, -0.84f, 0.56f),
-            ]
+            ],
+            Definitions
         );
 }

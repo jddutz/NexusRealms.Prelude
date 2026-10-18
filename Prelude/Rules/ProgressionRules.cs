@@ -14,9 +14,10 @@ public static class ProgressionRules
     /// <summary>Checks remaining points, the current visit, the ability's rank, and its prerequisite.</summary>
     public static bool CanLearn(GameState state, Storyline story, AbilityId id)
     {
+        var abilities = story.GetAbilities(state.Zodiac);
         if (state.AbilityPoints <= 0 || !story.Nodes.TryGetValue(state.CurrentStoryNodeId, out var current)
             || current is not ProgressNode
-            || state.Loadout.LearnedAbilities.Contains(id) || !story.Abilities.ContainsKey(id)) return false;
+            || state.Loadout.LearnedAbilities.Contains(id) || !abilities.ContainsKey(id)) return false;
         var graph = Database.Progression.ProgressionGraphs.All[state.Zodiac];
         return graph.Abilities.Any(node => node.Id == id
             && state.Loadout.LearnedAbilities.Count >= node.Rank
@@ -27,7 +28,7 @@ public static class ProgressionRules
     public static bool Learn(GameState state, Storyline story, AbilityId id)
     {
         if (!CanLearn(state, story, id)) return false;
-        state.Loadout.Learn(story.Abilities[id]);
+        state.Loadout.Learn(story.GetAbilities(state.Zodiac)[id]);
         state.AbilityPoints--;
         state.CompletedProgressionNodes.Add(state.CurrentStoryNodeId);
         return true;

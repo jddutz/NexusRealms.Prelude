@@ -290,7 +290,8 @@ public static class SimulationRunner
         var combat = new CombatSystem(unchecked((uint)seed)) { TurnLimit = TurnLimit };
         var health = new Dictionary<string, DamageReceiver> { ["player"] = new(state.Health) };
         var resolver = new CombatActionResolver(combat, Database.StatusEffects.All) { AllowEscape = allowEscape, CaptureCandidateTraces = trace is not null };
-        foreach (var ability in Database.Abilities.All.Values) resolver.RegisterAbility(ability);
+        foreach (var ability in Database.Progression.ProgressionGraphs.All[state.Zodiac].AbilityDefinitions)
+            resolver.RegisterAbility(ability);
         resolver.Add(new("player", true, CombatTeam.PlayerAndAllies, health["player"], state.Loadout), state.StatusEffects);
         combat.Add(new("player", true, initiative: scenario.PlayerInitiative));
         var definitions = new Dictionary<string, CharacterData>();

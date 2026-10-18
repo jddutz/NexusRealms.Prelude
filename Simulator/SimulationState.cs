@@ -34,7 +34,7 @@ public sealed record SimulationState
         StrategyId.Reactive, StrategyId.Analytical, StrategyId.Defensive, StrategyId.Supportive,
         StrategyId.Cautious, StrategyId.Reckless,
     ];
-    /// <summary>Additional learned abilities, supplementing every ability in the selected zodiac graph.</summary>
+    /// <summary>Additional ability IDs resolved within the selected zodiac graph.</summary>
     public string[] LearnedAbilities { get; init; } = [];
 
     /// <summary>Selects the configured player policy for a zero-based simulation run.</summary>
@@ -86,9 +86,10 @@ public sealed record SimulationState
             throw new ArgumentException($"No progression graph is defined for zodiac '{Zodiac}'.", nameof(Zodiac));
         var loadout = Items is null ? CombatLoadout.CreatePlayerLoadout() : CombatLoadout.FromState(Items, ItemLayout!, Focus);
         loadout.Focus = Focus;
+        var abilityDefinitions = graph.AbilityDefinitionsById;
         foreach (var id in graph.Abilities.Select(node => node.Id.Value).Concat(LearnedAbilities).Distinct(StringComparer.Ordinal))
         {
-            if (!Database.Abilities.All.TryGetValue(new AbilityId(id), out var ability)) throw new ArgumentException($"Unknown learned ability '{id}'.");
+            if (!abilityDefinitions.TryGetValue(new AbilityId(id), out var ability)) throw new ArgumentException($"Unknown learned ability '{id}' for zodiac '{Zodiac}'.");
             loadout.Learn(ability);
         }
         return new(CurrentStoryNodeId)

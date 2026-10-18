@@ -9,7 +9,7 @@ public static class Aquarius
         new()
         {
             Id = new(nameof(Barrier)),
-            ActionId = "ability:Barrier",
+            ActionId = "ability:SoundBarrier",
             Name = "Barrier",
             Description =
                 "Prevents all enemies in the back row from using magical abilities for 2 turns",
@@ -347,6 +347,7 @@ public static class Aquarius
                 new(Headwind.Id, Tailwind.Id, -0.56f, -0.00f),
                 new(WindShear.Id, Tailwind.Id, -0.56f, 0.56f),
                 new(Whirlwind.Id, WindShear.Id, -0.84f, 0.56f),
-            ]
+            ],
+            Definitions
         );
 }

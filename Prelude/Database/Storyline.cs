@@ -14,9 +14,6 @@ public sealed class Storyline
     public FrozenDictionary<StatusEffectId, StatusEffectData> StatusEffects { get; } =
         Database.StatusEffects.All;
 
-    /// <summary>Gets the authored ability definitions keyed by identifier.</summary>
-    public FrozenDictionary<AbilityId, AbilityData> Abilities { get; } = Database.Abilities.All;
-
     /// <summary>
     /// Gets the nodes declared by the story graphs, keyed by node identifier.
     /// </summary>
@@ -220,26 +217,27 @@ public sealed class Storyline
                         $"Character '{character.Id}' references unknown status '{id}'."
                     );
         }
-        var abilityActions = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var ability in Abilities.Values)
-        {
-            if (string.IsNullOrWhiteSpace(ability.Id.Value))
-                throw new ArgumentException("Ability identity is required.");
-            var action = AbilityActionRegistry.Default.Resolve(ability);
-            if (!abilityActions.Add(action.Id))
-                throw new ArgumentException($"Duplicate ability action '{action.Id}'.");
-            if (action.Requirements.Abilities.Any(id => !Abilities.ContainsKey(id)))
-                throw new ArgumentException($"Action '{action.Id}' references an unknown ability.");
-            CombatRules.Validate(action, StatusEffects);
-        }
-
         foreach (var graph in Progression.ProgressionGraphs.All.Values)
         {
+            var abilities = graph.AbilityDefinitionsById;
+            var abilityActions = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var ability in graph.AbilityDefinitions)
+            {
+                if (string.IsNullOrWhiteSpace(ability.Id.Value))
+                    throw new ArgumentException($"Progression '{graph.Sign}' contains an ability with no identity.");
+                var action = AbilityActionRegistry.Default.Resolve(ability);
+                if (!abilityActions.Add(action.Id))
+                    throw new ArgumentException($"Progression '{graph.Sign}' contains duplicate ability action '{action.Id}'.");
+                if (action.Requirements.Abilities.Any(id => !abilities.ContainsKey(id)))
+                    throw new ArgumentException($"Action '{action.Id}' references an ability outside progression '{graph.Sign}'.");
+                CombatRules.Validate(action, StatusEffects);
+            }
+
             var graphNodes = new HashSet<AbilityId>();
             foreach (var node in graph.Abilities)
                 if (
                     !graphNodes.Add(node.Id)
-                    || !Abilities.ContainsKey(node.Id)
+                    || !abilities.ContainsKey(node.Id)
                     || !float.IsFinite(node.X)
                     || !float.IsFinite(node.Y)
                 )
@@ -284,5 +282,11 @@ public sealed class Storyline
                 CombatRules.Validate(occurrence.Action, StatusEffects);
             }
         }
+        }
+
+        /// <summary>Gets the ability definitions owned by a Zodiac progression.</summary>
+        /// <param name="zodiac">The Zodiac whose ability definitions are requested.</param>
+        /// <returns>The graph-local ability definitions keyed by ability ID.</returns>
+        public FrozenDictionary<AbilityId, AbilityData> GetAbilities(ZodiacSignId zodiac) =>
+            Progression.ProgressionGraphs.All[zodiac].AbilityDefinitionsById;
     }
-}

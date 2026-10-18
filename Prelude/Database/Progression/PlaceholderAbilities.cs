@@ -217,9 +217,6 @@ public static class PlaceholderAbilities
 
     public static ImmutableArray<AbilityData> Definitions { get; } =
     [
-        Slash,
-        Push,
-        Parry,
         North1,
         North2,
         North3,

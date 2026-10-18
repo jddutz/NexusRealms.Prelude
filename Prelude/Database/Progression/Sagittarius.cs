@@ -26,6 +26,7 @@ public static class Sagittarius
                 new("west-3", new AbilityId("west-1"), -0.640f, 0.057f),
                 new("west-4", new AbilityId("west-1"), -0.640f, -0.057f),
                 new("west-5", new AbilityId("west-4"), -0.810f, -0.171f),
-            ]
+            ],
+            PlaceholderAbilities.Definitions
         );
 }

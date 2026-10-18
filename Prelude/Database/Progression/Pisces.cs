@@ -26,6 +26,7 @@ public static class Pisces
                 new("west-3", new AbilityId("west-1"), -0.640f, 0.062f),
                 new("west-4", new AbilityId("west-1"), -0.640f, -0.062f),
                 new("west-5", new AbilityId("west-4"), -0.810f, -0.185f),
-            ]
+            ],
+            PlaceholderAbilities.Definitions
         );
 }

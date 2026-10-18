@@ -4,12 +4,12 @@ An ability is a progression unlock (`AbilityData`); an action is an executable c
 
 ## Current pipeline
 
-1. Aquarius authors twenty `AbilityData` records containing identity, name, description, icon, fixed effect duration when applicable, and actions. `ProgressionGraph.Abilities` contains only references to those identities, direction, prerequisites, and layout. Graphs are explicit data; the progression UI groups nodes by direction.
-2. `Abilities.All` collects authored definitions, including `Aquarius.Definitions`, into a lookup. It does not manufacture definitions from graph nodes. Add agreed combat actions directly to the corresponding Aquarius record. Other Zodiac graphs retain explicitly authored shared placeholder definitions until their abilities are designed.
-3. `Storyline` validates definitions, action identities, referenced statuses and abilities, and progression prerequisite chains.
+1. Each Zodiac authors its own `AbilityData` records containing identity, name, description, icon, fixed effect duration when applicable, and actions. `ProgressionGraph.Abilities` contains placements and prerequisites, while `ProgressionGraph.AbilityDefinitions` owns the corresponding definitions. IDs are scoped to a graph and may repeat across Zodiacs.
+2. `Storyline.GetAbilities(zodiac)` returns that graph's definitions; there is no global ability lookup. Add agreed combat actions directly to the corresponding Zodiac records. Placeholder graphs each reference the shared placeholder definitions until their abilities are designed.
+3. `Storyline` validates definitions and action identities within each graph, along with referenced statuses, abilities, and progression prerequisite chains.
 4. `Rules.ProgressionRules.Learn` spends one ability point and enforces parent prerequisites, allowing multiple selections per visit. New players start with 20 ability points. Availability refreshes after each purchase; only unavailable, unlearned glyphs fade to 25% opacity, leaving frames and backgrounds unchanged. Continue requires learning at least one ability unless points or unlearned abilities are exhausted. `CombatLoadout.Learn` registers actions and adds the ability requirement. Repeated learning is harmless; conflicting commands fail before learning mutates state.
 5. The shared resolver checks requirements, restrictions, targets, and costs before commitment. It resolves ordered typed effects, returns structured outcomes, and owns status lifetimes. HUD commands and AI use this same runtime.
-6. Simulator `learnedAbilities` restores unlocks from the shared registry. Decision traces and JSON results expose selected actions, resolved effects, resources, and learned IDs. This is a combat starting-state fixture; it does not simulate progression visits or enforce chapter learning rules.
+6. Simulator `learnedAbilities` restores unlocks from the selected Zodiac's definitions. Decision traces and JSON results expose selected actions, resolved effects, resources, and learned IDs. This is a combat starting-state fixture; it does not simulate progression visits or enforce chapter learning rules.
 
 ## Supported composition
 

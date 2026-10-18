@@ -195,17 +195,32 @@ f.Resolver.ResolveCommitted(
 );
 Check(f.State("player").Loadout.Focus == 2, "Primal Rage must not trigger for non-Basic damage.");
 Check(
+    NexusRealms.Prelude.Database.Progression.Aries.Graph.AbilityDefinitionsById
+        .ContainsKey(NexusRealms.Prelude.Database.Progression.Aries.Brace.Id)
+        && NexusRealms.Prelude.Database.Progression.Cancer.Graph.AbilityDefinitionsById
+            .ContainsKey(NexusRealms.Prelude.Database.Progression.Cancer.Parry.Id)
+        && NexusRealms.Prelude.Database.Progression.Aries.Brace.Id
+            == NexusRealms.Prelude.Database.Progression.Cancer.Brace.Id,
+    "Ability IDs may repeat across Zodiac graphs, whose definitions remain isolated.");
+Check(
     NexusRealms.Prelude.Database.Progression.Aries.Definitions.All(ability =>
-        NexusRealms.Prelude.Database.Abilities.All.ContainsKey(ability.Id)
+        NexusRealms.Prelude.Database.Progression.Aries.Graph.AbilityDefinitionsById.ContainsKey(ability.Id)
     )
         && NexusRealms.Prelude.Database.Progression.Aries.Graph.Abilities.All(node =>
-            NexusRealms.Prelude.Database.Abilities.All.ContainsKey(node.Id)
+            NexusRealms.Prelude.Database.Progression.Aries.Graph.AbilityDefinitionsById.ContainsKey(node.Id)
         ),
     "All Aries definitions and graph nodes must be available in the shared ability database."
 );
 foreach (var ability in NexusRealms.Prelude.Database.Progression.Aries.Definitions)
     Check(AbilityActionRegistry.Default.Resolve(ability).IsImplemented,
         $"Aries ability {ability.Id} must have a complete runtime implementation.");
+foreach (var barrier in new[]
+{
+    NexusRealms.Prelude.Database.Progression.Aquarius.Barrier,
+    NexusRealms.Prelude.Database.Progression.Cancer.Barrier,
+})
+    Check(AbilityActionRegistry.Default.Resolve(barrier).Id == "ability:SoundBarrier",
+        $"{barrier.Id} must resolve to the Sound Barrier implementation.");
 foreach (var (ability, duration) in new (AbilityData Ability, float Duration)[]
 {
     (NexusRealms.Prelude.Database.Progression.Aries.Brace, 3),

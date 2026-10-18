@@ -11,6 +11,7 @@ public class CombatScene : Scene
     private readonly CombatScenario _startScenario;
     private readonly Storyline _storyline;
     private readonly ITextureRegistry _textures;
+    private readonly IContentManifest? _contentManifest;
     private readonly IWindowService _windowService;
     private readonly OrthoCamera _worldCamera = new();
     private readonly SceneBackground _background;
@@ -242,7 +243,7 @@ public class CombatScene : Scene
             {
                 _renderedIconKey = $"{icon}:{a.IconRegion}";
                 _actionIcon.SourceRegion = null;
-                _actionIcon.Texture = _textures.GetOrCreate(new ContentId(icon));
+                _actionIcon.Texture = GetActionIcon(new ContentId(icon));
                 if (a.IconRegion is { } region)
                     _actionIcon.SourceRegion = _actionIcon.Texture.GetRegion(region).Bounds;
             }
@@ -268,7 +269,7 @@ public class CombatScene : Scene
             slotIcon.SourceRegion = null;
             if (q is not null && quickTexture is { } slotTexture)
             {
-                slotIcon.Texture = _textures.GetOrCreate(new ContentId(slotTexture));
+                slotIcon.Texture = GetActionIcon(new ContentId(slotTexture));
                 if (q.IconRegion is { } region)
                     slotIcon.SourceRegion = slotIcon.Texture.GetRegion(region).Bounds;
             }
@@ -285,6 +286,7 @@ public class CombatScene : Scene
     /// <param name="windowService">Provides the main window closed by the exit bindings.</param>
     /// <param name="storyline">Provides the starting scenario and character definitions.</param>
     /// <param name="textStyles">Provides the style used by the Escape button.</param>
+    /// <param name="contentManifest">Provides texture mappings and character sprite sheets.</param>
     public CombatScene(
         ITextureRegistry textures,
         IEventHub eventHub,
@@ -298,6 +300,7 @@ public class CombatScene : Scene
     )
     {
         _textures = textures;
+        _contentManifest = contentManifest;
         _storyline = storyline;
         _windowService = windowService;
         _gameState = gameState;
@@ -324,7 +327,8 @@ public class CombatScene : Scene
         EncounterSeed = _startScenario.RandomSeed ?? Random.Shared.Next();
         Combat = new(unchecked((uint)EncounterSeed));
         ActionResolver = new(Combat, storyline.StatusEffects);
-        foreach (var ability in storyline.Abilities.Values) ActionResolver.RegisterAbility(ability);
+        foreach (var ability in storyline.GetAbilities(gameState.Zodiac).Values)
+            ActionResolver.RegisterAbility(ability);
         var playerHealth = new Combat.DamageReceiver(gameState.Health);
         playerHealth.HealthChanged += () => gameState.Health = playerHealth.Health;
         ActionResolver.Add(new("player", true, CombatTeam.PlayerAndAllies, playerHealth, gameState.Loadout), gameState.StatusEffects);
@@ -395,7 +399,7 @@ public class CombatScene : Scene
                 _worldLayerMask
             );
             _formation.SetSlot(placement.Slot, combatCharacter);
-            var display = new CharacterStatusDisplay(combatCharacter, _textures, _hudTextStyle)
+            var display = new CharacterStatusDisplay(combatCharacter, _textures, _hudTextStyle, _contentManifest)
             {
                 Width = 132f,
                 Height = 66f,
@@ -600,7 +604,7 @@ public class CombatScene : Scene
             _quickSlotIcons.Add(icon);
         }
         bottomCenter.Children.Add(actionSlots);
-        bottomCenter.Children.Add(_playerStatusBars = new PlayerStatusBars(_gameState, _textures));
+        bottomCenter.Children.Add(_playerStatusBars = new PlayerStatusBars(_gameState, _textures, _contentManifest));
         bottomCenter.Children.Add(CreateZodiacImage());
         layout.SetCell(2, 1, bottomCenter);
         var bottomRight = CreatePanelElement("ui.panel_square.png", square: true);
@@ -1212,7 +1216,8 @@ public class CombatScene : Scene
                 panel,
                 new ImageElement
                 {
-                    Texture = _textures.GetOrCreate(effect.Icon),
+                    Texture = _textures.GetOrCreate(ContentIconResolver.Resolve(
+                        _contentManifest, effect.Icon, new ContentId("abilities.Shield.png"))),
                     Width = 32f,
                     Height = 32f,
                     SizingMode = ImageSizingMode.Fit,
@@ -1343,6 +1348,7 @@ public class CombatScene : Scene
             Rows = Enumerable.Repeat(GridSize.Absolute(cellHeight), rows).ToArray(),
         };
         var abilityOrder = Database.Progression.ProgressionGraphs.All[_gameState.Zodiac].Abilities.Select(node => node.Id).ToArray();
+        var abilities = _storyline.GetAbilities(_gameState.Zodiac);
         var selectionFrames = new Dictionary<AbilityId, ImageElement>();
         for (var index = 0; index < columns * rows; index++)
         {
@@ -1351,7 +1357,7 @@ public class CombatScene : Scene
                 grid.SetCell(index / columns, index % columns, new Element());
                 continue;
             }
-            var ability = _storyline.Abilities[abilityOrder[index]];
+            var ability = abilities[abilityOrder[index]];
             var dialog = _dialog!;
             AbilityDragCell? cell = null;
             cell = new AbilityDragCell(
@@ -1359,7 +1365,7 @@ public class CombatScene : Scene
                 {
                     if (_dialog != dialog || _closeDialogRequested)
                         return;
-                    StartDragPreview(_textures.GetOrCreate(ability.Icon), 32f, cell!.CapturedMouse);
+                    StartDragPreview(GetActionIcon(ability.Icon), 32f, cell!.CapturedMouse);
                 },
                 MoveDragPreview,
                 position =>
@@ -1410,7 +1416,7 @@ public class CombatScene : Scene
                 cell,
                 new ImageElement
                 {
-                    Texture = _textures.GetOrCreate(ability.Icon),
+                    Texture = GetActionIcon(ability.Icon),
                     Width = 32f,
                     Height = 32f,
                     SizingMode = ImageSizingMode.Fit,
@@ -1444,11 +1450,20 @@ public class CombatScene : Scene
                 24f
             );
         }
+
         Place(panel, grid, 24f, 24f);
         const float footerY = 24f + rows * cellHeight + 16f;
         _dialog!.Content.Height = footerY + 56f;
         PlaceDialogFooterButton(panel, "Close", CloseDialog, 760f, footerY);
     }
+
+    /// <summary>Loads the authored ability icon, using the shipped generic icon when its artwork is absent.</summary>
+    /// <param name="icon">The ability's configured icon content identifier.</param>
+    /// <returns>The loaded authored or fallback ability icon.</returns>
+    private ITexture GetActionIcon(ContentId icon) =>
+        _textures.GetOrCreate(
+            ContentIconResolver.Resolve(_contentManifest, icon, new ContentId("abilities.Attack.png"))
+        );
 
     private ImageElement CreateZodiacImage()
     {

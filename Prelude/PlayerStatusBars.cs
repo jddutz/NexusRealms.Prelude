@@ -17,7 +17,11 @@ public sealed class PlayerStatusBars : Element
     private readonly Row _focus;
     private readonly ImageElement[] _statusIcons;
 
-    public PlayerStatusBars(GameState state, ITextureRegistry textures)
+    /// <summary>Creates the player's resource bars and current status icons.</summary>
+    /// <param name="state">Provides current player resources and statuses.</param>
+    /// <param name="textures">Loads the resource and status icons.</param>
+    /// <param name="contentManifest">Resolves authored status icons and packaged fallbacks.</param>
+    public PlayerStatusBars(GameState state, ITextureRegistry textures, IContentManifest? contentManifest = null)
     {
         _state = state;
         // The portrait overlaps this panel by 29px; leave an 8px gap beside it.
@@ -28,7 +32,8 @@ public sealed class PlayerStatusBars : Element
             textures.GetOrCreate(new ContentId("stats.focus_bar_segment.png")));
         _statusIcons = state.StatusEffects.Select(id => new ImageElement
         {
-            Texture = textures.GetOrCreate(StatusEffects.All[id].Icon),
+            Texture = textures.GetOrCreate(ContentIconResolver.Resolve(
+                contentManifest, StatusEffects.All[id].Icon, new ContentId("abilities.Shield.png"))),
             SizingMode = ImageSizingMode.Fit,
             RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
             SortOrder = 1,

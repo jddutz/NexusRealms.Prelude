@@ -1,8 +1,9 @@
 # Ability actions
 
-Ability definitions stay with their Zodiac, such as `Database/Progression/Aquarius.cs`.
-`Database/AbilitiesDB.cs` indexes these definitions. `PlaceholderAbilities.cs` retains the
-temporary records used by the remaining Zodiac graphs and the legacy sample abilities.
+Ability definitions stay with their Zodiac graph, such as `Database/Progression/Aquarius.cs`.
+Each `ProgressionGraph` owns its ability definitions and placements; `Storyline.GetAbilities`
+resolves definitions within the selected Zodiac, so ability IDs can be reused by other graphs.
+`PlaceholderAbilities.cs` supplies the temporary definitions used by the unimplemented graphs.
 
 Each data-only `AbilityData` references exactly one implementation through `ActionId`.
 It supplies the name, icon, Turn cost, Focus cost and `TargetingProfile`.
@@ -25,8 +26,8 @@ The gain happens at resolution; the timeline still advances by its authored Turn
 
 The resolver applies effects and pays costs through the existing combat system. Registered
 scaffolds expose no effects and remain unavailable in player combat and AI selection until
-replaced with implementations. All 44 current ability records have registered mappings,
-including Aquarius's 20 authored abilities and 24 temporary/sample records.
+replaced with implementations. Every progression graph owns the ability definitions for its
+nodes, and its action mappings are validated independently of other Zodiacs.
 
 Implemented support actions include Heal (+3 Health with no gameplay maximum), Purge
 (all statuses from one target), and Cleanse (one turn from every timed status tagged

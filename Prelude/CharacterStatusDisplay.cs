@@ -10,7 +10,14 @@ public sealed class CharacterStatusDisplay : ViewAnnotation
     private readonly TextElement _eligibility;
     private readonly List<ImageElement> _symbols = [];
     public string Eligibility { get => _eligibility.Text; set => _eligibility.Text = value; }
-    public CharacterStatusDisplay(Character character, ITextureRegistry textures, ITextStyle style)
+
+    /// <summary>Creates the resource and status display for one character.</summary>
+    /// <param name="character">The character represented by the display.</param>
+    /// <param name="textures">Loads the character's resource and status icons.</param>
+    /// <param name="style">Styles the eligibility message.</param>
+    /// <param name="contentManifest">Resolves authored status icons and packaged fallbacks.</param>
+    public CharacterStatusDisplay(Character character, ITextureRegistry textures, ITextStyle style,
+        IContentManifest? contentManifest = null)
     {
         _character = character;
         TargetGameObject = character;
@@ -24,7 +31,8 @@ public sealed class CharacterStatusDisplay : ViewAnnotation
         {
             var icon = new ImageElement
             {
-                Texture = textures.GetOrCreate(StatusEffects.All[id].Icon),
+                Texture = textures.GetOrCreate(ContentIconResolver.Resolve(
+                    contentManifest, StatusEffects.All[id].Icon, new ContentId("abilities.Shield.png"))),
                 SizingMode = ImageSizingMode.Fit,
                 RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI
             };

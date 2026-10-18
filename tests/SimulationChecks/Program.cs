@@ -10,7 +10,7 @@ static void Check(bool condition, string message)
 }
 
 var storyline = new Storyline();
-var state = new SimulationState { CurrentStoryNodeId = NexusRealms.Prelude.Database.Chapter1.Part1.Intro.Id.Value };
+var state = new SimulationState { CurrentStoryNodeId = NexusRealms.Prelude.Database.Chapter1.Part1.Battle1.Id.Value };
 var aquariusState = state with { LearnedAbilities = ["Heal", "Bewilder"] };
 var aquariusLoadout = aquariusState.CreateGameState().Loadout;
 var aquariusGraph = NexusRealms.Prelude.Database.Progression.ProgressionGraphs.All[ZodiacSignId.Aquarius];
@@ -29,16 +29,26 @@ foreach (var zodiac in Enum.GetValues<ZodiacSignId>())
     Check(loadout.LearnedAbilities.SetEquals(graph.Abilities.Select(node => node.Id)),
         $"{zodiac} must learn exactly its own graph's full ability set.");
     Check(loadout.Actions.Keys.ToHashSet(StringComparer.Ordinal).SetEquals(graph.Abilities
-            .Select(node => Abilities.All[node.Id].ActionId.Value)),
+            .Select(node => graph.AbilityDefinitionsById[node.Id].ActionId.Value)),
         $"{zodiac} must register every action unlocked by its graph.");
     Check(signState.CreateGameState().Zodiac == zodiac,
         $"{zodiac} must be applied to the runtime player.");
 }
-var additionalState = state with { LearnedAbilities = ["slash"] };
-Check(additionalState.CreateGameState().Loadout.LearnedAbilities.Contains(new("slash")),
-    "Explicit learned abilities must supplement the graph.");
+var cancerState = state with { Zodiac = ZodiacSignId.Cancer };
+var cancerLoadout = cancerState.CreateGameState().Loadout;
+Check(ReferenceEquals(
+        NexusRealms.Prelude.Database.Progression.Cancer.Graph.AbilityDefinitionsById["Parry"],
+        NexusRealms.Prelude.Database.Progression.Cancer.Parry)
+    && cancerLoadout.Actions.ContainsKey("ability:Parry"),
+    "Repeated IDs must resolve to the selected Zodiac's own ability definition.");
+try
+{
+    _ = (state with { LearnedAbilities = ["Parry"] }).CreateGameState();
+    throw new InvalidOperationException("An ability from another Zodiac must not resolve globally.");
+}
+catch (ArgumentException) { }
 Check(SimulationRunner.Run(storyline, aquariusState, 42).PlayerActionUses.Keys
-    .All(id => !aquariusGraph.Abilities.Where(node => !NexusRealms.Prelude.Actions.AbilityActionRegistry.Default.Resolve(Abilities.All[node.Id]).IsImplemented).Select(node => Abilities.All[node.Id].ActionId.Value).Contains(id)), "Unimplemented abilities must not become simulator actions.");
+    .All(id => !aquariusGraph.Abilities.Where(node => !NexusRealms.Prelude.Actions.AbilityActionRegistry.Default.Resolve(aquariusGraph.AbilityDefinitionsById[node.Id]).IsImplemented).Select(node => aquariusGraph.AbilityDefinitionsById[node.Id].ActionId.Value).Contains(id)), "Unimplemented abilities must not become simulator actions.");
 var startingLoadout = state.CreateGameState().Loadout;
 Check(startingLoadout.Inventory.Single(item => item?.Id.Value == "starting-rocks")?.Quantity == 5,
     "Player must start with one inventory stack of five rocks.");
@@ -66,7 +76,7 @@ Check(omittedEquipmentLayouts > 0
     "Decision trace output must omit unselected equipment-layout alternatives.");
 Check(state.Health == 20, "Simulation mutated its starting state.");
 Check(first.PlayerStrategy == state.PlayerStrategy.Strategy, "Run must record the configured player strategy.");
-Check(first.EnemyConfiguration.Length == ((CombatScenario)storyline.Nodes[NexusRealms.Prelude.Database.Chapter1.Part1.Intro.Id]).Characters.Length,
+Check(first.EnemyConfiguration.Length == ((CombatScenario)storyline.Nodes[NexusRealms.Prelude.Database.Chapter1.Part1.Battle1.Id]).Characters.Length,
     "Run must record the scenario's character configuration.");
 Check(first.PlayerActionUses.Values.Sum() > 0, "Run must record player action usage.");
 Check(first.PlayerActionResults.Length > 0 && first.PlayerActionResults.All(result =>
@@ -121,7 +131,7 @@ pump.SubmitAction(new(1, (_, _) => { }));
 Check(pump.Outcome == CombatOutcome.Draw, "Automatic processing after an action crossed cutoff.");
 var empty = (state with { Items = [], ItemLayout = [] }).CreateGameState();
 Check(empty.Loadout.Items.Count == 0 && empty.Loadout.Equipment.Count == 0, "Empty saved loadout was not restored.");
-var authored = (CombatScenario)storyline.Nodes[NexusRealms.Prelude.Database.Chapter1.Part1.Intro.Id];
+var authored = (CombatScenario)storyline.Nodes[NexusRealms.Prelude.Database.Chapter1.Part1.Battle1.Id];
 Check(authored.Characters.Select(placement => storyline.Characters[placement.CharacterId])
     .SelectMany(character => character.Actions)
     .All(action => action.BuildEffects().All(effect => effect is not RestoreEffect)),

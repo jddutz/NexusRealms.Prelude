@@ -10,11 +10,18 @@ public sealed class ProgressionScene : Scene
     private readonly TextButton _continue;
 
     /// <summary>Creates the progression scene for the current story visit.</summary>
+    /// <param name="state">Provides the player's Zodiac and progression state.</param>
+    /// <param name="story">Provides progression abilities and story routing.</param>
+    /// <param name="textStyles">Provides text styles for the scene.</param>
+    /// <param name="textures">Loads scene and ability textures.</param>
+    /// <param name="scenes">Routes to the next story scene.</param>
+    /// <param name="contentManifest">Resolves authored ability icons and packaged fallbacks.</param>
     public ProgressionScene(GameState state, Storyline story, ITextStyleRegistry textStyles,
-        ITextureRegistry textures, ISceneManager scenes)
+        ITextureRegistry textures, ISceneManager scenes, IContentManifest? contentManifest = null)
     {
         MainCamera = new StaticCamera();
         var graph = Database.Progression.ProgressionGraphs.All[state.Zodiac];
+        var abilities = story.GetAbilities(state.Zodiac);
         var visit = story.Nodes[state.CurrentStoryNodeId] as ProgressNode
             ?? throw new InvalidOperationException("Expected a progression story node.");
         var style = textStyles.GetOrCreate(BuiltInFonts.Default, 16f);
@@ -63,7 +70,7 @@ public sealed class ProgressionScene : Scene
                 var parent = graph.Abilities.Single(candidate => candidate.Id == parentId);
                 Edge(parent.X, parent.Y, node.X, node.Y);
             }
-            var ability = story.Abilities[node.Id];
+            var ability = abilities[node.Id];
             var button = new AbilityButton(textStyles.GetOrCreate(BuiltInFonts.Bold, 13f))
             {
                 Width = 168f * AbilityElementScale, Height = AbilityIconSize + 30f, SortOrder = 10,
@@ -97,7 +104,9 @@ public sealed class ProgressionScene : Scene
             button.Icon.Children.Add(button.Frame);
             button.Glyph = new ImageElement
             {
-                Texture = textures.GetOrCreate(ability.Icon),
+                Texture = textures.GetOrCreate(
+                    ContentIconResolver.Resolve(contentManifest, ability.Icon, new ContentId("abilities.Attack.png"))
+                ),
                 Width = AbilityIconSize, Height = AbilityIconSize, SizingMode = ImageSizingMode.Fit,
                 HorizontalAlignment = AlignHorizontal.Center, VerticalAlignment = AlignVertical.Center,
                 SortOrder = 12, RenderLayerMask = Nexus.Graphics.RenderLayers.DefaultUI,
@@ -154,7 +163,7 @@ public sealed class ProgressionScene : Scene
                 var canLearn = ProgressionRules.CanLearn(state, story, id);
                 button.IsEnabled = canLearn;
                 button.Glyph.Color = new Color(1f, 1f, 1f, learned || canLearn ? 1f : 0.25f);
-                button.Caption.Text = story.Abilities[id].Name;
+                button.Caption.Text = abilities[id].Name;
                 button.Frame.Texture = textures.GetOrCreate(new ContentId(learned
                     ? "ui.item_frame_selected.png" : "ui.item_frame.png"));
                 button.Caption.Color = learned ? new Color(0.4f, 0.9f, 0.6f, 1f)

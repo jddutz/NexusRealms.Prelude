@@ -26,6 +26,7 @@ public static class Leo
                 new("west-3", new AbilityId("west-2"), -0.810f, 0.051f),
                 new("west-4", new AbilityId("west-2"), -0.810f, -0.051f),
                 new("west-5", new AbilityId("west-2"), -0.810f, -0.153f),
-            ]
+            ],
+            PlaceholderAbilities.Definitions
         );
 }

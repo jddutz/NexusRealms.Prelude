@@ -26,6 +26,7 @@ public static class Capricorn
                 new("west-3", new AbilityId("west-1"), -0.640f, 0.059f),
                 new("west-4", new AbilityId("west-3"), -0.810f, -0.059f),
                 new("west-5", new AbilityId("west-3"), -0.810f, -0.176f),
-            ]
+            ],
+            PlaceholderAbilities.Definitions
         );
 }

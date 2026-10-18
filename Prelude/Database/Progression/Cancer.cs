@@ -22,7 +22,7 @@ public static class Cancer
         new()
         {
             Id = new(nameof(Barrier)),
-            ActionId = "ability:Barrier",
+            ActionId = "ability:SoundBarrier",
             Name = "Barrier",
             Description =
                 "Prevents all enemies in the back row from using magical abilities for 2 turns",
@@ -284,6 +284,31 @@ public static class Cancer
             Targeting = new(TargetShape.Single),
         };
 
+    /// <summary>Authored ability definitions owned by the Cancer progression.</summary>
+    public static ImmutableArray<AbilityData> Definitions { get; } =
+    [
+        Aegis,
+        Barrier,
+        Brace,
+        BreakArmor,
+        Deflect,
+        Disarm,
+        ElementalAegis,
+        ElementalRecoil,
+        ElementalWard,
+        Gigas,
+        Hold,
+        Parry,
+        Recoil,
+        Refract,
+        Regen,
+        ShieldBash,
+        ShieldMastery,
+        Shock,
+        Shockwave,
+        Silence,
+    ];
+
     public static ProgressionGraph Graph { get; } =
         new(
             ZodiacSignId.Cancer,
@@ -312,6 +337,7 @@ public static class Cancer
                 new(Disarm.Id, Hold.Id, -0.84f, 0.56f),
                 new(Barrier.Id, Silence.Id, -0.84f, 0.56f),
                 new(Shock.Id, Disarm.Id, -0.84f, 0.56f),
-            ]
+            ],
+            Definitions
         );
 }

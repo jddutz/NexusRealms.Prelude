@@ -26,6 +26,7 @@ public static class Taurus
                 new("west-3", new AbilityId("west-2"), -0.810f, 0.047f),
                 new("west-4", new AbilityId("west-2"), -0.810f, -0.047f),
                 new("west-5", new AbilityId("west-2"), -0.810f, -0.140f),
-            ]
+            ],
+            PlaceholderAbilities.Definitions
         );
 }

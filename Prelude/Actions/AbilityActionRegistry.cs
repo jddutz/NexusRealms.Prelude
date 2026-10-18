@@ -13,6 +13,8 @@ public sealed class AbilityActionRegistry
         new ScaffoldAbilityAction("ability:slash"),
         new ScaffoldAbilityAction("ability:push"),
         new ScaffoldAbilityAction("ability:parry"),
+        new ScaffoldAbilityAction("ability:BreakArmor"),
+        new ScaffoldAbilityAction("ability:Deflect"),
         new ParryAction(),
         new BraceAction(),
         new RegenAction(),

@@ -28,7 +28,8 @@ dotnet run --project .\Simulator --no-launch-profile -- --state .\Simulator\exam
 
 By default, the CLI runs each player strategy once per progression graph:
 12 zodiac graphs x 10 player-supported strategies = 120 runs. Each player learns
-all abilities in the selected graph, plus any explicitly configured `learnedAbilities`.
+all abilities in the selected graph, plus explicitly configured `learnedAbilities`
+that resolve within that graph.
 Normal equipment and resource requirements still apply; placeholder abilities
 without authored actions do not become executable actions.
 For a requested full scenario matrix, omit `-Runs` and `--runs` to run one

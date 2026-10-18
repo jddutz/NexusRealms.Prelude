@@ -34,9 +34,12 @@ Zodiac progression uses parent prerequisites, not directional groups; authored
 node order does not constrain learning. Multiple abilities can be learned per
 visit, with availability refreshed after each purchase. Continue unlocks after
 learning an ability, or immediately when points or unlearned abilities run out.
-The story starts at `Chapter1.Part1.Begin`; Continue follows its authored
-`NextNode` to the opening narrative. Narrative choices route to distinct authored
-destinations, and combat victories may continue to a registered progression visit.
+Each `ProgressionGraph` owns its ability definitions; runtime lookups are scoped
+to the selected Zodiac, so identical ability IDs can safely exist in different
+graphs.
+The story starts at `Chapter1.Part1.Intro`; narrative choices route to distinct
+authored destinations. Combat victories may continue to a progression visit, whose
+authored `NextNode` selects the next encounter.
 
 The headless `Prelude/Simulator` uses the same action resolver. Mutable `GameState`
 lives in the Prelude runtime; scenario objectives and events remain data definitions
