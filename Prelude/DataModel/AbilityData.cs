@@ -11,6 +11,8 @@ public sealed record AbilityData
     public required ActionId ActionId { get; init; }
     /// <summary>Activation timeline cost, or null when the ability is passive.</summary>
     public float? TurnCost { get; init; }
+    /// <summary>Fixed effect duration in timeline turns, or null when it has no fixed turn duration.</summary>
+    public float? Duration { get; init; }
     /// <summary>Focus paid at activation, or null when the ability is passive.</summary>
     public int? FocusCost { get; init; }
     /// <summary>Focus required to enable the action, distinct from the amount spent.</summary>

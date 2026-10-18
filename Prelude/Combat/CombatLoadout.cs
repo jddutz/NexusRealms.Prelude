@@ -43,6 +43,7 @@ public sealed partial class CombatLoadout
         Icon: "actions.throw.png", Flags: ActionFlags.Visual, TargetRule: target => target.Team == CombatTeam.Enemies && Enum.IsDefined(target.Row));
     private readonly Dictionary<string, int> _shots = [];
     private readonly Dictionary<string, CarriedItem> _loadedAmmunition = [];
+    private readonly HashSet<string> _disarmedItems = [];
     public int ShotsRemaining(CarriedItem item) => _shots.GetValueOrDefault(item.Id.Value, item.Weapon?.Shots ?? 0);
     public bool HasShootingHands(StrikeHand hand) => HeldItem(hand) is not { Weapon.TwoHanded: true } item
         || HeldItem(hand == StrikeHand.Left ? StrikeHand.Right : StrikeHand.Left)?.Id == item.Id;
@@ -74,7 +75,7 @@ public sealed partial class CombatLoadout
     }
     public static IReadOnlyList<string> EquipmentSlots { get; } =
         ["Head", "Torso", "Feet", "Left hand", "Right hand", "Acc1", "Acc2", "Acc3", "Acc4"];
-    public bool CanEquip(CarriedItem item, string slot) => EquipmentSlots.Contains(slot)
+    public bool CanEquip(CarriedItem item, string slot) => !_disarmedItems.Contains(item.Id.Value) && EquipmentSlots.Contains(slot)
         && (item.Slot == slot || (item.Slot is "Left hand" or "Right hand") && (slot is "Left hand" or "Right hand")
             || item.Slot == "Accessory" && slot is "Acc1" or "Acc2" or "Acc3" or "Acc4");
     /// <summary>Owned item records; each record occupies one inventory or equipment location.</summary>
@@ -253,6 +254,34 @@ public sealed partial class CombatLoadout
     }
     public Dictionary<string, string> BeginEquipment() => new(Equipment);
     public bool HasFreeHand => !Equipment.ContainsKey("Left hand") || !Equipment.ContainsKey("Right hand");
+    /// <summary>Unequips all equipped weapons atomically and holds them in inventory until their scheduled return.</summary>
+    /// <returns>The unique item identities disarmed, or an empty array if none can be moved into inventory.</returns>
+    internal ImmutableArray<string> DisarmWeapons()
+    {
+        var itemIds = _equipment
+            .Where(pair => pair.Key is "Left hand" or "Right hand"
+                && Items.Find(item => item.Id.Value == pair.Value)?.Weapon is not null)
+            .Select(pair => pair.Value)
+            .Distinct(StringComparer.Ordinal)
+            .ToImmutableArray();
+        if (itemIds.IsEmpty) return [];
+
+        var equipment = new Dictionary<string, string>(_equipment);
+        foreach (var slot in equipment.Where(pair => itemIds.Contains(pair.Value)).Select(pair => pair.Key).ToArray())
+            equipment.Remove(slot);
+        var inventory = BuildInventorySlots(equipment);
+        if (inventory is null) return [];
+
+        _equipment = equipment;
+        _inventorySlots = inventory;
+        _disarmedItems.UnionWith(itemIds);
+        return itemIds;
+    }
+
+    /// <summary>Allows returned weapons to be equipped again.</summary>
+    /// <param name="itemIds">The item identities whose disarm period has ended.</param>
+    internal void ReturnDisarmedWeapons(IEnumerable<string> itemIds) => _disarmedItems.ExceptWith(itemIds);
+
     public IReadOnlyList<ThrowOption> ThrowOptions(IReadOnlyDictionary<string, string>? equipment = null)
     {
         equipment ??= Equipment;

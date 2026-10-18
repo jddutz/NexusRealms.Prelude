@@ -19,6 +19,16 @@ and movement effects. Onslaught adds one Basic damage to each Melee attack for
 two timeline turns, using a source-scoped, action-flag-filtered damage modifier.
 King Maker consumes remaining Focus for a Basic damage bonus indexed by its authored
 sequence, then extended by recurrence.
+Cancer's Parry snapshots the equipped weapons' typed damage profiles and applies
+matching resistance to the next incoming melee action.
+Cancer's Hold prevents an enemy from changing position or using Melee actions for
+two timeline turns.
+Cancer's Disarm moves an opponent's equipped weapons into inventory and prevents
+re-equipping them until the next full-turn boundary.
+Elemental Ward reduces Fire, Ice, and Lightning damage by one point per incoming
+attack for one timeline turn.
+Elemental Aegis negates Fire, Ice, and Lightning damage from the next incoming
+attack without preventing its non-elemental damage.
 
 Zodiac progression uses parent prerequisites, not directional groups; authored
 node order does not constrain learning. Multiple abilities can be learned per
@@ -91,7 +101,7 @@ dotnet run --project Prelude/Prelude.csproj
 
 Slow and Haste share persistent Turn-cost multipliers (defaults 1.5x and 0.75x). Active multipliers multiply together, and the cost is fixed when an action is committed. Existing queued turns, status durations, and Focus regeneration retain their timeline timing. Wait still schedules just after the next character. Status applications choose their duration.
 
-Fixed-duration defaults allow time to act after casting: Slow/Haste, Headwind, Cooling Breeze and planned Wind Shear last 3 timeline turns; Blind, Bewilder and planned Silence last 2. Focus-based Levitate and Pressure Shield durations remain unchanged.
+Fixed-duration defaults allow time to act after casting: Slow/Haste, Headwind, Cooling Breeze and planned Wind Shear last 3 timeline turns; Blind, Bewilder and planned Silence last 2. `AbilityData.Duration` records fixed authored ability effect durations in timeline turns; variable and use-based durations remain in their action effects. Focus-based Levitate and Pressure Shield durations remain unchanged.
 
 Basic damage (`DamageType.Basic`) is the uncategorized base damage type. Hurricane deals 2 Basic and 1 Electrical damage to every enemy using the shared action resolver.
 

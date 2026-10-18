@@ -4,7 +4,7 @@ An ability is a progression unlock (`AbilityData`); an action is an executable c
 
 ## Current pipeline
 
-1. Aquarius authors twenty `AbilityData` records containing identity, name, description, icon, and actions. `ProgressionGraph.Abilities` contains only references to those identities, direction, prerequisites, and layout. Graphs are explicit data; the progression UI groups nodes by direction.
+1. Aquarius authors twenty `AbilityData` records containing identity, name, description, icon, fixed effect duration when applicable, and actions. `ProgressionGraph.Abilities` contains only references to those identities, direction, prerequisites, and layout. Graphs are explicit data; the progression UI groups nodes by direction.
 2. `Abilities.All` collects authored definitions, including `Aquarius.Definitions`, into a lookup. It does not manufacture definitions from graph nodes. Add agreed combat actions directly to the corresponding Aquarius record. Other Zodiac graphs retain explicitly authored shared placeholder definitions until their abilities are designed.
 3. `Storyline` validates definitions, action identities, referenced statuses and abilities, and progression prerequisite chains.
 4. `Rules.ProgressionRules.Learn` spends one ability point and enforces parent prerequisites, allowing multiple selections per visit. New players start with 20 ability points. Availability refreshes after each purchase; only unavailable, unlearned glyphs fade to 25% opacity, leaving frames and backgrounds unchanged. Continue requires learning at least one ability unless points or unlearned abilities are exhausted. `CombatLoadout.Learn` registers actions and adds the ability requirement. Repeated learning is harmless; conflicting commands fail before learning mutates state.
@@ -21,7 +21,7 @@ When adding an ability, define targeting and relationship explicitly: defaults p
 
 The existing primitives do not yet express relative row pushes, elevation, a sequence of per-turn Focus gains, reducing durations of already active statuses, or restrictions selected by Focus cost. Front/back-row-only selection also needs an explicit rule beyond the current general row targeting shape. These should receive shared primitives and tests when the relevant ability is defined; do not encode them as simulator-only callbacks.
 
-Aquarius has twenty explicitly authored positions over the water-bearer artwork. Prerequisites remain unset until agreed. No ability balance, branch order, duration interpretation, or combat behavior is inferred from its prose description.
+Aquarius has twenty explicitly authored positions over the water-bearer artwork. Prerequisites remain unset until agreed. `AbilityData.Duration` records fixed effect duration in timeline turns; variable or use-based durations remain in the action effects and are not inferred from ability prose.
 
 ## Verification
 

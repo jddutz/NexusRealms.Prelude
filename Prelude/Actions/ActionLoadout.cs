@@ -11,6 +11,7 @@ public sealed partial class CombatLoadout
         copy.Items.AddRange(Items);
         copy._equipment = new(_equipment);
         copy._inventorySlots = (string?[])_inventorySlots.Clone();
+        copy._disarmedItems.UnionWith(_disarmedItems);
         foreach (var pair in _shots) copy._shots.Add(pair.Key, pair.Value);
         foreach (var pair in _loadedAmmunition) copy._loadedAmmunition.Add(pair.Key, pair.Value);
         copy.LearnedAbilities.UnionWith(LearnedAbilities);
@@ -102,8 +103,20 @@ public sealed partial class CombatLoadout
         && (action is not AbilityAction ability || ability.CanUse(this))
         && action.Requirements.Abilities.All(LearnedAbilities.Contains)
         && action.Requirements.Items.All(id => Items.Any(item => item.Id == id && item.Quantity > 0))
-        && action.Requirements.Equipment.All(requirement => Equipment.TryGetValue(requirement.Slot, out var id)
-            && (requirement.Item is null || id == requirement.Item.Value.Value));
+        && action.Requirements.Equipment.All(MeetsEquipmentRequirement);
+
+    /// <summary>Checks whether an equipped item satisfies all selectors in one requirement.</summary>
+    /// <param name="requirement">The optional slot, item identity, and equipment-kind selectors.</param>
+    /// <returns>True when at least one equipped item matches every supplied selector.</returns>
+    private bool MeetsEquipmentRequirement(EquipmentRequirement requirement) =>
+        Equipment.Any(pair =>
+        {
+            if (requirement.Slot is not null && pair.Key != requirement.Slot
+                || requirement.Item is { } itemId && pair.Value != itemId.Value) return false;
+            var equipped = Items.Find(item => item.Id.Value == pair.Value);
+            return equipped is not null && (requirement.AnyOf.IsDefaultOrEmpty
+                || requirement.AnyOf.Any(equipped.EquipmentKinds.Contains));
+        });
 
     /// <summary>Resolves action flags using authored metadata and current melee equipment.</summary>
     /// <param name="action">The action whose effective affinities are requested.</param>

@@ -3,6 +3,7 @@ using System.Collections.Immutable;
 using NexusRealms.Prelude;
 using NexusRealms.Prelude.Actions;
 using NexusRealms.Prelude.Combat;
+using NexusRealms.Prelude.Database.Progression;
 using NexusRealms.Prelude.DataModel;
 
 static void Check(bool condition, string message)
@@ -37,19 +38,73 @@ var definitions = new[] { resistance, negate, prevention, evade, restriction, mo
     NexusRealms.Prelude.Database.StatusEffects.CoolingBreeze,
     NexusRealms.Prelude.Database.StatusEffects.Elevated,
     NexusRealms.Prelude.Database.StatusEffects.PressureShield,
+    NexusRealms.Prelude.Database.StatusEffects.Regen,
+    NexusRealms.Prelude.Database.StatusEffects.ElementalWard,
+    NexusRealms.Prelude.Database.StatusEffects.FlameWard,
+    NexusRealms.Prelude.Database.StatusEffects.FrostWard,
+    NexusRealms.Prelude.Database.StatusEffects.StormWard,
+    NexusRealms.Prelude.Database.StatusEffects.Recoil,
+    NexusRealms.Prelude.Database.StatusEffects.ElementalRecoil,
+    NexusRealms.Prelude.Database.StatusEffects.Aegis,
+    NexusRealms.Prelude.Database.StatusEffects.ElementalAegis,
+    NexusRealms.Prelude.Database.StatusEffects.Refract,
+    NexusRealms.Prelude.Database.StatusEffects.Parry,
     NexusRealms.Prelude.Database.StatusEffects.Bewildered,
     NexusRealms.Prelude.Database.StatusEffects.EyeOfTheStorm,
     NexusRealms.Prelude.Database.StatusEffects.Slow,
     NexusRealms.Prelude.Database.StatusEffects.Haste,
     NexusRealms.Prelude.Database.StatusEffects.Fury,
     NexusRealms.Prelude.Database.StatusEffects.Onslaught,
+    NexusRealms.Prelude.Database.StatusEffects.Gigas,
     NexusRealms.Prelude.Database.StatusEffects.Silenced,
+    NexusRealms.Prelude.Database.StatusEffects.Held,
     NexusRealms.Prelude.Database.StatusEffects.Blind,
     NexusRealms.Prelude.Database.StatusEffects.Berserk }.ToDictionary(status => status.Id);
 
-Fixture New() => new(definitions);
+foreach (var invalidMultiplier in new[] { 0f, -1f, float.NaN, float.PositiveInfinity })
+    Reject(
+        () => CombatRules.ValidateStatus(Status(
+            "invalid-damage-multiplier",
+            new DamageMultiplierEffect(new(EffectVerb.Damage), invalidMultiplier))),
+        "Damage multipliers must be positive and finite.");
+
+Fixture New(CombatLoadout? enemyLoadout = null) => new(definitions, enemyLoadout: enemyLoadout);
 void Apply(Fixture f, string id, string recipient = "enemy", StatusPersistence? persistence = null)
     => f.Resolve(recipient, new ApplyEffect(id, persistence ?? new()));
+
+var disarmedSword = WeaponCatalog.Create(WeaponType.Sword, "disarmed-sword", "Sword", "Right hand");
+var disarmedKnife = WeaponCatalog.Create(WeaponType.Knives, "disarmed-knife", "Knives", "Left hand");
+var equippedHelmet = new CarriedItem("equipped-helmet", "Helmet", "Head");
+var enemyLoadout = CombatLoadout.FromState(
+    [disarmedSword, disarmedKnife, equippedHelmet],
+    new()
+    {
+        ["Right hand"] = disarmedSword.Id.Value,
+        ["Left hand"] = disarmedKnife.Id.Value,
+        ["Head"] = equippedHelmet.Id.Value,
+    },
+    0);
+var disarmFixture = New(enemyLoadout);
+var disarmAction = AbilityActionRegistry.Default.Resolve(Cancer.Disarm);
+var disarmOutcome = disarmFixture.Resolver.ResolveCommitted(disarmAction, "player", ["enemy"]);
+var disarmEvent = disarmFixture.Combat.Timeline.TurnOrder.Single(entry => entry.Label == "Disarm ends: enemy");
+Check(disarmAction.IsImplemented && disarmAction.Targeting.Shape == TargetShape.Single
+    && disarmFixture.Enemy.Loadout.Equipment.Count == 1 && disarmFixture.Enemy.Loadout.Equipment.ContainsKey("Head")
+    && disarmFixture.Enemy.Loadout.Inventory.Count(item => item is not null) == 2
+    && disarmOutcome.Effects.Single().ActualChange == 2
+    && disarmEvent.Turn == Math.Ceiling(disarmFixture.Combat.Timeline.CurrentTurn + 1),
+    "Disarm must move equipped weapons to inventory and schedule their return after one full turn.");
+Check(!disarmFixture.Enemy.Loadout.CanEquip(disarmedSword, "Right hand")
+    && !disarmFixture.Enemy.Loadout.CanEquip(disarmedKnife, "Left hand"),
+    "Disarmed weapons cannot be re-equipped before their scheduled return.");
+var disarmSimulation = disarmFixture.Resolver.CopyForSimulation();
+Check(!disarmSimulation.Characters["enemy"].Loadout.CanEquip(disarmedSword, "Right hand"),
+    "Disarm restrictions and scheduled returns must be preserved in simulation copies.");
+disarmFixture.Combat.SubmitAction(new(1f, static (_, _) => { }));
+Check(disarmFixture.Enemy.Loadout.CanEquip(disarmedSword, "Right hand")
+    && disarmFixture.Enemy.Loadout.CanEquip(disarmedKnife, "Left hand")
+    && disarmFixture.Enemy.Loadout.Inventory.Count(item => item is not null) == 2,
+    "Disarmed weapons become eligible for re-equipping at the scheduled event.");
 
 var aiFixture = New(); Apply(aiFixture, "resistance");
 var mitigated = new ExampleAction("a-mitigated", new DamageEffect(DamageType.Slashing, 6));
@@ -307,6 +362,329 @@ ActionData LearnSupport(Fixture fixture, AbilityData definition)
     fixture.Resolver.RegisterAbility(definition);
     return action;
 }
+var regenFixture = New();
+var regenAbility = NexusRealms.Prelude.Database.Progression.Cancer.Regen;
+var regen = LearnSupport(regenFixture, regenAbility);
+regenFixture.Player.Health.Health = 10;
+regenFixture.Player.Loadout.Focus = 3;
+regenFixture.Resolver.Commit("player", regen, "player");
+Check(regenFixture.Player.Health.Health == 11
+    && regenFixture.Player.Statuses.Count(status => status.Definition.Id == NexusRealms.Prelude.Database.StatusEffects.Regen.Id) == 1,
+    "Regen must apply an indefinite status and restore one Health at the next owner turn.");
+regenFixture.Combat.SubmitAction(new(1f, (_, _) => { }));
+Check(regenFixture.Player.Health.Health == 12
+    && regenFixture.Player.Statuses.Count(status => status.Definition.Id == NexusRealms.Prelude.Database.StatusEffects.Regen.Id) == 1,
+    "Regen must continue restoring one Health each owner turn without stacking.");
+Console.WriteLine("Regen turn-start healing checks passed.");
+var wardFixture = New();
+wardFixture.Player.Loadout.Focus = 1;
+var wardAbility = NexusRealms.Prelude.Database.Progression.Cancer.ElementalWard;
+var ward = LearnSupport(wardFixture, wardAbility);
+var wardPreview = wardFixture.Resolver.Preview("player", ward, null);
+Check(wardPreview.Characters["player"].Statuses.Length == 1
+    && wardFixture.Player.Statuses.Count == 0,
+    "Elemental Ward preview must apply one status without changing live status.");
+var wardOutcome = wardFixture.Resolver.Commit("player", ward, null);
+Check(wardOutcome.Action.TurnCost == 0.5f
+    && wardFixture.Player.Loadout.Focus == 0
+    && wardFixture.Player.Statuses.Single() is { ExpiresAt: 1 } activeWard
+    && activeWard.Definition.Id == NexusRealms.Prelude.Database.StatusEffects.ElementalWard.Id,
+    "Elemental Ward must pay its authored cost and apply one timeline turn of protection.");
+var firstHit = wardFixture.Resolver.ResolveCommitted(
+    new EffectAction(
+        "incoming-elemental-ward",
+        new DamageEffect(DamageType.Fire, 2),
+        new DamageEffect(DamageType.Ice, 2),
+        new DamageEffect(DamageType.Lightning, 2),
+        new DamageEffect(DamageType.Slashing, 2)
+    ),
+    "enemy",
+    ["player"]
+);
+Check(firstHit.Effects[0].ActualChange == 1
+    && firstHit.Effects[1].ActualChange == 1
+    && firstHit.Effects[2].ActualChange == 1
+    && firstHit.Effects[3].ActualChange == 2
+    && wardFixture.Player.Health.Health == 15,
+    "Elemental Ward must reduce Fire, Ice, and Lightning damage by one without affecting Physical damage.");
+var repeatedHit = wardFixture.Resolver.ResolveCommitted(
+    new EffectAction(
+        "repeat-elemental-ward",
+        new DamageEffect(DamageType.Fire, 2),
+        new DamageEffect(DamageType.Ice, 2),
+        new DamageEffect(DamageType.Lightning, 2)
+    ),
+    "enemy",
+    ["player"]
+);
+Check(repeatedHit.Effects.All(effect => effect.ActualChange == 1)
+    && wardFixture.Player.Health.Health == 12
+    && wardFixture.Player.Statuses.Count == 1,
+    "Elemental Ward must reduce each matching type on every incoming attack without consuming its status.");
+wardFixture.Combat.SubmitAction(new(1f, (_, _) => { }));
+Check(wardFixture.Player.Statuses.Count == 0,
+    "Elemental Ward must expire at its one-turn boundary.");
+Console.WriteLine("Elemental Ward checks passed.");
+var shieldMasteryItem = new CarriedItem("mastery-shield", "Kite Shield", "Left hand")
+    { EquipmentKinds = [EquipmentKind.Shield] };
+var shieldMasteryLoadout = CombatLoadout.FromState(
+    [shieldMasteryItem],
+    new Dictionary<string, string> { ["Left hand"] = shieldMasteryItem.Id.Value },
+    0
+);
+var shieldMasteryFixture = new Fixture(definitions, shieldMasteryLoadout);
+var shieldMastery = LearnSupport(shieldMasteryFixture, NexusRealms.Prelude.Database.Progression.Cancer.ShieldMastery);
+var masteryPhysicalDamage = new EffectAction(
+    "mastery-physical",
+    new DamageEffect(DamageType.Slashing, 2),
+    new DamageEffect(DamageType.Piercing, 2)
+);
+shieldMasteryFixture.Resolver.ResolveCommitted(masteryPhysicalDamage, "enemy", ["player"]);
+Check(shieldMastery.Passive && !shieldMasteryFixture.Resolver.CanCommit("player", shieldMastery, null)
+    && shieldMasteryFixture.Player.Health.Health == 17,
+    "Shield Mastery must be passive and reduce one Physical damage per incoming attack when a marked shield is equipped.");
+shieldMasteryFixture.Resolver.ResolveCommitted(
+    new EffectAction("mastery-basic", new DamageEffect(DamageType.Basic, 2)),
+    "enemy",
+    ["player"]
+);
+Check(shieldMasteryFixture.Player.Health.Health == 15,
+    "Shield Mastery must not reduce Basic damage.");
+var unmarkedShieldFixture = new Fixture(definitions, CombatLoadout.FromState(
+    [new CarriedItem("unmarked-shield", "Kite Shield", "Left hand")],
+    new Dictionary<string, string> { ["Left hand"] = "unmarked-shield" },
+    0
+));
+LearnSupport(unmarkedShieldFixture, NexusRealms.Prelude.Database.Progression.Cancer.ShieldMastery);
+unmarkedShieldFixture.Resolver.ResolveCommitted(
+    new EffectAction("unmarked-physical", new DamageEffect(DamageType.Slashing, 2)),
+    "enemy",
+    ["player"]
+);
+Check(unmarkedShieldFixture.Player.Health.Health == 18,
+    "Shield Mastery must use the explicit shield marker, not an item's display name.");
+Console.WriteLine("Shield Mastery equipment and mitigation checks passed.");
+var aegisUnavailable = New();
+var aegisDefinition = NexusRealms.Prelude.Database.Progression.Cancer.Aegis;
+var unavailableAegis = LearnSupport(aegisUnavailable, aegisDefinition);
+Check(!aegisUnavailable.Resolver.CanCommit("player", unavailableAegis, null),
+    "Aegis must be unavailable without an equipped shield.");
+shieldMasteryFixture.Player.Loadout.Focus = 2;
+var aegis = LearnSupport(shieldMasteryFixture, aegisDefinition);
+Check(shieldMasteryFixture.Resolver.CanCommit("player", aegis, null),
+    "Aegis must be available with an equipped shield and sufficient Focus.");
+shieldMasteryFixture.Resolver.Commit("player", aegis, null);
+var aegisNonMeleeOutcome = shieldMasteryFixture.Resolver.ResolveCommitted(
+    new EffectAction("aegis-non-melee", new DamageEffect(DamageType.Basic, 1)),
+    "enemy",
+    ["player"]
+);
+Check(aegisNonMeleeOutcome.Effects.Single().ActualChange == 1
+    && shieldMasteryFixture.Player.Statuses.Any(status => status.Definition.Id == NexusRealms.Prelude.Database.StatusEffects.Aegis.Id),
+    "Aegis must not consume its ward on a non-melee action.");
+var aegisMeleeOutcome = shieldMasteryFixture.Resolver.ResolveCommitted(
+    new EffectAction("aegis-melee", new DamageEffect(DamageType.Slashing, 2)) { Flags = ActionFlags.Melee },
+    "enemy",
+    ["player"]
+);
+Check(aegisMeleeOutcome.Effects.Single().Result == EffectResult.Evaded
+    && !shieldMasteryFixture.Player.Statuses.Any(status => status.Definition.Id == NexusRealms.Prelude.Database.StatusEffects.Aegis.Id),
+    "Aegis must evade and consume its ward on the next melee action.");
+var elementalAegisFixture = New();
+elementalAegisFixture.Player.Loadout.Focus = 2;
+var elementalAegis = LearnSupport(
+    elementalAegisFixture,
+    NexusRealms.Prelude.Database.Progression.Cancer.ElementalAegis
+);
+var elementalAegisPreview = elementalAegisFixture.Resolver.Preview("player", elementalAegis, null);
+Check(elementalAegisPreview.Characters["player"].Statuses.Length == 1
+    && elementalAegisFixture.Player.Statuses.Count == 0,
+    "Elemental Aegis preview must isolate its one-use protection.");
+elementalAegisFixture.Resolver.Commit("player", elementalAegis, null);
+Check(elementalAegis is ElementalAegisAction
+    && elementalAegisFixture.Player.Statuses.Single() is { RemainingUses: 1 } activeElementalAegis
+    && activeElementalAegis.Definition.Id == NexusRealms.Prelude.Database.StatusEffects.ElementalAegis.Id,
+    "Elemental Aegis must apply a one-use status without equipment requirements.");
+var nonElementalAegisOutcome = elementalAegisFixture.Resolver.ResolveCommitted(
+    new EffectAction("non-elemental-aegis-hit", new DamageEffect(DamageType.Slashing, 2)),
+    "enemy",
+    ["player"]
+);
+Check(nonElementalAegisOutcome.Effects.Single().ActualChange == 2
+    && elementalAegisFixture.Player.Health.Health == 18
+    && elementalAegisFixture.Player.Statuses.Single().RemainingUses == 1,
+    "A non-elemental attack must not consume Elemental Aegis.");
+var elementalAttack = new EffectAction(
+    "elemental-aegis-hit",
+    new DamageEffect(DamageType.Fire, 2),
+    new DamageEffect(DamageType.Ice, 3),
+    new DamageEffect(DamageType.Lightning, 4),
+    new DamageEffect(DamageType.Slashing, 2),
+    new DamageEffect(DamageType.Basic, 1)
+);
+var elementalAegisOutcome = elementalAegisFixture.Resolver.ResolveCommitted(
+    elementalAttack,
+    "enemy",
+    ["player"]
+);
+Check(elementalAegisOutcome.Effects.Take(3).All(effect => effect.Result == EffectResult.Negated)
+    && elementalAegisOutcome.Effects[3].ActualChange == 2
+    && elementalAegisOutcome.Effects[4].ActualChange == 1
+    && elementalAegisFixture.Player.Health.Health == 15
+    && elementalAegisFixture.Player.Statuses.Count == 0,
+    "Elemental Aegis must negate every elemental type, preserve non-elemental damage, and consume after one incoming action.");
+var afterElementalAegis = elementalAegisFixture.Resolver.ResolveCommitted(
+    new EffectAction("after-elemental-aegis", new DamageEffect(DamageType.Fire, 2)),
+    "enemy",
+    ["player"]
+);
+Check(afterElementalAegis.Effects.Single().ActualChange == 2
+    && elementalAegisFixture.Player.Health.Health == 13,
+    "Elemental damage must resume after Elemental Aegis is consumed.");
+Console.WriteLine("Elemental Aegis checks passed.");
+var refractFixture = New();
+refractFixture.Player.Loadout.Focus = 3;
+var refract = LearnSupport(refractFixture, Cancer.Refract);
+Check(refract is RefractAction, "Refract must resolve to its authored action implementation.");
+var refractApplication = refractFixture.Resolver.ResolveCommitted(refract, "player", ["player"]);
+Check(refractApplication.Effects.Single().ActualChange == 1,
+    "Refract must apply its status.");
+Check(refractFixture.Player.Statuses.Any(status => status.Definition.Id == NexusRealms.Prelude.Database.StatusEffects.Refract.Id),
+    $"Refract must leave its one-turn status active after commitment; active statuses: {string.Join(", ", refractFixture.Player.Statuses.Select(status => status.Definition.Id))}.");
+var frontEnemy = new ActionCharacterState("front-enemy", false, CombatTeam.Enemies, new(20), new(), FormationSlot.FrontCenter);
+var backEnemy = new ActionCharacterState("back-enemy", false, CombatTeam.Enemies, new(20), new(), FormationSlot.BackRight);
+var refractAlly = new ActionCharacterState("refract-ally", false, CombatTeam.PlayerAndAllies, new(20), new(), FormationSlot.FrontLeft);
+refractFixture.Resolver.Add(frontEnemy);
+refractFixture.Resolver.Add(backEnemy);
+refractFixture.Resolver.Add(refractAlly);
+var refractedOutcome = refractFixture.Resolver.ResolveCommitted(
+    new EffectAction("refracted-hit",
+        new DamageEffect(DamageType.Fire, 3),
+        new DamageEffect(DamageType.Ice, 2),
+        new DamageEffect(DamageType.Lightning, 1),
+        new DamageEffect(DamageType.Slashing, 4)),
+    "enemy",
+    ["player"]
+);
+Check(refractedOutcome.Effects.Where(effect => effect.Requested is DamageEffect { Type: DamageType.Fire or DamageType.Ice or DamageType.Lightning })
+        .Select(effect => effect.RecipientId).Distinct().Order(StringComparer.Ordinal).SequenceEqual(["enemy", "front-enemy"]),
+    $"Refract must redirect each elemental damage type to all opposing front-row enemies, got {string.Join(", ", refractedOutcome.Effects.Select(effect => $"{effect.Verb}:{effect.RecipientId}"))}.");
+Check(refractedOutcome.Effects.Where(effect => effect.Requested is DamageEffect { Type: DamageType.Slashing })
+        .Single().RecipientId == "player",
+    "Refract must leave non-elemental damage on the selected character.");
+Check(refractFixture.Player.Health.Health == 16
+    && refractFixture.Enemy.Health.Health == 14
+    && frontEnemy.Health.Health == 14
+    && backEnemy.Health.Health == 20
+    && refractAlly.Health.Health == 20,
+    "Refract must not damage allies or enemies outside the front row.");
+refractFixture.Resolve("enemy", new MoveEffect(FormationSlot.BackLeft));
+refractFixture.Resolve("front-enemy", new MoveEffect(FormationSlot.BackCenter));
+var refractFallback = refractFixture.Resolver.ResolveCommitted(
+    new EffectAction("refract-fallback", new DamageEffect(DamageType.Fire, 2)),
+    "enemy",
+    ["player"]
+);
+Check(refractFallback.Effects.Single().RecipientId == "player"
+    && refractFallback.Effects.Single().ActualChange == 2,
+    "Refract must leave damage on the selected character when no opposing front-row recipient remains.");
+Console.WriteLine("Refract checks passed.");
+var dagger = WeaponCatalog.Create(WeaponType.Knives, "requirement-dagger", "Dagger", "Right hand");
+var daggerLoadout = CombatLoadout.FromState(
+    [dagger],
+    new Dictionary<string, string> { ["Right hand"] = dagger.Id.Value },
+    0
+);
+var knifeRequirement = new ActionData
+{
+    Requirements = new() { Equipment = [new(AnyOf: [EquipmentKind.KnifeOrDagger])] },
+};
+Check(daggerLoadout.MeetsRequirements(knifeRequirement)
+    && !CombatLoadout.CreatePlayerLoadout().MeetsRequirements(knifeRequirement),
+    "Equipment requirements must distinguish an equipped Knife/Dagger from unrelated weapons.");
+Console.WriteLine("Aegis and typed equipment requirement checks passed.");
+var parryAxe = WeaponCatalog.Create(WeaponType.Axe, "parry-axe", "Axe", "Right hand");
+var parryMace = WeaponCatalog.Create(WeaponType.Maces, "parry-mace", "Mace", "Left hand");
+var parryLoadout = CombatLoadout.FromState(
+    [parryAxe, parryMace],
+    new Dictionary<string, string>
+    {
+        ["Right hand"] = parryAxe.Id.Value,
+        ["Left hand"] = parryMace.Id.Value,
+    },
+    2
+);
+var parryFixture = new Fixture(definitions, parryLoadout);
+var parry = LearnSupport(parryFixture, NexusRealms.Prelude.Database.Progression.Cancer.Parry);
+Check(parryFixture.Resolver.CanCommit("player", parry, null),
+    "Parry must be available with an equipped weapon.");
+parryFixture.Resolver.Commit("player", parry, null);
+var rangedOutcome = parryFixture.Resolver.ResolveCommitted(
+    new EffectAction("parry-ranged", new DamageEffect(DamageType.Crushing, 4)),
+    "enemy",
+    ["player"]
+);
+Check(rangedOutcome.Effects.Single().ResolvedAmount == 4
+    && parryFixture.Player.Statuses.Any(status => status.Definition.Id == NexusRealms.Prelude.Database.StatusEffects.Parry.Id),
+    "Parry must use the combined equipped-weapon profiles without consuming its ward on non-melee damage.");
+var parryOutcome = parryFixture.Resolver.ResolveCommitted(
+    new EffectAction(
+        "parry-melee",
+        new DamageEffect(DamageType.Basic, 3),
+        new DamageEffect(DamageType.Slashing, 2),
+        new DamageEffect(DamageType.Crushing, 4),
+        new DamageEffect(DamageType.Fire, 2)
+    ) { Flags = ActionFlags.Melee },
+    "enemy",
+    ["player"]
+);
+Check(parryOutcome.Effects.Select(effect => effect.ResolvedAmount).SequenceEqual([1d, 1d, 2d, 2d])
+    && !parryFixture.Player.Statuses.Any(status => status.Definition.Id == NexusRealms.Prelude.Database.StatusEffects.Parry.Id),
+    "Parry must mitigate matching types up to the combined weapon profile and consume on the next melee action.");
+var unarmedParryFixture = new Fixture(definitions, new CombatLoadout());
+var unarmedParry = LearnSupport(unarmedParryFixture, NexusRealms.Prelude.Database.Progression.Cancer.Parry);
+Check(!unarmedParryFixture.Resolver.CanCommit("player", unarmedParry, null),
+    "Parry must be unavailable without an equipped weapon.");
+Console.WriteLine("Parry typed weapon-profile mitigation checks passed.");
+
+var shieldBashAbility = NexusRealms.Prelude.Database.Progression.Cancer.ShieldBash;
+var unarmedShieldBashFixture = New();
+var unarmedShieldBash = LearnSupport(unarmedShieldBashFixture, shieldBashAbility);
+Check(!unarmedShieldBashFixture.Resolver.CanCommit("player", unarmedShieldBash, "enemy"),
+    "Shield Bash must be unavailable without an equipped shield.");
+var bashShield = new CarriedItem("bash-shield", "Kite Shield", "Left hand")
+    { EquipmentKinds = [EquipmentKind.Shield] };
+var shieldBashLoadout = CombatLoadout.FromState(
+    [bashShield],
+    new Dictionary<string, string> { ["Left hand"] = bashShield.Id.Value },
+    0
+);
+var shieldBashFixture = new Fixture(definitions, shieldBashLoadout);
+shieldBashFixture.Enemy.Loadout.Focus = 3;
+var shieldBash = LearnSupport(shieldBashFixture, shieldBashAbility);
+var shieldBashPreview = shieldBashFixture.Resolver.Preview("player", shieldBash, "enemy");
+Check(shieldBash is ShieldBashAction
+    && (shieldBash.Flags & ActionFlags.Melee) != 0
+    && shieldBash.MeleeRange == WeaponRange.Short
+    && shieldBashFixture.Resolver.CanCommit("player", shieldBash, "enemy")
+    && shieldBashPreview.Characters["enemy"].Health == 18
+    && shieldBashPreview.Characters["enemy"].Focus == 2
+    && shieldBashPreview.Schedule.Single(turn => turn.CombatantId == "enemy").Turn == 10.8f
+    && shieldBashFixture.Enemy.Health.Health == 20
+    && shieldBashFixture.Enemy.Loadout.Focus == 3,
+    "Shield Bash preview must damage, delay, and drain Focus from only the selected enemy without mutating live state.");
+var shieldBashOutcome = shieldBashFixture.Resolver.Commit("player", shieldBash, "enemy");
+Check(shieldBashOutcome.Effects.Select(effect => effect.Verb).SequenceEqual(
+        [EffectVerb.Damage, EffectVerb.Delay, EffectVerb.Consume])
+    && shieldBashOutcome.Effects[0].ActualChange == 2
+    && shieldBashOutcome.Effects[1].ActualChange > 0.79
+    && shieldBashOutcome.Effects[2].ActualChange == 1
+    && shieldBashFixture.Enemy.Health.Health == 18
+    && shieldBashFixture.Enemy.Loadout.Focus == 3
+    && shieldBashFixture.Combat.Timeline.TurnOrder.Single(turn => turn.CombatantId == "enemy").Turn == 10.8f,
+    "Shield Bash commitment must apply its ordered damage, delay, and Focus drain; boundary regeneration may restore the removed Focus afterward.");
+Console.WriteLine("Shield Bash execution checks passed.");
+
 // Aries control abilities must use the same paid execution in previews and gameplay.
 foreach (var ariesDefinition in NexusRealms.Prelude.Database.Progression.Aries.Definitions)
     Check(AbilityActionRegistry.Default.Resolve(ariesDefinition).IsImplemented,
@@ -595,6 +973,36 @@ Check(onslaughtDualBonuses.Length == 2
     "Onslaught must add one Basic damage to each dual-wielded melee attack.");
 
 support = New();
+AddWindCharacter(support, "shockwave-neighbor", FormationSlot.FrontCenter);
+AddWindCharacter(support, "shockwave-other-row", FormationSlot.MiddleLeft);
+AddWindCharacter(support, "shockwave-ally", FormationSlot.FrontRight, CombatTeam.PlayerAndAllies);
+var shockwave = LearnSupport(support, NexusRealms.Prelude.Database.Progression.Cancer.Shockwave);
+Check(shockwave is ShockwaveAction && (shockwave.Flags & ActionFlags.Melee) != 0
+    && support.Resolver.CanCommit("player", shockwave, "enemy"),
+    "Shockwave must be a usable single-target melee attack.");
+Apply(support, "gigas", "player", NexusRealms.Prelude.Database.StatusEffects.Gigas.Persistence);
+var shockwavePreview = support.Resolver.Preview("player", shockwave, "enemy");
+Check(shockwavePreview.Characters["enemy"].Health < 20
+    && shockwavePreview.Characters["shockwave-neighbor"].Health == 18
+    && shockwavePreview.Characters["shockwave-other-row"].Health == 20
+    && shockwavePreview.Characters["shockwave-ally"].Health == 20
+    && shockwavePreview.Outcome.Effects.Any(effect => effect.RecipientId == "shockwave-neighbor"
+        && effect.Requested is DamageEffect { Type: DamageType.Crushing, Amount: 1 }
+        && effect.ResolvedAmount == 2)
+    && support.Enemy.Health.Health == 20
+    && support.Resolver.Characters["shockwave-neighbor"].Health.Health == 20,
+    "Shockwave preview must apply Onslaught to same-row splash damage, target opposing characters only, and leave live state unchanged.");
+var shockwaveOutcome = support.Resolver.Commit("player", shockwave, "enemy");
+Check(shockwaveOutcome.Effects.Any(effect => effect.RecipientId == "enemy"
+        && effect.Verb == EffectVerb.Damage && effect.ActualChange > 0)
+    && shockwaveOutcome.Effects.Any(effect => effect.RecipientId == "shockwave-neighbor"
+        && effect.Requested is DamageEffect { Type: DamageType.Crushing, Amount: 1 }
+        && effect.ResolvedAmount == 2 && effect.ActualChange == 2)
+    && support.Resolver.Characters["shockwave-other-row"].Health.Health == 20
+    && support.Resolver.Characters["shockwave-ally"].Health.Health == 20,
+    "Shockwave splash must receive the source-side Crushing melee modifier.");
+
+support = New();
 var onslaught = LearnSupport(support, NexusRealms.Prelude.Database.Progression.Aries.Onslaught);
 Check(onslaught is OnslaughtAction
     && onslaught.Targeting.Shape == TargetShape.Self
@@ -615,6 +1023,33 @@ var nonMeleeOutcome = support.Resolver.ResolveCommitted(nonMelee, "player", ["en
 Check(support.Enemy.Health.Health == 13 && nonMeleeOutcome.Effects.Length == 1
     && nonMeleeOutcome.Effects.Single().Requested is DamageEffect { Type: DamageType.Slashing, Amount: 3 },
     "Onslaught must not modify damage from actions without the Melee flag.");
+
+var gigasLoadout = CombatLoadout.FromState(
+    [WeaponCatalog.Create(WeaponType.Clubs, "gigas-club", "Club", "Right hand")],
+    new Dictionary<string, string> { ["Right hand"] = "gigas-club" },
+    focus: 10);
+support = new Fixture(definitions, gigasLoadout);
+var gigas = LearnSupport(support, NexusRealms.Prelude.Database.Progression.Cancer.Gigas);
+Check(gigas is GigasAction && gigas.Targeting.Shape == TargetShape.Self,
+    "Gigas must resolve to a usable self-targeted action.");
+for (var stack = 0; stack < 4; stack++)
+{
+    Check(support.Resolver.CanCommit("player", gigas, null), "Gigas must remain available for each affordable cast.");
+    support.Resolver.Commit("player", gigas, null);
+}
+Check(support.Player.Statuses.Count(status => status.Definition.Id == "gigas") == 3,
+    "The first Gigas stack must expire after four consecutive 0.8-turn casts.");
+var gigasStrike = LearnSupport(support, NexusRealms.Prelude.Database.Progression.Aries.Fury);
+var gigasStrikeOutcome = support.Resolver.ResolveCommitted(gigasStrike, "player", ["enemy"]);
+Check(gigasStrikeOutcome.Effects.Any(effect => effect.Requested is DamageEffect { Type: DamageType.Crushing, Amount: 2 }
+        && effect.ResolvedAmount == 16)
+    && gigasStrikeOutcome.Effects.Any(effect => effect.Requested is DamageEffect { Type: DamageType.Basic }
+        && effect.ResolvedAmount == effect.RequestedAmount),
+    "Three active Gigas stacks must multiply equipped Club Crushing damage by eight without changing Basic damage.");
+var nonMeleeCrushing = new ExampleAction("non-melee-crushing", new DamageEffect(DamageType.Crushing, 2));
+var nonMeleeCrushingOutcome = support.Resolver.ResolveCommitted(nonMeleeCrushing, "player", ["enemy"]);
+Check(nonMeleeCrushingOutcome.Effects.Single().ResolvedAmount == 2,
+    "Gigas must not multiply Crushing damage from non-Melee actions.");
 
 // The shortened expiration must be scheduled, including when no actor acts at that time.
 support = New();
@@ -638,6 +1073,66 @@ void AddWindCharacter(Fixture fixture, string id, FormationSlot position, Combat
     fixture.Combat.Add(new(id, false, 10, team: team));
     fixture.Resolver.Add(new(id, false, team, new(20), new(), position));
 }
+var holdFixture = New();
+var hold = LearnSupport(holdFixture, NexusRealms.Prelude.Database.Progression.Cancer.Hold);
+Check(holdFixture.Resolver.CanCommit("player", hold, "enemy"), "Hold must target one nearby enemy.");
+var holdPreview = holdFixture.Resolver.Preview("player", hold, "enemy");
+Check(holdPreview.Characters["enemy"].Statuses.Single().StartsWith("held:", StringComparison.Ordinal)
+    && holdFixture.Enemy.Statuses.Count == 0, "Hold preview must isolate its movement and Melee restrictions.");
+holdFixture.Resolver.Commit("player", hold, "enemy");
+Check(holdFixture.Enemy.Statuses.Single().ExpiresAt == 2
+    && !holdFixture.Resolver.Allows("enemy", new ExampleAction("held-melee") { Flags = ActionFlags.Melee })
+    && holdFixture.Resolver.Allows("enemy", new ExampleAction("held-non-melee")),
+    "Hold must prevent Melee actions, preserve other actions, and last two timeline turns.");
+var heldPosition = holdFixture.Enemy.Position;
+var heldMovement = holdFixture.Resolver.ResolveCommitted(
+    new ExampleAction("held-push", new ShiftRowEffect(RowShiftDirection.Backward)),
+    "player",
+    ["enemy"]);
+Check(holdFixture.Enemy.Position == heldPosition
+    && heldMovement.Effects.Single() is { Result: EffectResult.Negated, Rules.Length: 1 },
+    "Hold must prevent a movement effect from changing the target's position and attribute its rule.");
+holdFixture.Combat.SubmitAction(new(1, (_, _) => { }));
+Check(holdFixture.Enemy.Statuses.Count == 0, "Hold must expire at its exact two-turn timeline boundary.");
+
+var recoilFixture = New();
+recoilFixture.Player.Loadout.Focus = 5;
+recoilFixture.Enemy.Loadout.Focus = 5;
+var recoil = LearnSupport(recoilFixture, NexusRealms.Prelude.Database.Progression.Cancer.Recoil);
+Check(recoil is RecoilAction && recoilFixture.Resolver.CanCommit("player", recoil, "player"),
+    "Recoil must be implemented and usable on its owner.");
+recoilFixture.Resolver.Commit("player", recoil, "player");
+recoilFixture.Enemy.Loadout.Focus = 5;
+var physicalAttack = new EffectAction("recoil-physical", new DamageEffect(DamageType.Slashing, 2));
+var recoilOutcome = recoilFixture.Resolver.ResolveCommitted(physicalAttack, "enemy", ["player"]);
+Check(recoilFixture.Enemy.Loadout.Focus == 3
+    && recoilOutcome.Effects.Single(effect => effect.Requested is ConsumeEffect).ActualChange == 2
+    && recoilFixture.Player.Statuses.Single(status => status.Definition.Id == NexusRealms.Prelude.Database.StatusEffects.Recoil.Id).ExpiresAt == 2,
+    "Recoil must drain attacker Focus through normal outcomes and last two timeline turns.");
+recoilFixture.Resolver.ResolveCommitted(new EffectAction("recoil-basic", new DamageEffect(DamageType.Basic, 1)), "enemy", ["player"]);
+recoilFixture.Resolver.ResolveCommitted(new EffectAction("recoil-elemental", new DamageEffect(DamageType.Fire, 1)), "enemy", ["player"]);
+Check(recoilFixture.Enemy.Loadout.Focus == 3,
+    "Recoil must not trigger on Basic or Elemental damage.");
+
+var elementalRecoilFixture = New();
+elementalRecoilFixture.Player.Loadout.Focus = 5;
+elementalRecoilFixture.Enemy.Loadout.Focus = 5;
+var elementalRecoil = LearnSupport(elementalRecoilFixture, NexusRealms.Prelude.Database.Progression.Cancer.ElementalRecoil);
+Check(elementalRecoil is ElementalRecoilAction && elementalRecoilFixture.Resolver.CanCommit("player", elementalRecoil, "enemy"),
+    "Elemental Recoil must be implemented and require its selected enemy.");
+elementalRecoilFixture.Resolver.Commit("player", elementalRecoil, "enemy");
+elementalRecoilFixture.Enemy.Loadout.Focus = 5;
+var elementalRecoilAttack = new EffectAction("elemental-recoil-hit", new DamageEffect(DamageType.Lightning, 2));
+var elementalRecoilOutcome = elementalRecoilFixture.Resolver.ResolveCommitted(elementalRecoilAttack, "enemy", ["player"]);
+Check(elementalRecoilFixture.Enemy.Loadout.Focus == 3
+    && elementalRecoilOutcome.Effects.Single(effect => effect.Requested is ConsumeEffect).ActualChange == 2
+    && elementalRecoilFixture.Enemy.Statuses.Any(status => status.Definition.Id == NexusRealms.Prelude.Database.StatusEffects.ElementalRecoil.Id),
+    "Elemental Recoil must drain the marked attacker's Focus and remain active.");
+elementalRecoilFixture.Resolver.ResolveCommitted(new EffectAction("elemental-recoil-physical", new DamageEffect(DamageType.Crushing, 1)), "enemy", ["player"]);
+Check(elementalRecoilFixture.Enemy.Loadout.Focus == 3,
+    "Elemental Recoil must not trigger on Physical damage.");
+Console.WriteLine("Recoil and Elemental Recoil checks passed.");
+
 var wind = New();
 AddWindCharacter(wind, "z-middle", FormationSlot.MiddleLeft);
 AddWindCharacter(wind, "z-back", FormationSlot.BackRight);
@@ -1398,12 +1893,13 @@ sealed record ExampleAction : EffectAction
 sealed class Fixture
 {
     /// <summary>Creates a player at Turn zero and an enemy scheduled at Turn ten.</summary>
-    public Fixture(IReadOnlyDictionary<StatusEffectId, StatusEffectData> definitions, CombatLoadout? playerLoadout = null)
+    public Fixture(IReadOnlyDictionary<StatusEffectId, StatusEffectData> definitions, CombatLoadout? playerLoadout = null,
+        CombatLoadout? enemyLoadout = null)
     {
         Combat.Add(new("player", true)); Combat.Add(new("enemy", false, 10, team: CombatTeam.Enemies));
         Resolver = new(Combat, definitions);
         Player = new("player", true, CombatTeam.PlayerAndAllies, new(20), playerLoadout ?? CombatLoadout.CreatePlayerLoadout());
-        Enemy = new("enemy", false, CombatTeam.Enemies, new(20), new(), FormationSlot.FrontLeft);
+        Enemy = new("enemy", false, CombatTeam.Enemies, new(20), enemyLoadout ?? new(), FormationSlot.FrontLeft);
         Resolver.Add(Player); Resolver.Add(Enemy);
         Combat.IsCombatantAlive = id => Resolver.Characters[id].Health.Health > 0;
         Combat.Process();

@@ -2,6 +2,25 @@ namespace NexusRealms.Prelude.Database.Progression;
 
 public static class Aquarius
 {
+    /// <summary>
+    /// Gets the Barrier ability data.
+    /// </summary>
+    public static AbilityData Barrier { get; } =
+        new()
+        {
+            Id = new(nameof(Barrier)),
+            ActionId = "ability:Barrier",
+            Name = "Barrier",
+            Description =
+                "Prevents all enemies in the back row from using magical abilities for 2 turns",
+            Icon = new("abilities.Barrier.png"),
+            TurnCost = 1f,
+            Duration = 2,
+            FocusCost = 0,
+            Flags = ActionFlags.Magical,
+            Targeting = new(TargetShape.All),
+        };
+
     public static AbilityData Bewilder { get; } =
         new()
         {
@@ -11,6 +30,7 @@ public static class Aquarius
             Description = "Renders the target incapable of using Focus for 2 turns",
             Icon = new("abilities.Bewilder.png"),
             TurnCost = 0.5f,
+            Duration = 2,
             FocusCost = 0,
             Flags = ActionFlags.Visual | ActionFlags.Magical,
             Targeting = new(TargetShape.Single),
@@ -39,6 +59,7 @@ public static class Aquarius
             Description = "Negates all Fire damage for 3 turns",
             Icon = new("abilities.CoolingBreeze.png"),
             TurnCost = 1f,
+            Duration = 3,
             FocusCost = 0,
             Flags = ActionFlags.Magical,
             Targeting = new(TargetShape.Self),
@@ -67,6 +88,7 @@ public static class Aquarius
             Description = "Replace normal Focus gain with 1, 1, 2, 3, 5, 8 over six turns",
             Icon = new("abilities.EyeOfTheStorm.png"),
             TurnCost = 1f,
+            Duration = 6,
             FocusCost = 0,
             Flags = ActionFlags.Magical,
             Targeting = new(TargetShape.Self),
@@ -81,6 +103,7 @@ public static class Aquarius
             Description = "Applies Blind to all enemies for 2 turns",
             Icon = new("abilities.Fog.png"),
             TurnCost = 1f,
+            Duration = 2,
             FocusCost = 0,
             Flags = ActionFlags.Magical,
             Targeting = new(TargetShape.All),
@@ -108,6 +131,7 @@ public static class Aquarius
             Name = "Headwind",
             Description = "Multiply the target enemy's Turn costs by 1.5 for 3 turns",
             Icon = new("abilities.Headwind.png"),
+            Duration = 3,
             Flags = ActionFlags.Visual | ActionFlags.Magical,
             Targeting = new(TargetShape.Single),
         };
@@ -193,6 +217,7 @@ public static class Aquarius
             Description = "Inflicts 1 Slashing damage and Blind for 2 turns to all enemies",
             Icon = new("abilities.Sandstorm.png"),
             TurnCost = 1f,
+            Duration = 2,
             FocusCost = 0,
             Flags = ActionFlags.Magical,
             Targeting = new(TargetShape.Cone),
@@ -207,27 +232,10 @@ public static class Aquarius
             Description = "Prevents the target enemy from using magical abilities for 2 turns",
             Icon = new("abilities.Silence.png"),
             TurnCost = 1f,
+            Duration = 2,
             FocusCost = 0,
             Flags = ActionFlags.Visual | ActionFlags.Magical,
             Targeting = new(TargetShape.Single),
-        };
-
-    /// <summary>
-    /// Gets the Barrier ability data.
-    /// </summary>
-    public static AbilityData Barrier { get; } =
-        new()
-        {
-            Id = new(nameof(Barrier)),
-            ActionId = "ability:SoundBarrier",
-            Name = "Sound Barrier",
-            Description =
-                "Prevents all enemies in the back row from using magical abilities for 2 turns",
-            Icon = new("abilities.SoundBarrier.png"),
-            TurnCost = 1f,
-            FocusCost = 0,
-            Flags = ActionFlags.Magical,
-            Targeting = new(TargetShape.All),
         };
 
     public static AbilityData Tailwind { get; } =
@@ -280,6 +288,7 @@ public static class Aquarius
             Description = "Multiply Turn costs by 1.5 for all enemies in the front row for 3 turns",
             Icon = new("abilities.WindShear.png"),
             TurnCost = 1f,
+            Duration = 3,
             FocusCost = 0,
             Flags = ActionFlags.Magical,
             Targeting = new(TargetShape.All),

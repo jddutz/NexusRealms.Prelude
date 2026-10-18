@@ -48,7 +48,8 @@ public static class WeaponCatalog
             (DamageType.Slashing, 1), (DamageType.Crushing, 1)),
         WeaponType.Knives => Define(
             ["weapons.knife_01.png", "weapons.knife_02.png", "weapons.knife_03.png", "weapons.knife_04.png", "weapons.knife_05.png"],
-            (DamageType.Piercing, 1), (DamageType.Slashing, 1)),
+            (DamageType.Piercing, 1), (DamageType.Slashing, 1))
+            with { EquipmentKinds = [EquipmentKind.KnifeOrDagger] },
         WeaponType.Clubs => Define(["weapons.club_01.png", "weapons.club_02.png", "weapons.hammer_01.png"], (DamageType.Crushing, 2)),
         WeaponType.Maces => Define(["weapons.spiked_mace_01.png", "weapons.spiked_mace_02.png"],
             (DamageType.Crushing, 1), (DamageType.Piercing, 1)),
@@ -67,6 +68,7 @@ public static class WeaponCatalog
         return new(id, name, slot, data.Icons, data.Weapon)
         {
             IconIndex = iconIndex,
+            EquipmentKinds = data.EquipmentKinds,
             ThrowDamage = data.ThrowDamage,
             Ammunition = data.Ammunition,
         };

@@ -13,6 +13,14 @@ public abstract record AbilityAction : ActionData
     /// <summary>Unfinished scaffolds cannot be selected or committed.</summary>
     public virtual bool IsImplemented => true;
 
+    /// <summary>Persistent rules contributed by this passive ability.</summary>
+    public virtual ImmutableArray<ActionEffect> PassiveRules => [];
+
+    /// <summary>Whether the passive ability's equipment conditions currently allow its rules.</summary>
+    /// <param name="loadout">The live owner loadout.</param>
+    /// <returns>True when this ability's persistent rules are active.</returns>
+    public virtual bool CanApplyPassiveRules(Combat.CombatLoadout loadout) => true;
+
     /// <summary>Pure recipient selection, shared by commitment and simulation.</summary>
     public virtual ImmutableArray<string> SelectTargets(CombatActionResolver runtime, string sourceId, string? targetId)
         => Targeting.Select(runtime, sourceId, targetId);

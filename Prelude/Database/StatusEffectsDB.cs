@@ -76,6 +76,137 @@ public class StatusEffects
         Rules = [new ResistEffect(new(Category: DamageCategory.Physical), 1, ShareAcrossTypes: true)],
     };
 
+    /// <summary>Reduces Fire damage by one per incoming attack for one timeline turn.</summary>
+    public static StatusEffectData FlameWard { get; } = new()
+    {
+        Id = "flame-ward", Name = "Flame Ward",
+        Description = "Reduces incoming Fire damage by one per attack for one turn.",
+        Icon = new("abilities.FlameWard.png"), Duplicates = DuplicateStatusRule.Refresh,
+        Persistence = new(StatusClock.Timeline, 1), Tags = ["positive"],
+        Rules = [new ResistEffect(new(DamageType.Fire), 1)],
+    };
+
+    /// <summary>Reduces Fire, Ice, and Lightning damage by one per incoming attack for one timeline turn.</summary>
+    public static StatusEffectData ElementalWard { get; } = new()
+    {
+        Id = "elemental-ward", Name = "Elemental Ward",
+        Description = "Reduces incoming Fire, Ice, and Lightning damage by one per attack for one turn.",
+        Icon = new("abilities.ElementalAegis.png"), Duplicates = DuplicateStatusRule.Refresh,
+        Persistence = new(StatusClock.Timeline, 1), Tags = ["positive"],
+        Rules =
+        [
+            new ResistEffect(new(DamageType.Fire), 1),
+            new ResistEffect(new(DamageType.Ice), 1),
+            new ResistEffect(new(DamageType.Lightning), 1),
+        ],
+    };
+
+    /// <summary>Reduces Ice damage by one per incoming attack for one timeline turn.</summary>
+    public static StatusEffectData FrostWard { get; } = new()
+    {
+        Id = "frost-ward", Name = "Frost Ward",
+        Description = "Reduces incoming Ice damage by one per attack for one turn.",
+        Icon = new("abilities.FrostWard.png"), Duplicates = DuplicateStatusRule.Refresh,
+        Persistence = new(StatusClock.Timeline, 1), Tags = ["positive"],
+        Rules = [new ResistEffect(new(DamageType.Ice), 1)],
+    };
+
+    /// <summary>Reduces Lightning damage by one per incoming attack for one timeline turn.</summary>
+    public static StatusEffectData StormWard { get; } = new()
+    {
+        Id = "storm-ward", Name = "Storm Ward",
+        Description = "Reduces incoming Lightning damage by one per attack for one turn.",
+        Icon = new("abilities.StormWard.png"), Duplicates = DuplicateStatusRule.Refresh,
+        Persistence = new(StatusClock.Timeline, 1), Tags = ["positive"],
+        Rules = [new ResistEffect(new(DamageType.Lightning), 1)],
+    };
+
+    /// <summary>Causes the attacker to lose two Focus after dealing Physical damage to the status owner.</summary>
+    public static StatusEffectData Recoil { get; } = new()
+    {
+        Id = "recoil", Name = "Recoil",
+        Description = "Attackers lose 2 Focus after dealing Physical damage to this character.",
+        Icon = new("abilities.Recoil.png"), Duplicates = DuplicateStatusRule.Refresh,
+        Persistence = new(StatusClock.Timeline, 2), Tags = ["positive"],
+        OnDamageTaken = new(
+            new(Category: DamageCategory.Physical),
+            [new ConsumeEffect(new ResourceSubject(ResourceKind.Focus), 2) { Recipients = RecipientScope.Source }]
+        ),
+    };
+
+    /// <summary>Causes the status owner to lose two Focus after dealing Elemental damage.</summary>
+    public static StatusEffectData ElementalRecoil { get; } = new()
+    {
+        Id = "elemental-recoil", Name = "Elemental Recoil",
+        Description = "Loses 2 Focus after dealing Elemental damage.",
+        Icon = new("abilities.ElementalRecoil.png"), Duplicates = DuplicateStatusRule.Refresh,
+        Tags = ["negative"],
+        OnDamageDealt = new(
+            new(Category: DamageCategory.Elemental),
+            [new ConsumeEffect(new ResourceSubject(ResourceKind.Focus), 2) { Recipients = RecipientScope.Source }]
+        ),
+    };
+
+    /// <summary>Restores one Health at the start of every turn while active.</summary>
+    public static StatusEffectData Regen { get; } = new()
+    {
+        Id = "regen", Name = "Regen",
+        Description = "Regenerates 1 Health at the start of each turn for the remainder of the battle.",
+        Icon = new("abilities.Regen.png"), Duplicates = DuplicateStatusRule.Refresh,
+        Tags = ["positive"], TurnStartEffects = [new RestoreEffect(1)],
+    };
+
+    /// <summary>Evades the next incoming melee action.</summary>
+    public static StatusEffectData Aegis { get; } = new()
+    {
+        Id = "aegis", Name = "Aegis",
+        Description = "Negates the next incoming melee attack.",
+        Icon = new("abilities.Aegis.png"), Duplicates = DuplicateStatusRule.Refresh,
+        Tags = ["positive"],
+        Persistence = new(Uses: 1, UseEvent: StatusUseEvent.IncomingAction,
+            UseFilter: new(RequiresActionFlags: ActionFlags.Melee)),
+        Rules = [new EvadeEffect(new(RequiresActionFlags: ActionFlags.Melee))],
+    };
+
+    /// <summary>Negates Elemental damage from the next incoming action.</summary>
+    public static StatusEffectData ElementalAegis { get; } = new()
+    {
+        Id = "elemental-aegis", Name = "Elemental Aegis",
+        Description = "Negates all Elemental damage from the next incoming attack.",
+        Icon = new("abilities.ElementalAegis.png"), Duplicates = DuplicateStatusRule.Refresh,
+        Tags = ["positive"],
+        Persistence = new(
+            Uses: 1,
+            UseEvent: StatusUseEvent.IncomingAction,
+            UseDamageFilter: new(Category: DamageCategory.Elemental)
+        ),
+        Rules = [new NegateEffect(new(Category: DamageCategory.Elemental))],
+    };
+
+    /// <summary>Redirects incoming Elemental damage to every living enemy in the owner's front row for one turn.</summary>
+    public static StatusEffectData Refract { get; } = new()
+    {
+        Id = "refract", Name = "Refract",
+        Description = "Redirects incoming Elemental damage to every living enemy in the front row for one turn.",
+        Icon = new("abilities.Refract.png"), Duplicates = DuplicateStatusRule.Refresh,
+        Persistence = new(StatusClock.RecipientTurnStart, 1), Tags = ["positive"],
+        Rules = [new RedirectDamageEffect(
+            new(Category: DamageCategory.Elemental),
+            new(TargetShape.FrontRow)
+        )],
+    };
+
+    /// <summary>Uses one equipped-weapon damage profile to resist the next incoming melee action.</summary>
+    public static StatusEffectData Parry { get; } = new()
+    {
+        Id = "parry", Name = "Parry",
+        Description = "Reduces the next incoming melee attack by the damage types and amounts of the equipped weapons.",
+        Icon = new("abilities.Parry.png"), Duplicates = DuplicateStatusRule.Refresh,
+        Tags = ["positive"],
+        Persistence = new(UseEvent: StatusUseEvent.IncomingAction, Uses: 1,
+            UseFilter: new(RequiresActionFlags: ActionFlags.Melee)),
+    };
+
     public static StatusEffectData Bewildered { get; } = new()
     {
         Id = "bewildered", Name = "Bewildered",
@@ -109,6 +240,19 @@ public class StatusEffects
         Icon = new("abilities.Silence.png"), Duplicates = DuplicateStatusRule.Refresh,
         Persistence = new(StatusClock.Timeline, 2), Tags = ["negative"],
         Rules = [new RestrictEffect(new(RequiresActionFlags: ActionFlags.Magical))],
+    };
+
+    /// <summary>Prevents movement and Melee actions for two timeline turns.</summary>
+    public static StatusEffectData Held { get; } = new()
+    {
+        Id = "held", Name = "Held", Description = "Cannot change position or use Melee actions for two turns.",
+        Icon = new("abilities.Hold.png"), Duplicates = DuplicateStatusRule.Refresh,
+        Persistence = new(StatusClock.Timeline, 2), Tags = ["negative"],
+        Rules =
+        [
+            new PreventOperationEffect(new(EffectVerb.Move)),
+            new RestrictEffect(new(RequiresActionFlags: ActionFlags.Melee)),
+        ],
     };
 
     /// <summary>Two-turn Fear that prevents actions with melee affinity.</summary>
@@ -172,6 +316,21 @@ public class StatusEffects
         ],
     };
 
+    /// <summary>Doubles Crushing damage from Melee attacks; each independent stack lasts three timeline turns.</summary>
+    public static StatusEffectData Gigas { get; } = new()
+    {
+        Id = "gigas", Name = "Gigas", Description = "Doubles Crushing damage from Melee attacks.",
+        Icon = new("abilities.Gigas.png"), Duplicates = DuplicateStatusRule.Stack,
+        Persistence = new(StatusClock.Timeline, 3), Tags = ["positive"],
+        Rules =
+        [
+            new DamageMultiplierEffect(
+                new(EffectVerb.Damage, DamageType.Crushing, ActionFlags.Melee, RecipientScope.Source),
+                2
+            ),
+        ],
+    };
+
     public static FrozenDictionary<StatusEffectId, StatusEffectData> All { get; } =
-        new[] { Guarded, Inspired, Focused, CoolingBreeze, Elevated, PressureShield, Braced, Bewildered, EyeOfTheStorm, Blind, Silenced, Fear, Berserk, Slow, Haste, Fury, Onslaught }.ToFrozenDictionary(status => status.Id);
+        new[] { Guarded, Inspired, Focused, CoolingBreeze, Elevated, PressureShield, Braced, ElementalWard, FlameWard, FrostWard, StormWard, Recoil, ElementalRecoil, Regen, Aegis, ElementalAegis, Refract, Parry, Bewildered, EyeOfTheStorm, Blind, Silenced, Held, Fear, Berserk, Slow, Haste, Fury, Onslaught, Gigas }.ToFrozenDictionary(status => status.Id);
 }

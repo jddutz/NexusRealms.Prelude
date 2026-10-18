@@ -60,6 +60,9 @@ public static class TargetSelection
                 TargetShape.Column => anchor is { } column && character.Position is { } position && Coordinates(position).Column == Coordinates(column).Column,
                 TargetShape.Adjacent => anchor is { } adjacent && character.Position is { } position
                     && Math.Abs(Coordinates(position).Row - Coordinates(adjacent).Row) + Math.Abs(Coordinates(position).Column - Coordinates(adjacent).Column) == 1,
+                TargetShape.AdjacentInRow => anchor is { } adjacentInRow && character.Position is { } positionInRow
+                    && Coordinates(positionInRow).Row == Coordinates(adjacentInRow).Row
+                    && Math.Abs((int)positionInRow - (int)adjacentInRow) == 1,
                 _ => false,
             })).OrderBy(character => character.Id, StringComparer.Ordinal).Select(character => character.Id).ToImmutableArray();
     }

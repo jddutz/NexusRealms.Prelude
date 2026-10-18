@@ -206,6 +206,33 @@ Check(
 foreach (var ability in NexusRealms.Prelude.Database.Progression.Aries.Definitions)
     Check(AbilityActionRegistry.Default.Resolve(ability).IsImplemented,
         $"Aries ability {ability.Id} must have a complete runtime implementation.");
+foreach (var (ability, duration) in new (AbilityData Ability, float Duration)[]
+{
+    (NexusRealms.Prelude.Database.Progression.Aries.Brace, 3),
+    (NexusRealms.Prelude.Database.Progression.Aries.Enrage, 2),
+    (NexusRealms.Prelude.Database.Progression.Aries.Fury, 1),
+    (NexusRealms.Prelude.Database.Progression.Aries.Haste, 3),
+    (NexusRealms.Prelude.Database.Progression.Aries.Onslaught, 2),
+    (NexusRealms.Prelude.Database.Progression.Aries.Taunt, 2),
+    (NexusRealms.Prelude.Database.Progression.Aquarius.Bewilder, 2),
+    (NexusRealms.Prelude.Database.Progression.Aquarius.CoolingBreeze, 3),
+    (NexusRealms.Prelude.Database.Progression.Aquarius.EyeOfTheStorm, 6),
+    (NexusRealms.Prelude.Database.Progression.Aquarius.Fog, 2),
+    (NexusRealms.Prelude.Database.Progression.Aquarius.Headwind, 3),
+    (NexusRealms.Prelude.Database.Progression.Aquarius.Sandstorm, 2),
+    (NexusRealms.Prelude.Database.Progression.Aquarius.Silence, 2),
+    (NexusRealms.Prelude.Database.Progression.Aquarius.Barrier, 2),
+    (NexusRealms.Prelude.Database.Progression.Aquarius.WindShear, 3),
+    (NexusRealms.Prelude.Database.Progression.Cancer.Brace, 2),
+})
+    Check(ability.Duration == duration, $"{ability.Name} must author its fixed duration.");
+Check(NexusRealms.Prelude.Database.Progression.Aries.Intimidate.Duration is null
+    && NexusRealms.Prelude.Database.Progression.Aquarius.Levitate.Duration is null
+    && NexusRealms.Prelude.Database.Progression.Cancer.Aegis.Duration is null
+    && NexusRealms.Prelude.Database.Progression.Cancer.Parry.Duration is null
+    && NexusRealms.Prelude.Database.Progression.Cancer.Regen.Duration is null
+    && NexusRealms.Prelude.Database.Progression.Cancer.ShieldMastery.Duration is null,
+    "Non-fixed, use-based, variable, battle-long, and passive durations must remain unspecified.");
 
 var fearStatus = NexusRealms.Prelude.Database.StatusEffects.Fear;
 f = new Fixture([fearStatus]);

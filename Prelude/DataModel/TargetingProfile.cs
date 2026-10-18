@@ -15,6 +15,8 @@ public enum TargetShape
     Column,
     /// <summary>Selects positions orthogonally adjacent to the chosen recipient.</summary>
     Adjacent,
+    /// <summary>Selects positions immediately before or after the chosen recipient in the same formation row.</summary>
+    AdjacentInRow,
     /// <summary>Selects every eligible character.</summary>
     All,
     /// <summary>Front-center, both middle-center, and all three back-row positions.</summary>

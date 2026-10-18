@@ -5,6 +5,8 @@ public sealed record CarriedItem(ItemId Id, string Name, string Slot, string[]? 
 {
     /// <summary>Resource type supplied when this item is ammunition.</summary>
     public AmmunitionType? Ammunition { get; init; }
+    /// <summary>Explicit equipment categories supplied by this item.</summary>
+    public ImmutableArray<EquipmentKind> EquipmentKinds { get; init; } = [];
     /// <summary>Typed damage supplied when this item is thrown.</summary>
     public DamageProfile? ThrowDamage { get; init; }
     /// <summary>Positive number of units in this identity's stack.</summary>

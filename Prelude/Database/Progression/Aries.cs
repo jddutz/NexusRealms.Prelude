@@ -36,6 +36,7 @@ public static class Aries
             Description = "Reduce Physical damage taken by 1 per incoming attack for 3 turns",
             Icon = new("abilities.Brace.png"),
             TurnCost = 1.0f,
+            Duration = 3,
             FocusCost = 2,
             Targeting = new(TargetShape.Self),
         };
@@ -106,6 +107,7 @@ public static class Aries
             Description = "Applies Berserk to all targets for 2 turns",
             Icon = new("abilities.Enrage.png"),
             TurnCost = 1.0f,
+            Duration = 2,
             FocusCost = 3,
             Targeting = new(TargetShape.Row),
         };
@@ -120,6 +122,7 @@ public static class Aries
                 "Applies a 25% speed boost for 1 turn after attacking an enemy (stackable)",
             Icon = new("abilities.Fury.png"),
             TurnCost = 0.8f,
+            Duration = 1,
             FocusCost = 2,
             Flags = ActionFlags.Melee,
             Targeting = new(TargetShape.Melee),
@@ -148,6 +151,7 @@ public static class Aries
             Description = "Increase speed of all actions by 25% for 3 turns",
             Icon = new("abilities.Haste.png"),
             TurnCost = 0.5f,
+            Duration = 3,
             FocusCost = 1,
             Targeting = new(TargetShape.Self),
         };
@@ -174,6 +178,7 @@ public static class Aries
             Description = "All melee attacks gain +1 Basic damage for 2 turns",
             Icon = new("abilities.Onslaught.png"),
             TurnCost = 1.0f,
+            Duration = 2,
             FocusCost = 1,
             Targeting = new(TargetShape.Self),
         };
@@ -252,6 +257,7 @@ public static class Aries
             Description = "Applies Berserk to the target for 2 turns",
             Icon = new("abilities.Taunt.png"),
             TurnCost = 1.0f,
+            Duration = 2,
             FocusCost = 1,
             Targeting = new(TargetShape.Single),
         };
@@ -302,19 +308,6 @@ public static class Aries
                 new(Brace.Id, null, -0.84f, 0.56f),
                 new(Defiance.Id, Brace.Id, -0.84f, 0.56f),
                 new(Recovery.Id, Defiance.Id, -0.84f, 0.56f),
-                // West — Momentum
-                new(Haste.Id, null, -0.84f, 0.56f),
-                new(Bloodlust.Id, Haste.Id, -0.84f, 0.56f),
-                new(PrimalRage.Id, Bloodlust.Id, -0.84f, 0.56f),
-                new(DualStrike.Id, Haste.Id, -0.84f, 0.56f),
-                new(Fury.Id, DualStrike.Id, -0.84f, 0.56f),
-                // South — Control
-                new(Bluff.Id, null, -0.84f, 0.56f),
-                new(WarCry.Id, Bluff.Id, -0.84f, 0.56f),
-                new(Intimidate.Id, WarCry.Id, -0.84f, 0.56f),
-                new(Shock.Id, Intimidate.Id, -0.84f, 0.56f),
-                new(Taunt.Id, Bluff.Id, -0.84f, 0.56f),
-                new(Enrage.Id, Taunt.Id, -0.84f, 0.56f),
                 // East — Force
                 new(Grab.Id, null, -0.84f, 0.56f),
                 new(Push.Id, Grab.Id, -0.84f, 0.56f),
@@ -322,6 +315,19 @@ public static class Aries
                 new(Onslaught.Id, Charge.Id, -0.84f, 0.56f),
                 new(Rampage.Id, Onslaught.Id, -0.84f, 0.56f),
                 new(KingMaker.Id, Charge.Id, -0.84f, 0.56f),
+                // South — Control
+                new(Bluff.Id, null, -0.84f, 0.56f),
+                new(WarCry.Id, Bluff.Id, -0.84f, 0.56f),
+                new(Intimidate.Id, WarCry.Id, -0.84f, 0.56f),
+                new(Shock.Id, Intimidate.Id, -0.84f, 0.56f),
+                new(Taunt.Id, Bluff.Id, -0.84f, 0.56f),
+                new(Enrage.Id, Taunt.Id, -0.84f, 0.56f),
+                // West — Momentum
+                new(Haste.Id, null, -0.84f, 0.56f),
+                new(Bloodlust.Id, Haste.Id, -0.84f, 0.56f),
+                new(PrimalRage.Id, Bloodlust.Id, -0.84f, 0.56f),
+                new(DualStrike.Id, Haste.Id, -0.84f, 0.56f),
+                new(Fury.Id, DualStrike.Id, -0.84f, 0.56f),
             ]
         );
 }

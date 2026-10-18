@@ -19,7 +19,7 @@ public sealed class CombatActionResolver
         Combat = combat;
         combat.Resolver = this;
         _statuses = statuses.ToDictionary();
-        foreach (var definition in _statuses.Values) CombatRules.ValidateStatus(definition);
+        foreach (var definition in _statuses.Values) CombatRules.ValidateStatus(definition, _statuses);
         combat.TurnStarted += OnTurnStarted;
         Behavior = new(this);
         if (initializeFocusGain) ScheduleFocusBoundary(MathF.Floor(combat.Timeline.CurrentTurn) + 1);
@@ -403,18 +403,42 @@ public sealed class CombatActionResolver
         var targets = recipients.Distinct(StringComparer.Ordinal).ToImmutableArray();
         if (targets.Any(id => !_characters.ContainsKey(id))) throw new ArgumentException("Unknown action recipient.");
         Expire();
-        var activeAtStart = targets.ToDictionary(id => id, id => _characters[id].ActiveStatuses.ToArray());
-        var evasions = targets.ToDictionary(id => id, id => Rules(_characters[id]).Where(rule => rule.Effect is EvadeEffect evade && evade.Filter.Matches(action, sourceId)).Select(rule => rule.Id).ToImmutableArray());
+        var effects = action is AbilityAction behavior ? behavior.Execute(this, sourceId) : action.BuildEffects();
+        effects = AddSourceDamageBonusEffects(action, sourceId, effects);
+        var effectRecipients = effects.Select(effect =>
+            effect.Recipients == RecipientScope.Source
+                ? ImmutableArray.Create(sourceId)
+                    : effect is DamageEffect damage
+                        ? (damage.RecipientTargeting is { } recipientTargeting
+                            ? targets.SelectMany(targetId => recipientTargeting.Select(this, sourceId, targetId))
+                            : targets)
+                            .SelectMany(targetId =>
+                            {
+                                var redirected = Rules(_characters[targetId])
+                                    .Select(rule => rule.Effect)
+                                    .OfType<RedirectDamageEffect>()
+                                    .Where(rule => rule.Filter.Matches(damage.Type, sourceId, action.Flags))
+                                    .SelectMany(rule => rule.Targeting.Select(this, targetId, null))
+                                    .Distinct(StringComparer.Ordinal)
+                                    .ToImmutableArray();
+                                return redirected.IsEmpty ? [targetId] : redirected;
+                            })
+                            .Distinct(StringComparer.Ordinal).ToImmutableArray()
+                    : targets
+        ).ToImmutableArray();
+        var effectTargets = targets.Concat(effectRecipients.SelectMany(recipientsForEffect => recipientsForEffect))
+            .Distinct(StringComparer.Ordinal).ToImmutableArray();
+        var activeAtStart = effectTargets.ToDictionary(id => id, id => _characters[id].ActiveStatuses.ToArray());
+        var sourceStatusesAtStart = _characters[sourceId].ActiveStatuses.ToArray();
+        var evasions = effectTargets.ToDictionary(id => id, id => Rules(_characters[id]).Where(rule => rule.Effect is EvadeEffect evade && evade.Filter.Matches(action, sourceId)).Select(rule => rule.Id).ToImmutableArray());
         var results = ImmutableArray.CreateBuilder<EffectOutcome>();
         var changed = new Dictionary<(int Index, string Recipient), bool>();
         var spentResistance = new Dictionary<(string Recipient, string Rule, DamageType? Type, int Attack), int>();
-        var effects = action is AbilityAction behavior ? behavior.Execute(this, sourceId) : action.BuildEffects();
-        effects = AddSourceDamageBonusEffects(action, sourceId, effects);
         var appliedSourceDamageModifiers = new HashSet<(string Recipient, string Rule, DamageType Type, int Attack)>();
         for (var index = 0; index < effects.Length; index++)
         {
             var effect = effects[index];
-            var selected = effect.Recipients == RecipientScope.Source ? ImmutableArray.Create(sourceId) : targets;
+            var selected = effectRecipients[index];
             if (effect is ShiftRowEffect shift) selected = FormationMovement.Order(this, selected, shift.Direction);
             foreach (var id in selected)
             {
@@ -437,6 +461,26 @@ public sealed class CombatActionResolver
                 if (effect is DamageEffect damage && result.ActualChange > 0)
                 {
                     var actualDamage = checked((int)result.ActualChange);
+                    ApplyStatusDamageEffects(
+                        action,
+                        activeAtStart[recipient.Id],
+                        recipient.Id,
+                        status => status.OnDamageTaken,
+                        damage.Type,
+                        sourceId,
+                        $"damage-{index}-{recipient.Id}-taken",
+                        results
+                    );
+                    ApplyStatusDamageEffects(
+                        action,
+                        sourceStatusesAtStart,
+                        sourceId,
+                        status => status.OnDamageDealt,
+                        damage.Type,
+                        sourceId,
+                        $"damage-{index}-{recipient.Id}-dealt",
+                        results
+                    );
                     ApplyPassiveEffects(
                         recipient,
                         ability => ability.OnDamageTaken(damage.Type, actualDamage),
@@ -462,6 +506,10 @@ public sealed class CombatActionResolver
             {
                 if (status.RemainingUses is null || !(_characters[id].ActiveStatuses.Contains(status))
                     || status.Persistence.UseFilter is { } filter && !filter.Matches(action, sourceId)) continue;
+                if (status.Persistence.UseDamageFilter is { } damageFilter
+                    && !results.Any(result => result.RecipientId == id
+                        && result.Requested is DamageEffect damage
+                        && damageFilter.Matches(damage.Type, sourceId, action.Flags))) continue;
                 if (status.Persistence.UseEvent == StatusUseEvent.IncomingAction
                     || status.Persistence.UseEvent == StatusUseEvent.NonEvadedIncomingAction && evasions[id].Length == 0)
                 {
@@ -474,6 +522,49 @@ public sealed class CombatActionResolver
         var outcome = new ActionOutcome(committedAction, sourceId, targets, results.ToImmutable());
         Resolved?.Invoke(outcome);
         return outcome;
+    }
+
+    /// <summary>Applies reactive operations from status instances when typed damage is actually dealt.</summary>
+    /// <param name="action">The action that dealt the qualifying damage.</param>
+    /// <param name="activeStatuses">Statuses captured before this action began resolving.</param>
+    /// <param name="statusOwnerId">The character whose status owns the trigger.</param>
+    /// <param name="selectTrigger">Selects the damage event handled by each status.</param>
+    /// <param name="damageType">The type of damage that changed Health.</param>
+    /// <param name="damageSourceId">The character that dealt the damage.</param>
+    /// <param name="triggerId">Stable identity for this damage trigger occurrence.</param>
+    /// <param name="results">The containing action's ordered effect results.</param>
+    private void ApplyStatusDamageEffects(
+        ActionData action,
+        IEnumerable<ActiveStatus> activeStatuses,
+        string statusOwnerId,
+        Func<StatusEffectData, DamageStatusTrigger?> selectTrigger,
+        DamageType damageType,
+        string damageSourceId,
+        string triggerId,
+        ImmutableArray<EffectOutcome>.Builder results
+    )
+    {
+        var statusOwner = _characters[statusOwnerId];
+        foreach (var status in activeStatuses.OrderBy(status => status.Sequence))
+        {
+            if (!statusOwner.ActiveStatuses.Contains(status)) continue;
+            var trigger = selectTrigger(status.Definition);
+            if (trigger is null || !trigger.Filter.Matches(damageType, damageSourceId, action.Flags)) continue;
+            for (var index = 0; index < trigger.Effects.Length; index++)
+            {
+                var effect = trigger.Effects[index] with { Recipients = RecipientScope.Source };
+                results.Add(ResolveEffect(
+                    action,
+                    $"status:{status.ApplicationSequence}:{triggerId}:{index}",
+                    effect,
+                    _characters[damageSourceId],
+                    damageSourceId,
+                    new Dictionary<(string Recipient, string Rule, DamageType? Type, int Attack), int>(),
+                    new HashSet<(string Recipient, string Rule, DamageType Type, int Attack)>(),
+                    null
+                ));
+            }
+        }
     }
 
     /// <summary>Applies event effects from learned passive abilities to their living owner.</summary>
@@ -521,6 +612,18 @@ public sealed class CombatActionResolver
         var result = EffectResult.Applied;
         string? reason = null;
         var attribution = ImmutableArray.CreateBuilder<string>();
+        var operationPreventions = Rules(recipient)
+            .Where(rule => rule.Effect is PreventOperationEffect prevent
+                && prevent.Filter.Matches(effect, action.Flags, RecipientScope.Targets))
+            .Concat(Rules(_characters[source])
+                .Where(rule => rule.Effect is PreventOperationEffect prevent
+                    && prevent.Filter.Matches(effect, action.Flags, RecipientScope.Source)))
+            .Select(rule => rule.Id)
+            .Distinct(StringComparer.Ordinal)
+            .ToImmutableArray();
+        if (!operationPreventions.IsEmpty)
+            return new(effectId, effect.Verb, recipient.Id, effect, requested, 0, 0, EffectResult.Negated,
+                "Operation is prevented by an active rule.", operationPreventions);
         switch (effect)
         {
             case DamageEffect damage:
@@ -528,14 +631,16 @@ public sealed class CombatActionResolver
                 var amount = (int)Modified(action, recipient, source, damage, NumericalField.DamageAmount,
                     damage.Amount, appliedSourceDamageModifiers, attribution);
                 var rules = Rules(recipient).ToArray();
-                var negations = rules.Where(rule => rule.Effect is NegateEffect negate && negate.Filter.Matches(damage.Type, source)).ToArray();
+                var negations = rules.Where(rule => rule.Effect is NegateEffect negate
+                    && negate.Filter.Matches(damage.Type, source, action.Flags)).ToArray();
                 if (negations.Length > 0)
                 {
                     amount = 0; result = EffectResult.Negated; attribution.AddRange(negations.Select(rule => rule.Id));
                 }
                 else foreach (var rule in rules)
                 {
-                    if (rule.Effect is not ResistEffect resist || !resist.Filter.Matches(damage.Type, source)) continue;
+                    if (rule.Effect is not ResistEffect resist
+                        || !resist.Filter.Matches(damage.Type, source, action.Flags)) continue;
                     var key = (recipient.Id, rule.Id, resist.ShareAcrossTypes ? (DamageType?)null : damage.Type, effect.AttackIndex);
                     var reduction = Math.Min(amount, Math.Max(0, resist.Amount - spentResistance.GetValueOrDefault(key)));
                     if (reduction == 0) continue;
@@ -605,6 +710,7 @@ public sealed class CombatActionResolver
                 {
                     RemoveItem item => recipient.Loadout.RemoveOwnedItem(item.Item) ? 1 : 0,
                     RemoveEquipment equipment => recipient.Loadout.Unequip(equipment.Slot) ? 1 : 0,
+                    DisarmEquipment => Disarm(recipient),
                     RemoveCapability capability => RemoveCapability(recipient, capability.ActionId),
                     _ => 0,
                 };
@@ -630,7 +736,7 @@ public sealed class CombatActionResolver
                     if (resolved <= 0) { reason = "Modified status duration is zero."; break; }
                     persistence = persistence with { Duration = (float)resolved };
                 }
-                actual = ApplyStatus(recipient, apply.Status, source, persistence) ? 1 : 0;
+                actual = ApplyStatus(recipient, apply.Status, source, persistence, apply.RuleOverrides) ? 1 : 0;
                 break;
             case DispelEffect dispel:
                 var matches = recipient.ActiveStatuses.Where(status => (dispel.Selector.Id is null || status.Definition.Id == dispel.Selector.Id)
@@ -689,31 +795,54 @@ public sealed class CombatActionResolver
         return 1;
     }
 
-    /// <summary>Sums matching source and target modifiers, applying source damage rules once per attack and type.</summary>
+    /// <summary>Unequips the recipient's weapons and schedules their re-equipping boundary.</summary>
+    /// <param name="recipient">The character whose equipped weapons are disarmed.</param>
+    /// <returns>The number of unique weapons disarmed.</returns>
+    private int Disarm(ActionCharacterState recipient)
+    {
+        var itemIds = recipient.Loadout.DisarmWeapons();
+        if (itemIds.IsEmpty) return 0;
+
+        var recipientId = recipient.Id;
+        var returnTurn = (float)Math.Ceiling((double)Combat.Timeline.CurrentTurn + 1);
+        Combat.ScheduleSimulationEvent(returnTurn, $"Disarm ends: {recipientId}",
+            system => system.Resolver!._characters[recipientId].Loadout.ReturnDisarmedWeapons(itemIds));
+        return itemIds.Length;
+    }
+
+    /// <summary>Applies matching additive and multiplicative rules from the source and target.</summary>
     private double Modified(ActionData action, ActionCharacterState recipient, string source, ActionEffect effect,
         NumericalField field, double amount, HashSet<(string Recipient, string Rule, DamageType Type, int Attack)> appliedSourceDamageModifiers,
         ImmutableArray<string>.Builder attribution)
     {
         double sum = 0;
+        double multiplier = 1;
         var rules = Rules(recipient)
-            .Where(rule => rule.Effect is ModifyEffect modify && modify.Filter.Recipient == RecipientScope.Targets)
+            .Select(rule => (rule.Effect, rule.Id, Owner: RecipientScope.Targets))
             .Concat(Rules(_characters[source])
-                .Where(rule => rule.Effect is ModifyEffect modify && modify.Filter.Recipient == RecipientScope.Source));
+                .Select(rule => (rule.Effect, rule.Id, Owner: RecipientScope.Source)));
         foreach (var rule in rules)
         {
-            if (rule.Effect is not ModifyEffect modify || modify.Field != field
-                || modify.Filter.Verb != effect.Verb
-                || modify.Filter.DamageType is { } type && (effect is not DamageEffect damage || damage.Type != type)
-                || modify.Filter.RequiredActionFlags is { } required && (action.Flags & required) != required)
+            var (filter, ruleField) = rule.Effect switch
+            {
+                ModifyEffect modify => (modify.Filter, modify.Field),
+                DamageMultiplierEffect damageMultiplier => (damageMultiplier.Filter, NumericalField.DamageAmount),
+                _ => default,
+            };
+            if (filter is null || filter.Recipient != rule.Owner || ruleField != field
+                || filter.Verb != effect.Verb
+                || filter.DamageType is { } type && (effect is not DamageEffect damage || damage.Type != type)
+                || filter.RequiredActionFlags is { } required && (action.Flags & required) != required)
                 continue;
-            if (modify.Filter.Recipient == RecipientScope.Source && field == NumericalField.DamageAmount
+            if (rule.Owner == RecipientScope.Source && field == NumericalField.DamageAmount
                 && effect is DamageEffect sourceDamage
                 && !appliedSourceDamageModifiers.Add((recipient.Id, rule.Id, sourceDamage.Type, sourceDamage.AttackIndex)))
                 continue;
-            sum += modify.Adjustment;
+            if (rule.Effect is ModifyEffect additive) sum += additive.Adjustment;
+            else if (rule.Effect is DamageMultiplierEffect scale) multiplier *= scale.Multiplier;
             attribution.Add(rule.Id);
         }
-        return Math.Clamp(amount + sum, 0, field is NumericalField.DamageAmount or NumericalField.RestoreAmount or NumericalField.StatusDuration ? int.MaxValue : float.MaxValue / 2d);
+        return Math.Clamp((amount + sum) * multiplier, 0, field is NumericalField.DamageAmount or NumericalField.RestoreAmount or NumericalField.StatusDuration ? int.MaxValue : float.MaxValue / 2d);
     }
 
     /// <summary>Adds zero-amount typed damage entries where source rules need to create a missing damage type.</summary>
@@ -797,18 +926,34 @@ public sealed class CombatActionResolver
         foreach (var status in character.ActiveStatuses.OrderBy(status => status.Sequence))
             for (var index = 0; index < status.Definition.Rules.Length; index++)
                 yield return (status.Definition.Rules[index], $"{status.Definition.Id}:{status.Sequence}:{index}:source={status.SourceId}");
+        foreach (var ability in character.Loadout.Actions.Values.OfType<AbilityAction>()
+            .Where(action => action.Passive && action.CanApplyPassiveRules(character.Loadout))
+            .OrderBy(action => action.Id, StringComparer.Ordinal))
+            for (var index = 0; index < ability.PassiveRules.Length; index++)
+                yield return (ability.PassiveRules[index], $"{character.Id}:passive:{ability.Id}:{index}");
     }
 
     /// <summary>Applies required duplicate handling and independent persistence state.</summary>
-    private bool ApplyStatus(ActionCharacterState recipient, StatusEffectId id, string source, StatusPersistence persistence)
+    /// <summary>Applies a status instance, optionally replacing its shared definition's persistent rules.</summary>
+    /// <param name="recipient">The character receiving the status.</param>
+    /// <param name="id">The registered status identity.</param>
+    /// <param name="source">The character applying the status.</param>
+    /// <param name="persistence">The lifetime and bounded-use policy for this application.</param>
+    /// <param name="ruleOverrides">Optional rules stored only on this instance.</param>
+    /// <returns>True when duplicate handling allows the application.</returns>
+    private bool ApplyStatus(ActionCharacterState recipient, StatusEffectId id, string source, StatusPersistence persistence,
+        ImmutableArray<ActionEffect>? ruleOverrides = null)
     {
-        var definition = _statuses[id];
+        var authoredDefinition = _statuses[id];
+        var definition = ruleOverrides is { } rules
+            ? authoredDefinition with { Rules = rules }
+            : authoredDefinition;
         var duplicates = recipient.ActiveStatuses.Where(status => status.Definition.Id == id).ToArray();
-        if (duplicates.Length > 0 && definition.Duplicates == DuplicateStatusRule.Reject) return false;
-        if (definition.Duplicates is DuplicateStatusRule.Refresh or DuplicateStatusRule.Replace)
+        if (duplicates.Length > 0 && authoredDefinition.Duplicates == DuplicateStatusRule.Reject) return false;
+        if (authoredDefinition.Duplicates is DuplicateStatusRule.Refresh or DuplicateStatusRule.Replace)
             foreach (var existing in duplicates) RemoveStatus(recipient, existing);
         var application = NextApplicationSequence();
-        var sequence = definition.Duplicates == DuplicateStatusRule.Refresh && duplicates.Length > 0 ? duplicates[0].Sequence : application;
+        var sequence = authoredDefinition.Duplicates == DuplicateStatusRule.Refresh && duplicates.Length > 0 ? duplicates[0].Sequence : application;
         var status = new ActiveStatus(sequence, definition, source, persistence, Combat.Timeline.CurrentTurn, recipient.TurnsStarted);
         status.ApplicationSequence = application;
         recipient.ActiveStatuses.Add(status);
@@ -882,8 +1027,25 @@ public sealed class CombatActionResolver
     /// <summary>Expires recipient-turn statuses before selection and automatic decision making.</summary>
     private void OnTurnStarted(string id)
     {
-        if (_characters.TryGetValue(id, out var recipient)) recipient.TurnsStarted++;
+        if (!_characters.TryGetValue(id, out var recipient)) { Expire(); return; }
+        recipient.TurnsStarted++;
         Expire();
+        if (recipient.Health.Health <= 0) return;
+        foreach (var status in recipient.ActiveStatuses.OrderBy(status => status.Sequence).ToArray())
+        {
+            var effects = status.Definition.TurnStartEffects;
+            if (effects.IsEmpty || !recipient.ActiveStatuses.Contains(status)) continue;
+            _ = ResolveCommitted(
+                new ActionData
+                {
+                    Id = $"status:{status.Definition.Id.Value}",
+                    Name = status.Definition.Name,
+                    Effects = effects,
+                },
+                recipient.Id,
+                [recipient.Id]
+            );
+        }
     }
     /// <summary>Removes expired instances without reversing any past changes.</summary>
     private void Expire()
@@ -898,6 +1060,8 @@ public sealed class CombatActionResolver
     private void ValidateContext(ActionData action)
     {
         CombatRules.Validate(action, _statuses);
+        if (action is AbilityAction ability)
+            foreach (var rule in ability.PassiveRules) CombatRules.ValidateEffect(rule, true, _statuses);
         foreach (var grant in action.BuildEffects().OfType<GrantEffect>())
             if (grant.Subject is GrantCapability capability && !ActionCatalog.ContainsKey(capability.ActionId)) throw new ArgumentException($"Unknown action capability '{capability.ActionId}'.");
     }
@@ -921,7 +1085,8 @@ public sealed class CombatActionResolver
     {
         DamageEffect damage => damage.Amount, RestoreEffect restore => restore.Amount, DelayEffect delay => delay.Amount,
         ConsumeEffect consume => consume.Amount, GrantEffect { Subject: GrantResource resource } => resource.Amount,
-        GrantEffect { Subject: GrantItem item } => item.Item.Quantity, ApplyEffect apply => apply.Persistence.Duration,
+        GrantEffect { Subject: GrantItem item } => item.Item.Quantity, RemoveEffect { Subject: DisarmEquipment } => 1,
+        ApplyEffect apply => apply.Persistence.Duration,
         DispelEffect dispel => dispel.DurationReduction ?? dispel.Limit ?? int.MaxValue, TransferEffect transfer => transfer.Amount, _ => 1,
     };
     /// <summary>Maps authoritative formation position to scheduler row ordering.</summary>

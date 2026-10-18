@@ -10,6 +10,8 @@ public sealed record ItemData
     public int IconIndex { get; init; }
     public string? Icon => ItemIconVariants.Select(Icons, IconIndex);
     public AmmunitionType? Ammunition { get; init; }
+    /// <summary>Explicit equipment categories supplied by this item.</summary>
+    public ImmutableArray<EquipmentKind> EquipmentKinds { get; init; } = [];
     public WeaponData? Weapon { get; init; }
     public DamageProfile? ThrowDamage { get; init; }
 }

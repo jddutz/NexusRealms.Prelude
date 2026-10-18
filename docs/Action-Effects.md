@@ -31,6 +31,9 @@ declares capabilities unlocked by that progression node. `CombatLoadout.Learn`
 records the learned ability and registers its action classes with a required
 ability condition. All required abilities, owned items, and equipment associations
 must match. Unequipping disables the action without unlearning the ability.
+Equipment requirements may select a slot, an exact item, or item kinds such as
+`Shield` and `KnifeOrDagger`; `AnyOf` accepts any listed kind. Aegis requires an
+equipped shield, and the weapon catalog marks knives for Knife/Dagger requirements.
 Granting a capability does not learn progression; its existing requirements remain.
 `CommandDefinition` is the compatibility HUD adapter, with an `ActionId` distinct
 from `AbilityId`. Dragging a progression icon cannot learn it or invent an action.
@@ -49,6 +52,11 @@ with an `Effect` suffix. Their subjects and numerical fields are strongly typed.
 Resist/Negate/Prevent/Evade/Restrict/Modify are persistent rules installed through
 a status's `Rules` or an explicit equipment/innate rule collection; authoring them
 as transient action operations is rejected because they have no defined lifetime.
+`RedirectDamageEffect` is also a persistent rule: it reroutes matching damage to
+the configured living recipients before that damage is mitigated or applied.
+`PreventOperationEffect` uses an `EffectFilter` to block matching operations at
+resolution while recording the rule attribution; `PreventEffect` continues to
+block applications of a specific status.
 
 Defaults are explicit:
 
@@ -56,11 +64,13 @@ Defaults are explicit:
   cancelling independent effects. `RequiresEffect` names an earlier operation
   which must have changed that same recipient before a dependent effect proceeds.
 - Freeze recipients at resolution start. Single, self, row, column, adjacent,
-  cone, and all are targeting profiles. Row, column and adjacent use a selected
-  target as their anchor; cone selects front-center, both middle-center slots,
-  and all three back-row slots without an anchor. Targeting defaults to the
-  opposing team; `TargetingOptions.AllTeams` explicitly includes both teams,
-  including the source. Movement does not recalculate recipients.
+  adjacent-in-row, cone, and all are targeting profiles. Row, column and
+  adjacency profiles use a selected target as their anchor; cone selects
+  front-center, both middle-center slots, and all three back-row slots without
+  an anchor. Targeting defaults to the opposing team; `TargetingOptions.AllTeams`
+  explicitly includes both teams, including the source. Damage effects may use
+  `RecipientTargeting` to select additional recipients from each frozen action
+  target. Movement does not recalculate recipients.
 - Source-scoped effects express execution commitments independent of target
   evasion. Each target's evasion cancels every target-scoped operation for that
   recipient while other targets continue.
@@ -72,10 +82,13 @@ Defaults are explicit:
   per-action, per-type budget across split damage entries. Negation overrides
   numerical changes. Outcomes retain requested amount, resolved damage, and
   actual Health loss separately, together with rule instance/source attribution.
-- Numerical modification is signed addition, summed and clamped once. Supported
+- Numerical modification supports signed additive adjustments and positive
+  damage multipliers. Additive adjustments are summed before matching damage
+  multipliers are applied, and the result is clamped once. Supported additive
   fields are Damage amount, Restore amount, Delay amount, and status duration.
   Integer fields reject fractional adjustments. Targeting extent and unsupported
-  operations cannot be modified. Other numerical fields remain additive. Persistent `TurnCostMultiplierEffect` rules multiply together to scale committed Turn costs.
+  operations cannot be modified. Persistent `TurnCostMultiplierEffect` rules
+  multiply together to scale committed Turn costs.
 - Delay only affects an existing future occurrence. It cannot postpone an
   already active action. Movement rejects player/occupied positions and updates
   the formation and scheduler row without an implicit swap or displacement.
@@ -84,6 +97,9 @@ Defaults are explicit:
   identity and inventory capacity rules and never implicitly equips items.
 - Remove distinguishes owned items, equipment associations, and capabilities.
   Unequipping requires inventory space. Removing items clears their associations.
+- An `ApplyEffect` may override the persistent rules on that individual status
+  instance; overrides are validated as persistent rules and do not mutate the
+  shared status definition.
 - Resource transfers require the full amount and validate capacity before either
   endpoint changes. Item transfers move whole stacks, preserving identity and
   weapon ammunition state; they reject duplicate identities/full destinations
@@ -97,6 +113,13 @@ of 1 with `RecipientTurnStart` expires before selection at the next recipient tu
 Bounded uses declare incoming action or non-evaded incoming action, optionally
 filtered. Dispel uses explicit identifiers/tags; limited selection removes oldest
 applications first. With DurationReduction, Dispel instead shortens matching timed statuses by that many turns, removing exhausted instances and leaving permanent lifetimes unchanged. Natural expiration does not undo earlier effects.
+
+Statuses may declare `OnDamageTaken` or `OnDamageDealt` triggers with a typed
+damage filter and ordered operations. Triggers run only after positive Health
+loss, use statuses active at the start of the action, and append their results
+to the same outcome; previews use the same resolution path. Recoil uses this to
+drain an attacker's Focus after Physical damage, while Elemental Recoil drains
+the marked character's Focus after they deal Elemental damage.
 
 Existing status presentation placeholders remain mechanically empty; their names
 imply no resistance, Focus recovery, or other hidden behavior. Existing attacks
