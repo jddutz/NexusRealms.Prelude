@@ -90,7 +90,8 @@ foreach (var graph in ProgressionGraphs.All.Values)
     }
     var state = new GameState(story.StartNodeId) { Zodiac = graph.Sign };
     Check(state.AbilityPoints == 20, "Players start with twenty ability points.");
-    Check(!ProgressionRules.CanContinue(state, begin), "Cannot skip learning with points available.");
+    Check(ProgressionRules.CanContinue(state, begin),
+        "Players may continue without spending available ability points.");
     Check(!ProgressionRules.CanLearn(state, story, "missing"), "Unknown ability cannot be learned.");
     var firstAbility = graph.Abilities.First(n => ProgressionRules.CanLearn(state, story, n.Id));
     Check(ProgressionRules.Learn(state, story, firstAbility.Id), "Available ability must be learnable.");

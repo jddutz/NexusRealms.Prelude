@@ -163,7 +163,7 @@ public sealed class ProgressionScene : Scene
             _status!.Text = $"Ability points: {state.AbilityPoints}. "
                 + (state.AbilityPoints == 0 ? "No points available."
                     : ProgressionRules.HasLearnedThisVisit(state, visit) ? "Learn more abilities or continue when ready."
-                    : "Choose an ability (1 point). Prerequisites apply.");
+                    : "Choose an ability (1 point) or continue when ready. Prerequisites apply.");
             _continue!.IsVisible = ProgressionRules.CanContinue(state, visit);
         }
     }

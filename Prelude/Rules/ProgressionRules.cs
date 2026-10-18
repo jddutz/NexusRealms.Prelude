@@ -7,12 +7,9 @@ public static class ProgressionRules
     public static bool HasLearnedThisVisit(GameState state, ProgressNode visit) =>
         state.CompletedProgressionNodes.Contains(visit.Id);
 
-    /// <summary>Allows continuing after learning or when no further abilities can be learned.</summary>
+    /// <summary>Allows continuing from the active progression visit, whether or not points were spent.</summary>
     public static bool CanContinue(GameState state, ProgressNode visit) =>
-        state.CurrentStoryNodeId == visit.Id && (HasLearnedThisVisit(state, visit)
-            || state.AbilityPoints <= 0
-            || Database.Progression.ProgressionGraphs.All[state.Zodiac].Abilities
-                .All(node => state.Loadout.LearnedAbilities.Contains(node.Id)));
+        state.CurrentStoryNodeId == visit.Id;
 
     /// <summary>Checks remaining points, the current visit, the ability's rank, and its prerequisite.</summary>
     public static bool CanLearn(GameState state, Storyline story, AbilityId id)
