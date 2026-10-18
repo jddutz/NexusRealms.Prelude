@@ -6,23 +6,28 @@ namespace NexusRealms.Prelude.DataModel;
 public interface IStoryGraph
 {
     /// <summary>
+    /// Gets the story graph to which this story graph belongs.
+    /// </summary>
+    IStoryGraph? Parent { get; }
+
+    /// <summary>
     /// Gets the characters made available to the nodes in this graph.
     /// </summary>
-    public ImmutableArray<CharacterData> Characters { get; }
+    IEnumerable<CharacterData> Characters { get; }
 
     /// <summary>
     /// Gets the story nodes contained in this graph.
     /// </summary>
-    public ImmutableArray<StoryNode> Nodes { get; }
+    IEnumerable<StoryNode> Nodes { get; }
 
     /// <summary>
     /// Gets the identifier of the node where this graph begins.
     /// </summary>
-    public StoryNodeId Start { get; }
+    StoryNodeId Start { get; }
 
     /// <summary>
     /// Gets the identifier of the node where this graph ends, or
     /// <see cref="StoryNodeId.Invalid"/> when no end node is defined.
     /// </summary>
-    public StoryNodeId End { get; }
+    StoryNodeId End { get; }
 }

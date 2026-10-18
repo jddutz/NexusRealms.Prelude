@@ -302,8 +302,8 @@ Check(shortMelee.SelectTargets(elevatedResolver, "reach-player", "reach-target")
 Check(mediumMelee.SelectTargets(elevatedResolver, "reach-player", "reach-target")
     .SequenceEqual(["reach-target"]));
 Check(
-    NexusRealms.Prelude.Database.Progression.Aries.Rampage.Targeting.Shape == TargetShape.FrontRow
-        && NexusRealms.Prelude.Database.Progression.Aquarius.Whirlwind.Targeting.Shape
+    NexusRealms.Prelude.Database.Progression.Aries.Rampage.Targeting?.Shape == TargetShape.FrontRow
+        && NexusRealms.Prelude.Database.Progression.Aquarius.Whirlwind.Targeting?.Shape
             == TargetShape.FrontRow
 );
 var coneAction = new ActionData { Id = "cone-action", Targeting = new(TargetShape.Cone) };

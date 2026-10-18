@@ -9,7 +9,7 @@ internal static class StorySceneRouter
     /// <param name="scenes">The scene manager used to load the matching scene.</param>
     /// <exception cref="ArgumentNullException">An argument is null.</exception>
     /// <exception cref="InvalidOperationException">The node is missing or has no matching scene.</exception>
-    internal static void LoadCurrentNode(GameState state, Storyline storyline, ISceneManager scenes)
+    internal static void LoadCurrentNode(GameState state, StoryRegistry storyline, ISceneManager scenes)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(storyline);

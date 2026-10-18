@@ -9,7 +9,7 @@ public class CombatScene : Scene
     private const float TopHudHeight = 120f;
     private const float BottomHudHeight = 134f;
     private readonly CombatScenario _startScenario;
-    private readonly Storyline _storyline;
+    private readonly StoryRegistry _storyline;
     private readonly ITextureRegistry _textures;
     private readonly IContentManifest? _contentManifest;
     private readonly IWindowService _windowService;
@@ -291,7 +291,7 @@ public class CombatScene : Scene
         ITextureRegistry textures,
         IEventHub eventHub,
         IWindowService windowService,
-        Storyline storyline,
+        StoryRegistry storyline,
         ITextStyleRegistry textStyles,
         GameState gameState,
         IGraphicalUserInterface gui,
@@ -326,8 +326,8 @@ public class CombatScene : Scene
 
         EncounterSeed = _startScenario.RandomSeed ?? Random.Shared.Next();
         Combat = new(unchecked((uint)EncounterSeed));
-        ActionResolver = new(Combat, storyline.StatusEffects);
-        foreach (var ability in storyline.GetAbilities(gameState.Zodiac).Values)
+        ActionResolver = new(Combat, Database.StatusEffects.All);
+        foreach (var ability in Database.Progression.ProgressionGraphs.All[gameState.Zodiac].AbilityDefinitionsById.Values)
             ActionResolver.RegisterAbility(ability);
         var playerHealth = new Combat.DamageReceiver(gameState.Health);
         playerHealth.HealthChanged += () => gameState.Health = playerHealth.Health;
@@ -1211,7 +1211,7 @@ public class CombatScene : Scene
         var statusY = 102f;
         foreach (var id in _gameState.StatusEffects)
         {
-            var effect = _storyline.StatusEffects[id];
+            var effect = Database.StatusEffects.All[id];
             Place(
                 panel,
                 new ImageElement
@@ -1348,7 +1348,7 @@ public class CombatScene : Scene
             Rows = Enumerable.Repeat(GridSize.Absolute(cellHeight), rows).ToArray(),
         };
         var abilityOrder = Database.Progression.ProgressionGraphs.All[_gameState.Zodiac].Abilities.Select(node => node.Id).ToArray();
-        var abilities = _storyline.GetAbilities(_gameState.Zodiac);
+        var abilities = Database.Progression.ProgressionGraphs.All[_gameState.Zodiac].AbilityDefinitionsById;
         var selectionFrames = new Dictionary<AbilityId, ImageElement>();
         for (var index = 0; index < columns * rows; index++)
         {

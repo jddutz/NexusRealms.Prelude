@@ -18,7 +18,7 @@ public sealed class ZodiacSelectionScene : Scene
     /// <param name="windowService">Closes the application when selection is cancelled.</param>
     public ZodiacSelectionScene(
         GameState state,
-        Storyline storyline,
+        StoryRegistry storyline,
         ITextStyleRegistry textStyles,
         ITextureRegistry textures,
         ISceneManager scenes,

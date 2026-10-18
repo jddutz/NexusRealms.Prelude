@@ -13,7 +13,7 @@ public sealed class NarrativeScene : Scene
     /// <exception cref="InvalidOperationException">The current node is not a narrative node.</exception>
     public NarrativeScene(
         GameState state,
-        Storyline storyline,
+        StoryRegistry storyline,
         ITextStyleRegistry textStyles,
         ITextureRegistry textures,
         ISceneManager scenes

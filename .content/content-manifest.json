@@ -7,6 +7,9 @@
       "abilities.Attack.png": {
         "FilePath": "Textures/Abilities/Attack.ktx2"
       },
+      "abilities.Barrier.png": {
+        "FilePath": "Textures/Abilities/Barrier.ktx2"
+      },
       "abilities.Bewilder.png": {
         "FilePath": "Textures/Abilities/Bewilder.ktx2"
       },
@@ -93,9 +96,6 @@
       },
       "abilities.SolarFlare.png": {
         "FilePath": "Textures/Abilities/SolarFlare.ktx2"
-      },
-      "abilities.SoundBarrier.png": {
-        "FilePath": "Textures/Abilities/SoundBarrier.ktx2"
       },
       "abilities.Strength.png": {
         "FilePath": "Textures/Abilities/Strength.ktx2"

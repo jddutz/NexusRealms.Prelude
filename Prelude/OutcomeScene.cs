@@ -11,7 +11,7 @@ public sealed class OutcomeScene : Scene
     /// <param name="scenes">Loads the scene associated with the next node.</param>
     public OutcomeScene(
         GameState state,
-        Storyline storyline,
+        StoryRegistry storyline,
         ITextStyleRegistry textStyles,
         ITextureRegistry textures,
         ISceneManager scenes

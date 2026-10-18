@@ -1,3 +1,4 @@
+using NexusRealms.Prelude;
 using NexusRealms.Prelude.Combat;
 using NexusRealms.Prelude.Database;
 using NexusRealms.Prelude.DataModel;
@@ -9,8 +10,10 @@ static void Check(bool condition, string message)
     if (!condition) throw new InvalidOperationException(message);
 }
 
-var storyline = new Storyline();
-var state = new SimulationState { CurrentStoryNodeId = NexusRealms.Prelude.Database.Chapter1.Part1.Battle1.Id.Value };
+var part1 = (NexusRealms.Prelude.Database.Chapter1.Part1StoryGraph)
+    ((NexusRealms.Prelude.Database.Chapter1.Chapter1StoryGraph)new Storyline().Chapter1).Part1;
+var storyline = new StoryRegistry(new Storyline());
+var state = new SimulationState { CurrentStoryNodeId = part1.Battle1.Id.Value };
 var aquariusState = state with { LearnedAbilities = ["Heal", "Bewilder"] };
 var aquariusLoadout = aquariusState.CreateGameState().Loadout;
 var aquariusGraph = NexusRealms.Prelude.Database.Progression.ProgressionGraphs.All[ZodiacSignId.Aquarius];
@@ -76,7 +79,7 @@ Check(omittedEquipmentLayouts > 0
     "Decision trace output must omit unselected equipment-layout alternatives.");
 Check(state.Health == 20, "Simulation mutated its starting state.");
 Check(first.PlayerStrategy == state.PlayerStrategy.Strategy, "Run must record the configured player strategy.");
-Check(first.EnemyConfiguration.Length == ((CombatScenario)storyline.Nodes[NexusRealms.Prelude.Database.Chapter1.Part1.Battle1.Id]).Characters.Length,
+Check(first.EnemyConfiguration.Length == ((CombatScenario)storyline.Nodes[part1.Battle1.Id]).Characters.Length,
     "Run must record the scenario's character configuration.");
 Check(first.PlayerActionUses.Values.Sum() > 0, "Run must record player action usage.");
 Check(first.PlayerActionResults.Length > 0 && first.PlayerActionResults.All(result =>
@@ -131,7 +134,7 @@ pump.SubmitAction(new(1, (_, _) => { }));
 Check(pump.Outcome == CombatOutcome.Draw, "Automatic processing after an action crossed cutoff.");
 var empty = (state with { Items = [], ItemLayout = [] }).CreateGameState();
 Check(empty.Loadout.Items.Count == 0 && empty.Loadout.Equipment.Count == 0, "Empty saved loadout was not restored.");
-var authored = (CombatScenario)storyline.Nodes[NexusRealms.Prelude.Database.Chapter1.Part1.Battle1.Id];
+var authored = (CombatScenario)storyline.Nodes[part1.Battle1.Id];
 Check(authored.Characters.Select(placement => storyline.Characters[placement.CharacterId])
     .SelectMany(character => character.Actions)
     .All(action => action.BuildEffects().All(effect => effect is not RestoreEffect)),

@@ -261,12 +261,12 @@ public static class SimulationRunner
     public const float TurnLimit = 100f;
 
     /// <summary>Runs the combat scenario selected by the saved story node.</summary>
-    /// <param name="storyline">The authored story database.</param>
+    /// <param name="storyline">The runtime story node and character lookups.</param>
     /// <param name="initial">The saved simulation starting state.</param>
     /// <param name="seed">The deterministic run seed.</param>
     /// <param name="trace">Optional callback for each completed AI decision.</param>
     /// <returns>The completed run and its report dimensions.</returns>
-    public static SimulationResult Run(Storyline storyline, SimulationState initial, int seed, Action<DecisionTrace>? trace = null)
+    public static SimulationResult Run(StoryRegistry storyline, SimulationState initial, int seed, Action<DecisionTrace>? trace = null)
     {
         var state = initial.CreateGameState();
         if (!storyline.Nodes.TryGetValue(state.CurrentStoryNodeId, out var node) || node is not CombatScenario scenario)

@@ -7,6 +7,8 @@ using NexusRealms.Prelude.Database;
 using NexusRealms.Prelude.DataModel;
 using NexusRealms.Prelude.Rules;
 
+var part1 = (NexusRealms.Prelude.Database.Chapter1.Part1StoryGraph)
+    ((NexusRealms.Prelude.Database.Chapter1.Chapter1StoryGraph)new Storyline().Chapter1).Part1;
 static void Check(bool value, string message)
 {
     if (!value)
@@ -1114,7 +1116,7 @@ f.Add(
     20,
     0,
     FormationSlot.BackLeft,
-    loadout: CombatLoadout.FromCharacter(NexusRealms.Prelude.Database.Chapter1.Part1.AlleywayThug2)
+    loadout: CombatLoadout.FromCharacter(part1.AlleywayThug2)
 );
 f.Start();
 for (var shot = 0; shot < 3; shot++)

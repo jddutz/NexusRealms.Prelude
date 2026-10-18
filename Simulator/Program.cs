@@ -1,3 +1,4 @@
+using NexusRealms.Prelude;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using NexusRealms.Prelude.Database;
@@ -35,7 +36,7 @@ try
         .Select(strategy => state.PlayerStrategy with { Strategy = strategy }).ToArray();
     var runsPerCycle = checked(strategyCycle.Length * state.PlayerZodiacs.Length);
     var runs = requestedRuns ?? runsPerCycle;
-    var storyline = new Storyline();
+    var storyline = new StoryRegistry(new Storyline());
     if (!storyline.Nodes.TryGetValue(state.CurrentStoryNodeId, out var node) || node is not CombatScenario scenario)
         throw new ArgumentException($"'{state.CurrentStoryNodeId}' is not an authored combat scenario.");
     var characterNames = new Dictionary<string, string>(StringComparer.Ordinal) { ["player"] = "Player" };

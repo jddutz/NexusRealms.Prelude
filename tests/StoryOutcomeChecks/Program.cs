@@ -5,8 +5,10 @@ using NexusRealms.Prelude.Database;
 using NexusRealms.Prelude.DataModel;
 
 static void Check(bool condition) { if (!condition) throw new Exception("Story outcome check failed"); }
-var story = new Storyline();
-var scenario = (CombatScenario)story.Nodes[NexusRealms.Prelude.Database.Chapter1.Part1.Battle1.Id];
+var part1 = (NexusRealms.Prelude.Database.Chapter1.Part1StoryGraph)
+    ((NexusRealms.Prelude.Database.Chapter1.Chapter1StoryGraph)new Storyline().Chapter1).Part1;
+var story = new StoryRegistry(new Storyline());
+var scenario = (CombatScenario)story.Nodes[part1.Battle1.Id];
 Check(scenario.VictoryConditions.Length == 0 && scenario.DefeatConditions.Length == 1);
 Check(scenario.Characters.Count(character => character.RequiredForVictory) == 1);
 Check(scenario.Characters.Single(character => character.RequiredForVictory).Slot == NexusRealms.Prelude.DataModel.FormationSlot.BackLeft);
@@ -24,7 +26,7 @@ var routes = new[] { scenario.VictoryNode, scenario.DefeatNode, scenario.EscapeN
 Check(routes.All(route => route is not null));
 Check(routes.Distinct().Count() == 3);
 foreach (var route in routes) Check(story.Nodes[route!.Value] is OutcomeNode);
-var state = new GameState(story.StartNodeId);
+var state = new GameState(story.Start);
 state.LastCombatOutcome = CombatOutcome.Victory;
 state.CurrentStoryNodeId = scenario.VictoryNode!.Value;
 Check(((OutcomeNode)story.Nodes[state.CurrentStoryNodeId]).Title == "Victory");
@@ -63,11 +65,11 @@ Check(!resourceRow.IsShowingLoss && resourceRow.Children.Count == 0);
 Console.WriteLine("Player resource flash, fade, repeated loss, recovery, and game speed checks passed.");
 
 var actionRandom = new Random(1);
-var clubState = new NexusRealms.Prelude.EnemyActionState(NexusRealms.Prelude.Database.Chapter1.Part1.AlleywayThug1);
+var clubState = new NexusRealms.Prelude.EnemyActionState(part1.AlleywayThug1);
 var clubAction = clubState.Select(actionRandom);
 Check(clubAction.TurnCost == WeaponCatalog.Get(WeaponType.Sword).Weapon!.AttackSpeed);
 Check(clubAction.TurnCost == 1f && clubAction.Damage.Total == 3);
-var pistolState = new NexusRealms.Prelude.EnemyActionState(NexusRealms.Prelude.Database.Chapter1.Part1.AlleywayThug2);
+var pistolState = new NexusRealms.Prelude.EnemyActionState(part1.AlleywayThug2);
 var pistol = pistolState.Items.Single(item => item.Weapon is not null);
 var shot = pistolState.Select(actionRandom);
 Check(!shot.Reload && shot.TurnCost == 0.1f && shot.Damage.Total == 3 && pistolState.ShotsRemaining(pistol) == 1);
@@ -80,7 +82,7 @@ pistolState.Apply(reload);
 Check(pistolState.ShotsRemaining(pistol) == 1);
 Check(pistolState.Items.Single(item => item.Ammunition == AmmunitionType.Bullet).Quantity == 5);
 Check(!pistolState.Select(actionRandom).Reload);
-var rocksState = new NexusRealms.Prelude.EnemyActionState(NexusRealms.Prelude.Database.Chapter1.Part1.AlleywayThug3);
+var rocksState = new NexusRealms.Prelude.EnemyActionState(part1.AlleywayThug3);
 for (var remainingRocks = 3; remainingRocks > 0; remainingRocks--)
 {
     Check(rocksState.Items.Single().Quantity == remainingRocks);
@@ -89,7 +91,7 @@ for (var remainingRocks = 3; remainingRocks > 0; remainingRocks--)
     rocksState.Apply(throwRock);
 }
 Check(rocksState.Items.Count == 0 && rocksState.Select(actionRandom, action => action.Throw).Damage.Total == 0);
-Check(NexusRealms.Prelude.Database.Chapter1.Part1.AlleywayThug3.Items.Single().Quantity == 3);
+Check(part1.AlleywayThug3.Items.Single().Quantity == 3);
 var rock = WeaponCatalog.Create(WeaponType.Rock, "test-rock", "Rock", "Right hand");
 var rockLoadout = new CombatLoadout();
 Check(rockLoadout.TryAddItem(rock) && rockLoadout.CanEquip(rock, "Right hand") && rockLoadout.CanEquip(rock, "Left hand"));
@@ -103,7 +105,7 @@ costCombat.Add(new("pistol", false, team: CombatTeam.Enemies));
 costCombat.Add(new("rock", false, team: CombatTeam.Enemies));
 costCombat.Process();
 costCombat.SubmitAction(new(1f, (_, _) => { }));
-var costPistolState = new NexusRealms.Prelude.EnemyActionState(NexusRealms.Prelude.Database.Chapter1.Part1.AlleywayThug2);
+var costPistolState = new NexusRealms.Prelude.EnemyActionState(part1.AlleywayThug2);
 var enemyTurns = new List<(string Id, float Turn)>();
 while (costCombat.ActiveCombatant is { PlayerControlled: false } costActor)
 {
@@ -122,9 +124,9 @@ Console.WriteLine("Enemy weapon costs, typed damage, pistol reload, three rocks,
 var contentRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../.content"));
 foreach (var thug in new[]
 {
-    NexusRealms.Prelude.Database.Chapter1.Part1.AlleywayThug1,
-    NexusRealms.Prelude.Database.Chapter1.Part1.AlleywayThug2,
-    NexusRealms.Prelude.Database.Chapter1.Part1.AlleywayThug3,
+    part1.AlleywayThug1,
+    part1.AlleywayThug2,
+    part1.AlleywayThug3,
 })
 {
     var sheetPath = Path.Combine(contentRoot, "Textures/Characters", thug.Artwork.Value["characters.".Length..].Replace(".png", ".json"));

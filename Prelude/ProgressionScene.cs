@@ -16,12 +16,12 @@ public sealed class ProgressionScene : Scene
     /// <param name="textures">Loads scene and ability textures.</param>
     /// <param name="scenes">Routes to the next story scene.</param>
     /// <param name="contentManifest">Resolves authored ability icons and packaged fallbacks.</param>
-    public ProgressionScene(GameState state, Storyline story, ITextStyleRegistry textStyles,
+    public ProgressionScene(GameState state, StoryRegistry story, ITextStyleRegistry textStyles,
         ITextureRegistry textures, ISceneManager scenes, IContentManifest? contentManifest = null)
     {
         MainCamera = new StaticCamera();
         var graph = Database.Progression.ProgressionGraphs.All[state.Zodiac];
-        var abilities = story.GetAbilities(state.Zodiac);
+        var abilities = Database.Progression.ProgressionGraphs.All[state.Zodiac].AbilityDefinitionsById;
         var visit = story.Nodes[state.CurrentStoryNodeId] as ProgressNode
             ?? throw new InvalidOperationException("Expected a progression story node.");
         var style = textStyles.GetOrCreate(BuiltInFonts.Default, 16f);

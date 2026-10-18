@@ -21,20 +21,41 @@ Check(bound.TurnCost == 2.5f && bound.Targeting == authored.Targeting
     "Binding must use ability costs, targeting and progression requirements.");
 try { registry.Resolve(authored with { ActionId = "missing" }); throw new Exception("Unknown mapping accepted."); }
 catch (ArgumentException) { }
-var story = new Storyline();
+var storyline = new Storyline();
+var part1 = (NexusRealms.Prelude.Database.Chapter1.Part1StoryGraph)
+    ((NexusRealms.Prelude.Database.Chapter1.Chapter1StoryGraph)storyline.Chapter1).Part1;
+var story = new StoryRegistry(storyline);
 Check(ProgressionGraphs.All.Count == 12, "All Zodiac graphs must exist.");
-Check(story.StartNodeId == NexusRealms.Prelude.Database.Chapter1.Part1.Intro.Id,
-    "The story must start at the authored Chapter1.Part1.Intro node.");
-Check(story.Nodes.Values.OfType<ProgressNode>().Select(node => node.Id).ToHashSet()
-    .SetEquals([NexusRealms.Prelude.Database.Chapter1.Part1.Progress1.Id]),
-    "The post-victory progression visit must be registered.");
-var progressionVisit = (ProgressNode)story.Nodes[NexusRealms.Prelude.Database.Chapter1.Part1.Progress1.Id];
-var intro = story.Nodes[story.StartNodeId] as NarrativeNode
-    ?? throw new Exception("The story start must be a narrative node.");
+Check(story.Start == storyline.Start && story.End == storyline.End,
+    "Runtime entry and exit points must come from the authored graph.");
+Check(story.Nodes.Keys.ToHashSet().SetEquals(storyline.Nodes.Select(node => node.Id))
+    && story.Characters.Keys.ToHashSet().SetEquals(storyline.Characters.Select(character => character.Id)),
+    "Runtime lookups must include the complete authored graph.");
+Check(story.Nodes.Values.OfType<ProgressNode>().Count() == 20,
+    "All four progression visits in each of the five chapters must be registered.");
+var progressionVisit = (ProgressNode)story.Nodes[part1.Progress1.Id];
+Check(story.Start == progressionVisit.Id, "The current authored start is the first progression visit.");
+Check(ReferenceEquals(progressionVisit.Subgraph.Parent, storyline.Chapter1)
+    && ReferenceEquals(storyline.Chapter1.Parent, storyline), "Runtime nodes must retain their graph hierarchy.");
+var intro = (NarrativeNode)story.Nodes[part1.Intro.Id];
 Check(intro.Choices.Length == 2
     && intro.Choices.Select(choice => choice.NextNode).Distinct().Count() == intro.Choices.Length
     && intro.Choices.All(choice => story.Nodes.ContainsKey(choice.NextNode)),
     "Each narrative choice must resolve to a distinct registered destination.");
+void RejectGraph(IStoryGraph graph, string expected)
+{
+    try { _ = new StoryRegistry(graph); }
+    catch (InvalidOperationException exception) when (exception.Message.Contains(expected, StringComparison.Ordinal)) { return; }
+    throw new Exception($"Registry must reject {expected}.");
+}
+RejectGraph(new RegistryGraph(storyline) { Characters = [part1.AlleywayThug1, part1.AlleywayThug1] }, "Duplicate character ID");
+RejectGraph(new RegistryGraph(storyline) { Nodes = [part1.Intro, part1.Intro] }, "Duplicate story node ID");
+RejectGraph(new RegistryGraph(storyline) { Start = "missing" }, "missing start node");
+RejectGraph(new RegistryGraph(storyline) { Characters = [] }, "missing character");
+var registryGraph = new RegistryGraph(storyline) { End = StoryNodeId.Invalid };
+Check(new StoryRegistry(registryGraph).End == StoryNodeId.Invalid, "A graph may omit an end node.");
+var cachedIntro = story.Nodes[part1.Intro.Id];
+Check(ReferenceEquals(cachedIntro, story.Nodes[part1.Intro.Id]), "Runtime lookups must reuse materialized definitions.");
 Check(Cancer.Graph.AbilityDefinitionsById.Count == Cancer.Graph.Abilities.Length
     && ReferenceEquals(Cancer.Graph.AbilityDefinitionsById[Cancer.Parry.Id], Cancer.Parry)
     && ReferenceEquals(Aries.Graph.AbilityDefinitionsById[Aries.Brace.Id], Aries.Brace)
@@ -55,10 +76,10 @@ Check(defaultRankNode.Rank == 0 && rankedNode.Rank == 18,
     "Ability rank must default to zero and allow the maximum constructor rank.");
 foreach (var definition in Aquarius.Definitions)
 {
-    Check(ReferenceEquals(story.GetAbilities(Aquarius.Graph.Sign)[definition.Id], definition), "Registry must use the authored Aquarius record.");
+    Check(ReferenceEquals(NexusRealms.Prelude.Database.Progression.ProgressionGraphs.All[Aquarius.Graph.Sign].AbilityDefinitionsById[definition.Id], definition), "Registry must use the authored Aquarius record.");
     Check(Aquarius.Graph.Abilities.Count(node => node.Id == definition.Id) == 1, "Each authored Aquarius ability must have one placement.");
 }
-var outsideVisit = new GameState(NexusRealms.Prelude.Database.Chapter1.Part1.Intro.Id);
+var outsideVisit = new GameState(part1.Intro.Id);
 Check(!ProgressionRules.Learn(outsideVisit, story, Aquarius.Heal.Id), "Learning requires a progression visit.");
 var noPoints = new GameState(progressionVisit.Id) { Zodiac = ZodiacSignId.Aquarius, AbilityPoints = 0 };
 Check(!ProgressionRules.Learn(noPoints, story, Aquarius.Heal.Id)
@@ -69,7 +90,7 @@ Check(ProgressionRules.CanContinue(noPoints, progressionVisit),
 var layouts = new HashSet<string>();
 foreach (var graph in ProgressionGraphs.All.Values)
 {
-    var abilities = story.GetAbilities(graph.Sign);
+    var abilities = NexusRealms.Prelude.Database.Progression.ProgressionGraphs.All[graph.Sign].AbilityDefinitionsById;
     layouts.Add(string.Join(";", graph.Abilities.Select(n => $"{n.X},{n.Y},{n.Parent}")));
     Check(graph.AbilityDefinitionsById.Count == graph.Abilities.Length
         && graph.Abilities.All(node => graph.AbilityDefinitionsById.ContainsKey(node.Id)),
@@ -104,10 +125,10 @@ foreach (var graph in ProgressionGraphs.All.Values)
     Check(state.AbilityPoints == 19, "Rejected learning must not spend points.");
     Check(ProgressionRules.CanContinue(state, progressionVisit), "Learning must enable Continue.");
     state.CurrentStoryNodeId = progressionVisit.NextNode;
-    Check(state.CurrentStoryNodeId == NexusRealms.Prelude.Database.Chapter1.Part1.Battle1.Id,
-        "Continue must advance to the next authored encounter.");
+    Check(state.CurrentStoryNodeId == part1.Progress2.Id,
+        "Continue must advance to the next authored progression visit.");
     Check(!ProgressionRules.CanContinue(state, progressionVisit), "The old visit cannot advance the story twice.");
-    Check(!ProgressionRules.CanLearn(state, story, firstAbility.Id), "Learning is unavailable in combat.");
+    Check(!ProgressionRules.CanLearn(state, story, firstAbility.Id), "Learned abilities remain unavailable on the next visit.");
     var singleVisit = new GameState(progressionVisit.Id) { Zodiac = graph.Sign };
     for (var learnedCount = 0; learnedCount < graph.Abilities.Length; learnedCount++)
     {
@@ -134,3 +155,11 @@ foreach (var graph in ProgressionGraphs.All.Values)
 }
 Check(layouts.Count == 12, "Zodiac layouts must differ.");
 Console.WriteLine("All twelve Zodiac graphs, graph-scoped definitions, unlocks, prerequisites, and multiple purchases passed.");
+sealed class RegistryGraph(IStoryGraph source) : IStoryGraph
+{
+    public IStoryGraph? Parent => null;
+    public IEnumerable<CharacterData> Characters { get; init; } = source.Characters;
+    public IEnumerable<StoryNode> Nodes { get; init; } = source.Nodes;
+    public StoryNodeId Start { get; init; } = source.Start;
+    public StoryNodeId End { get; init; } = source.End;
+}

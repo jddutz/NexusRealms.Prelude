@@ -15,7 +15,8 @@ try
         .Build();
 
     var services = new ServiceCollection().AddSingleton<Storyline>()
-        .AddSingleton(provider => new GameState(provider.GetRequiredService<Storyline>().StartNodeId));
+        .AddSingleton(provider => new StoryRegistry(provider.GetRequiredService<Storyline>()))
+        .AddSingleton(provider => new GameState(provider.GetRequiredService<StoryRegistry>().Start));
 
     using var application = new Application(configuration, services);
     application.Run();
